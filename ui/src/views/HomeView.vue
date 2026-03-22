@@ -9,12 +9,18 @@ import {
   VAlert,
   VButton,
   VCard,
+  VDescription,
+  VDescriptionItem,
+  VDialog,
   VEmpty,
   VEntity,
   VEntityContainer,
   VEntityField,
   VLoading,
   VPageHeader,
+  VSpace,
+  VStatusDot,
+  VTag,
 } from '@halo-dev/components'
 import type { ExtensionListResult, ScheduleEntry } from '../types/schedule'
 
@@ -24,6 +30,7 @@ const dayColumnHeight = hourHeight * 24
 
 const loading = ref(false)
 const saving = ref(false)
+const createDialogVisible = ref(false)
 const entries = ref<ScheduleEntry[]>([])
 const error = ref('')
 
@@ -127,8 +134,7 @@ const weekDays = computed(() => {
 
         const clippedStart = start < startOfDay ? startOfDay : start
         const clippedEnd = end > endOfDay ? endOfDay : end
-        const startMinutes =
-          clippedStart.getHours() * 60 + clippedStart.getMinutes()
+        const startMinutes = clippedStart.getHours() * 60 + clippedStart.getMinutes()
         const durationMinutes = Math.max(
           Math.round((clippedEnd.getTime() - clippedStart.getTime()) / 60000),
           30,
@@ -200,6 +206,15 @@ const formatDateTime = (value: string) =>
     hour12: false,
   })
 
+const openCreateDialog = () => {
+  error.value = ''
+  createDialogVisible.value = true
+}
+
+const closeCreateDialog = () => {
+  createDialogVisible.value = false
+}
+
 const fetchEntries = async () => {
   loading.value = true
   error.value = ''
@@ -255,6 +270,7 @@ const createEntry = async () => {
     })
 
     resetForm()
+    closeCreateDialog()
     await fetchEntries()
   } catch (err) {
     error.value = '事项创建失败。'
@@ -265,6 +281,8 @@ const createEntry = async () => {
 }
 
 const removeEntry = async (name: string) => {
+  error.value = ''
+
   try {
     await axiosInstance.delete(`${apiBase}/${encodeURIComponent(name)}`)
     await fetchEntries()
@@ -290,12 +308,20 @@ onMounted(() => {
         <IconCalendar class="mr-2 h-5 w-5" />
       </template>
       <template #actions>
-        <VButton @click="openPublicPage">
-          <template #icon>
-            <IconExternalLinkLine />
-          </template>
-          打开前台页面
-        </VButton>
+        <VSpace>
+          <VButton @click="openPublicPage">
+            <template #icon>
+              <IconExternalLinkLine />
+            </template>
+            打开前台页面
+          </VButton>
+          <VButton type="primary" @click="openCreateDialog">
+            <template #icon>
+              <IconAddCircle />
+            </template>
+            新增事项
+          </VButton>
+        </VSpace>
       </template>
     </VPageHeader>
 
@@ -308,123 +334,88 @@ onMounted(() => {
       :closable="false"
     />
 
-    <div class="view-grid">
-      <VCard title="新增事项">
-        <div class="form-grid">
-          <label class="field">
-            <span>事项标题</span>
-            <input v-model="form.title" type="text" placeholder="例如：产品评审" />
-          </label>
+    <VCard class="overview-card">
+      <VDescription>
+        <VDescriptionItem label="周范围" :content="weekRangeLabel" />
+        <VDescriptionItem label="事项数">
+          <VTag theme="default">{{ currentWeekEntries.length }} 个事项</VTag>
+        </VDescriptionItem>
+        <VDescriptionItem label="总占用">
+          <VStatusDot state="success" :text="weekOccupiedSummary" />
+        </VDescriptionItem>
+      </VDescription>
+    </VCard>
 
-          <label class="field">
-            <span>地点 / 链接</span>
-            <input v-model="form.location" type="text" placeholder="会议室 A / 腾讯会议" />
-          </label>
+    <VCard :title="`本周周历 · ${weekRangeLabel}`" class="section-card">
+      <div v-if="loading" class="calendar-loading">
+        <VLoading />
+      </div>
 
-          <label class="field">
-            <span>开始时间</span>
-            <input v-model="form.startTimeLocal" type="datetime-local" />
-          </label>
-
-          <label class="field">
-            <span>结束时间</span>
-            <input v-model="form.endTimeLocal" type="datetime-local" />
-          </label>
-
-          <label class="field field--full">
-            <span>事项说明</span>
-            <textarea
-              v-model="form.description"
-              rows="4"
-              placeholder="可选：补充备注、参与人、准备事项"
-            ></textarea>
-          </label>
-
-          <label class="field">
-            <span>颜色</span>
-            <input v-model="form.color" type="color" class="field__color" />
-          </label>
-        </div>
-
-        <div class="form-actions">
-          <VButton :loading="saving" @click="createEntry">
-            <template #icon>
-              <IconAddCircle />
-            </template>
-            保存事项
-          </VButton>
-        </div>
-      </VCard>
-
-      <VCard :title="`本周周历 · ${weekRangeLabel}`">
-        <template #actions>
-          <div class="calendar-summary">
-            <span>{{ currentWeekEntries.length }} 个事项</span>
-            <span>总占用 {{ weekOccupiedSummary }}</span>
-          </div>
-        </template>
-
-        <div v-if="loading" class="calendar-loading">
-          <VLoading />
-        </div>
-
-        <div v-else class="calendar-shell">
-          <div class="calendar-grid">
-            <div class="time-column">
-              <div class="time-column__header">时间</div>
-              <div class="time-column__body" :style="{ height: `${dayColumnHeight}px` }">
-                <div
-                  v-for="hour in hourLabels"
-                  :key="hour"
-                  class="time-column__slot"
-                  :style="{ height: `${hourHeight}px` }"
-                >
-                  {{ hour }}
-                </div>
-              </div>
-            </div>
-
-            <div class="day-columns">
+      <div v-else class="calendar-shell">
+        <div class="calendar-grid">
+          <div class="time-column">
+            <div class="time-column__header">时间</div>
+            <div class="time-column__body" :style="{ height: `${dayColumnHeight}px` }">
               <div
-                v-for="day in weekDays"
-                :key="day.id"
-                class="day-column"
+                v-for="hour in hourLabels"
+                :key="hour"
+                class="time-column__slot"
+                :style="{ height: `${hourHeight}px` }"
               >
-                <header class="day-column__header">
-                  <strong>{{ day.weekday }}</strong>
-                  <span>{{ day.date }}</span>
-                </header>
+                {{ hour }}
+              </div>
+            </div>
+          </div>
 
-                <div
-                  class="day-column__body"
-                  :style="{ height: `${dayColumnHeight}px` }"
+          <div class="day-columns">
+            <div
+              v-for="day in weekDays"
+              :key="day.id"
+              class="day-column"
+            >
+              <header class="day-column__header">
+                <strong>{{ day.weekday }}</strong>
+                <span>{{ day.date }}</span>
+              </header>
+
+              <div
+                class="day-column__body"
+                :style="{ height: `${dayColumnHeight}px` }"
+              >
+                <div class="day-column__lines"></div>
+
+                <article
+                  v-for="block in day.blocks"
+                  :key="block.id"
+                  class="calendar-block"
+                  :style="{
+                    top: `${block.top}px`,
+                    height: `${block.height}px`,
+                    background: block.color,
+                  }"
                 >
-                  <div class="day-column__lines"></div>
-
-                  <article
-                    v-for="block in day.blocks"
-                    :key="block.id"
-                    class="calendar-block"
-                    :style="{
-                      top: `${block.top}px`,
-                      height: `${block.height}px`,
-                      background: block.color,
-                    }"
-                  >
-                    <div class="calendar-block__title">{{ block.title }}</div>
-                    <div class="calendar-block__time">{{ block.startLabel }} - {{ block.endLabel }}</div>
-                    <div class="calendar-block__meta">{{ block.duration }}</div>
-                    <div v-if="block.meta" class="calendar-block__meta">{{ block.meta }}</div>
-                  </article>
-                </div>
+                  <div class="calendar-block__title">{{ block.title }}</div>
+                  <div class="calendar-block__time">{{ block.startLabel }} - {{ block.endLabel }}</div>
+                  <div class="calendar-block__meta">{{ block.duration }}</div>
+                  <div v-if="block.meta" class="calendar-block__meta">{{ block.meta }}</div>
+                </article>
               </div>
             </div>
           </div>
         </div>
-      </VCard>
-    </div>
+      </div>
+    </VCard>
 
-    <VCard title="事项列表" class="entry-card-list">
+    <VCard title="事项" class="section-card">
+      <template #actions>
+        <VButton type="secondary" @click="openCreateDialog">
+          <template #icon>
+            <IconAddCircle />
+          </template>
+          新增事项
+        </VButton>
+      </template>
+
       <VEntityContainer v-if="sortedEntries.length">
         <VEntity v-for="entry in sortedEntries" :key="entry.metadata.name">
           <template #start>
@@ -459,9 +450,58 @@ onMounted(() => {
       <VEmpty
         v-else
         title="还没有事项"
-        message="先在上方录入一个时间段，周历里就会出现对应的色块。"
+        message="新增一个事项后，会同时显示在下方列表和上方周历中。"
       />
     </VCard>
+
+    <VDialog
+      :visible="createDialogVisible"
+      title="新增事项"
+      confirm-text="保存事项"
+      cancel-text="取消"
+      :show-cancel="true"
+      :on-confirm="createEntry"
+      :on-cancel="closeCreateDialog"
+      @update:visible="createDialogVisible = $event"
+    >
+      <div class="dialog-form">
+        <label class="field">
+          <span>事项标题</span>
+          <input v-model="form.title" type="text" placeholder="例如：产品评审" />
+        </label>
+
+        <label class="field">
+          <span>地点 / 链接</span>
+          <input v-model="form.location" type="text" placeholder="会议室 A / 腾讯会议" />
+        </label>
+
+        <div class="field-row">
+          <label class="field">
+            <span>开始时间</span>
+            <input v-model="form.startTimeLocal" type="datetime-local" />
+          </label>
+
+          <label class="field">
+            <span>结束时间</span>
+            <input v-model="form.endTimeLocal" type="datetime-local" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span>事项说明</span>
+          <textarea
+            v-model="form.description"
+            rows="4"
+            placeholder="可选：补充备注、参与人、准备事项"
+          ></textarea>
+        </label>
+
+        <label class="field field--compact">
+          <span>颜色</span>
+          <input v-model="form.color" type="color" class="field__color" />
+        </label>
+      </div>
+    </VDialog>
   </section>
 </template>
 
@@ -470,70 +510,10 @@ onMounted(() => {
   padding: 20px;
 }
 
-.page-alert {
-  margin: 16px 0 20px;
-}
-
-.view-grid {
-  display: grid;
-  gap: 20px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.field span {
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
-}
-
-.field input,
-.field textarea {
-  width: 100%;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 10px 12px;
-  font: inherit;
-  color: #111827;
-  background: #fff;
-}
-
-.field textarea {
-  resize: vertical;
-}
-
-.field--full {
-  grid-column: 1 / -1;
-}
-
-.field__color {
-  width: 64px;
-  min-height: 42px;
-  padding: 4px;
-  border-radius: 10px;
-}
-
-.form-actions {
+.page-alert,
+.overview-card,
+.section-card {
   margin-top: 16px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.calendar-summary {
-  display: flex;
-  gap: 12px;
-  color: #6b7280;
-  font-size: 12px;
 }
 
 .calendar-loading {
@@ -547,8 +527,7 @@ onMounted(() => {
 .calendar-grid {
   display: grid;
   grid-template-columns: 72px minmax(980px, 1fr);
-  gap: 0;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--halo-border-color, #e5e7eb);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -560,26 +539,27 @@ onMounted(() => {
   justify-content: center;
   min-height: 56px;
   padding: 12px;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--halo-bg-color-secondary, #f8fafc);
+  border-bottom: 1px solid var(--halo-border-color, #e5e7eb);
 }
 
 .time-column__header {
-  font-size: 12px;
-  color: #6b7280;
   align-items: center;
+  font-size: 12px;
+  color: var(--halo-text-color-secondary, #6b7280);
 }
 
-.time-column__body {
-  background: #fff;
+.time-column__body,
+.day-column__body {
+  background: var(--halo-bg-color, #fff);
 }
 
 .time-column__slot {
   padding: 4px 10px 0 0;
   text-align: right;
   font-size: 12px;
-  color: #9ca3af;
-  border-top: 1px solid #f3f4f6;
+  color: var(--halo-text-color-tertiary, #9ca3af);
+  border-top: 1px solid var(--halo-border-color-soft, #f3f4f6);
 }
 
 .day-columns {
@@ -588,22 +568,21 @@ onMounted(() => {
 }
 
 .day-column {
-  border-left: 1px solid #e5e7eb;
+  border-left: 1px solid var(--halo-border-color, #e5e7eb);
 }
 
 .day-column__header strong {
-  color: #111827;
+  color: var(--halo-text-color, #111827);
 }
 
 .day-column__header span {
   margin-top: 4px;
-  color: #6b7280;
   font-size: 12px;
+  color: var(--halo-text-color-secondary, #6b7280);
 }
 
 .day-column__body {
   position: relative;
-  background: #fff;
 }
 
 .day-column__lines {
@@ -613,8 +592,8 @@ onMounted(() => {
     to bottom,
     transparent,
     transparent calc(56px - 1px),
-    #f3f4f6 calc(56px - 1px),
-    #f3f4f6 56px
+    var(--halo-border-color-soft, #f3f4f6) calc(56px - 1px),
+    var(--halo-border-color-soft, #f3f4f6) 56px
   );
 }
 
@@ -643,10 +622,6 @@ onMounted(() => {
   opacity: 0.95;
 }
 
-.entry-card-list {
-  margin-top: 20px;
-}
-
 .entry-start {
   display: flex;
   align-items: flex-start;
@@ -656,36 +631,77 @@ onMounted(() => {
 .entry-dot {
   width: 10px;
   height: 10px;
-  border-radius: 999px;
   margin-top: 6px;
+  border-radius: 999px;
   flex: none;
 }
 
 .entry-extra {
   margin-left: 8px;
-  color: #6b7280;
+  color: var(--halo-text-color-secondary, #6b7280);
   font-size: 12px;
 }
 
 .entry-description {
   margin: 0;
   padding: 0 16px 12px 44px;
-  color: #6b7280;
+  color: var(--halo-text-color-secondary, #6b7280);
   font-size: 13px;
   line-height: 1.6;
 }
 
+.dialog-form {
+  display: grid;
+  gap: 16px;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--halo-text-color-secondary, #6b7280);
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--halo-border-color, #d1d5db);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--halo-text-color, #111827);
+  background: var(--halo-bg-color, #fff);
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field--compact {
+  width: fit-content;
+}
+
+.field__color {
+  width: 56px;
+  min-height: 40px;
+  padding: 4px;
+  border-radius: 10px;
+}
+
 @media (max-width: 960px) {
-  .form-grid {
+  .field-row {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .field--full {
-    grid-column: auto;
-  }
-
-  .calendar-summary {
-    display: none;
   }
 }
 </style>
