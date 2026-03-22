@@ -5,7 +5,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import run.halo.app.extension.SchemeManager;
 import run.halo.app.plugin.PluginContext;
+
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class ScheduleCalendarPluginTest {
@@ -13,12 +16,15 @@ class ScheduleCalendarPluginTest {
     @Mock
     PluginContext context;
 
+    @Mock
+    SchemeManager schemeManager;
+
     @InjectMocks
     ScheduleCalendarPlugin plugin;
 
     @Test
     void contextLoads() {
         plugin.start();
-        plugin.stop();
+        verify(schemeManager).register(ScheduleEntry.class);
     }
 }
