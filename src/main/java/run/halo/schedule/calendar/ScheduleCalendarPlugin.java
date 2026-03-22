@@ -18,9 +18,4 @@ public class ScheduleCalendarPlugin extends BasePlugin {
     public void start() {
         schemeManager.register(ScheduleEntry.class);
     }
-
-    @Override
-    public void stop() {
-        schemeManager.unregister(ScheduleEntry.class);
-    }
 }
