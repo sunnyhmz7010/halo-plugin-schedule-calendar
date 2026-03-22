@@ -1,4 +1,4 @@
-import axios from 'axios'
+import { axiosInstance } from '@halo-dev/api-client'
 import { mergeAttributes, Node } from '@tiptap/core'
 import type { Editor, Range } from '@tiptap/core'
 import { markRaw } from 'vue'
@@ -19,7 +19,7 @@ interface ScheduleCardPayload {
 }
 
 const chooseEntry = async () => {
-  const { data } = await axios.get<ExtensionListResult<ScheduleEntry>>(ENTRY_API, {
+  const { data } = await axiosInstance.get<ExtensionListResult<ScheduleEntry>>(ENTRY_API, {
     params: {
       page: 1,
       size: 100,
@@ -71,7 +71,7 @@ const insertCard = async (editor: Editor, range: Range) => {
     return
   }
 
-  const { data } = await axios.get<ScheduleCardPayload>(
+  const { data } = await axiosInstance.get<ScheduleCardPayload>(
     `${CARD_API}/${encodeURIComponent(entry.metadata.name)}`,
   )
 

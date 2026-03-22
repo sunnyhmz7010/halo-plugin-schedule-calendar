@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import axios from 'axios'
+import { axiosInstance } from '@halo-dev/api-client'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   IconAddCircle,
@@ -205,7 +205,7 @@ const fetchEntries = async () => {
   error.value = ''
 
   try {
-    const { data } = await axios.get<ExtensionListResult<ScheduleEntry>>(apiBase, {
+    const { data } = await axiosInstance.get<ExtensionListResult<ScheduleEntry>>(apiBase, {
       params: {
         page: 1,
         size: 200,
@@ -238,7 +238,7 @@ const createEntry = async () => {
   saving.value = true
 
   try {
-    await axios.post(apiBase, {
+    await axiosInstance.post(apiBase, {
       apiVersion: 'schedule.calendar.sunny.dev/v1alpha1',
       kind: 'ScheduleEntry',
       metadata: {
@@ -266,7 +266,7 @@ const createEntry = async () => {
 
 const removeEntry = async (name: string) => {
   try {
-    await axios.delete(`${apiBase}/${encodeURIComponent(name)}`)
+    await axiosInstance.delete(`${apiBase}/${encodeURIComponent(name)}`)
     await fetchEntries()
   } catch (err) {
     error.value = '事项删除失败。'
