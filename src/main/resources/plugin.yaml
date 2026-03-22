@@ -14,11 +14,11 @@ spec:
     name: Sunny
     website: https://github.com
   logo: logo.png
-  homepage: https://github.com/Sunny/halo-plugin-schedule-calendar#readme
-  repo: https://github.com/Sunny/halo-plugin-schedule-calendar
-  issues: https://github.com/Sunny/halo-plugin-schedule-calendar/issues
+  homepage: https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar#readme
+  repo: https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar
+  issues: https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/issues
   displayName: "日程日历"
   description: "提供前台日历页面、控制台事项管理和编辑器日程卡片的 Halo 插件"
   license:
     - name: "GPL-3.0"
-      url: "https://github.com/Sunny/halo-plugin-schedule-calendar/blob/main/LICENSE"
+      url: "https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/blob/main/LICENSE"
