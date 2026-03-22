@@ -299,10 +299,6 @@ onMounted(() => {
       </template>
     </VPageHeader>
 
-    <p class="page-description">
-      在系统工具中统一维护事项时间段，并用原生控制台风格展示整周时间栅格。
-    </p>
-
     <VAlert
       v-if="error"
       class="page-alert"
@@ -474,13 +470,8 @@ onMounted(() => {
   padding: 20px;
 }
 
-.page-description {
-  margin: 12px 0 20px;
-  color: #6b7280;
-}
-
 .page-alert {
-  margin-bottom: 20px;
+  margin: 16px 0 20px;
 }
 
 .view-grid {
@@ -526,8 +517,10 @@ onMounted(() => {
 }
 
 .field__color {
+  width: 64px;
   min-height: 42px;
-  padding: 6px;
+  padding: 4px;
+  border-radius: 10px;
 }
 
 .form-actions {

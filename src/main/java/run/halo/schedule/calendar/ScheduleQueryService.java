@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.ReactiveExtensionClient;
+import run.halo.app.plugin.ReactiveSettingFetcher;
 
 @Service
 public class ScheduleQueryService {
@@ -32,10 +33,13 @@ public class ScheduleQueryService {
     private static final Locale ZH_CN = Locale.SIMPLIFIED_CHINESE;
 
     private final ReactiveExtensionClient client;
+    private final ReactiveSettingFetcher settingFetcher;
     private final JsonMapper objectMapper;
 
-    public ScheduleQueryService(ReactiveExtensionClient client) {
+    public ScheduleQueryService(ReactiveExtensionClient client,
+        ReactiveSettingFetcher settingFetcher) {
         this.client = client;
+        this.settingFetcher = settingFetcher;
         this.objectMapper = JsonMapper.builder()
             .findAndAddModules()
             .build();
@@ -68,8 +72,15 @@ public class ScheduleQueryService {
     }
 
     Mono<String> buildPublicCalendarPage(LocalDate requestedStart) {
-        return getWeekView(requestedStart)
-            .map(view -> {
+        return Mono.zip(
+                getWeekView(requestedStart),
+                settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
+                    .defaultIfEmpty(new ScheduleCalendarSetting("日程日历"))
+            )
+            .map(tuple -> {
+                var view = tuple.getT1();
+                var setting = tuple.getT2();
+                var pageTitle = setting.effectiveTitle();
                 try {
                     return """
                         <!DOCTYPE html>
@@ -77,7 +88,7 @@ public class ScheduleQueryService {
                           <head>
                             <meta charset="UTF-8" />
                             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                            <title>日程日历</title>
+                            <title>%s</title>
                             <style>
                               :root {
                                 --bg: #f3efe7;
@@ -234,7 +245,7 @@ public class ScheduleQueryService {
                               <section class="hero">
                                 <div>
                                   <p>公开页面路由</p>
-                                  <h1>日程日历</h1>
+                                  <h1>%s</h1>
                                   <p id="week-range"></p>
                                 </div>
                                 <div class="week-nav">
@@ -310,7 +321,7 @@ public class ScheduleQueryService {
                             </script>
                           </body>
                         </html>
-                        """.formatted(objectMapper.writeValueAsString(view));
+                        """.formatted(pageTitle, pageTitle, objectMapper.writeValueAsString(view));
                 } catch (JsonProcessingException ex) {
                     throw new IllegalStateException("Failed to render schedule calendar page.", ex);
                 }
