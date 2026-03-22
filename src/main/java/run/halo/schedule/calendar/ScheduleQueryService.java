@@ -3,7 +3,7 @@ package run.halo.schedule.calendar;
 import static java.util.Comparator.comparing;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -25,7 +24,6 @@ import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.ReactiveExtensionClient;
 
 @Service
-@RequiredArgsConstructor
 public class ScheduleQueryService {
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -34,7 +32,14 @@ public class ScheduleQueryService {
     private static final Locale ZH_CN = Locale.SIMPLIFIED_CHINESE;
 
     private final ReactiveExtensionClient client;
-    private final ObjectMapper objectMapper;
+    private final JsonMapper objectMapper;
+
+    public ScheduleQueryService(ReactiveExtensionClient client) {
+        this.client = client;
+        this.objectMapper = JsonMapper.builder()
+            .findAndAddModules()
+            .build();
+    }
 
     Mono<WeekViewResponse> getWeekView(LocalDate requestedStart) {
         var zoneId = ZoneId.systemDefault();
