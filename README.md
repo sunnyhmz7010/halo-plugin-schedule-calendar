@@ -2,25 +2,38 @@
 
 Halo 日程日历插件。
 
-当前版本包含三部分能力：
+## 功能概览
 
-1. 前台公开页面路由 `/schedule-calendar`，默认展示本周的已占用和空闲时间段。
-2. Console 控制台页面 `/console/schedule-calendar`，用于录入和删除事项时间段。
-3. 默认编辑器斜杠命令“插入日程卡片”，可插入单个事项的日期时间卡片。
+1. 提供前台公开页面路由 `/schedule-calendar`，用于展示周视图日历。
+2. 提供控制台页面，用于新增、查看和管理事项时间段。
+3. 提供编辑器日程卡片，可插入单个事项的日期时间信息。
+4. 提供插件设置页，可配置前台路由页面标题。
+
+## 当前版本
+
+当前预发布版本：`v0.0.1-beta.1`
 
 ## 开发环境
 
 - JDK 21+
 - Node 20+
-- pnpm 9（模板默认）
+- pnpm 9
 
-## 本地运行
+## 本地构建
 
 ```bash
 ./gradlew.bat build
 ```
 
-如果你使用 Halo 源码开发模式，在 Halo 配置里加入：
+构建产物默认输出到：
+
+```text
+build/libs
+```
+
+## Halo 开发模式加载
+
+如果你使用 Halo 源码开发模式，可在 Halo 配置中加入：
 
 ```yaml
 halo:
@@ -30,11 +43,7 @@ halo:
       - "C:/Users/Sunny/halo-plugin-schedule-calendar"
 ```
 
-## GitHub 同步
+## 发布说明
 
-当前仓库保留了模板来源远端 `upstream`。创建你自己的 GitHub 仓库后执行：
-
-```bash
-git remote add origin https://github.com/<your-account>/halo-plugin-schedule-calendar.git
-git push -u origin main
-```
+- GitHub Release 标签与插件构建版本保持一致。
+- 正式版本和预发布版本都会以中文更新日志记录在 `CHANGELOG.md` 中。
