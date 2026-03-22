@@ -1,9 +1,26 @@
 <script setup lang="ts">
 import axios from 'axios'
 import { computed, onMounted, reactive, ref } from 'vue'
+import {
+  IconAddCircle,
+  IconCalendar,
+  IconDeleteBin,
+  IconExternalLinkLine,
+  VAlert,
+  VButton,
+  VCard,
+  VEmpty,
+  VEntity,
+  VEntityContainer,
+  VEntityField,
+  VLoading,
+  VPageHeader,
+} from '@halo-dev/components'
 import type { ExtensionListResult, ScheduleEntry } from '../types/schedule'
 
 const apiBase = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
+const hourHeight = 56
+const dayColumnHeight = hourHeight * 24
 
 const loading = ref(false)
 const saving = ref(false)
@@ -16,17 +33,22 @@ const form = reactive({
   location: '',
   startTimeLocal: '',
   endTimeLocal: '',
-  color: '#0f766e',
+  color: '#3b82f6',
 })
 
-interface ViewBlock {
-  start: string
-  end: string
+interface CalendarBlock {
+  id: string
   title: string
   meta?: string
+  startLabel: string
+  endLabel: string
   duration: string
   color: string
+  top: number
+  height: number
 }
+
+const hourLabels = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`)
 
 const resetForm = () => {
   form.title = ''
@@ -34,14 +56,7 @@ const resetForm = () => {
   form.location = ''
   form.startTimeLocal = ''
   form.endTimeLocal = ''
-  form.color = '#0f766e'
-}
-
-const parseClock = (date: Date, time: string) => {
-  const [hours, minutes] = time.split(':').map(Number)
-  const next = new Date(date)
-  next.setHours(hours, minutes, 0, 0)
-  return next
+  form.color = '#3b82f6'
 }
 
 const formatDuration = (start: Date, end: Date) => {
@@ -60,6 +75,13 @@ const formatDuration = (start: Date, end: Date) => {
   return `${minutes} 分钟`
 }
 
+const formatClock = (date: Date) =>
+  date.toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+
 const weekStart = computed(() => {
   const now = new Date()
   const copy = new Date(now)
@@ -68,104 +90,6 @@ const weekStart = computed(() => {
   copy.setHours(0, 0, 0, 0)
   copy.setDate(copy.getDate() + diff)
   return copy
-})
-
-const weekDays = computed(() => {
-  return Array.from({ length: 7 }, (_, index) => {
-    const day = new Date(weekStart.value)
-    day.setDate(day.getDate() + index)
-    const startOfDay = new Date(day)
-    startOfDay.setHours(0, 0, 0, 0)
-    const endOfDay = new Date(day)
-    endOfDay.setDate(endOfDay.getDate() + 1)
-    endOfDay.setHours(0, 0, 0, 0)
-
-    const occupied = entries.value
-      .map((entry) => {
-        const start = new Date(entry.spec.startTime)
-        const end = new Date(entry.spec.endTime)
-
-        if (end <= startOfDay || start >= endOfDay) {
-          return null
-        }
-
-        const clippedStart = start < startOfDay ? startOfDay : start
-        const clippedEnd = end > endOfDay ? endOfDay : end
-
-        return {
-          start: clippedStart.toLocaleTimeString('zh-CN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          }),
-          end: clippedEnd.toLocaleTimeString('zh-CN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          }),
-          title: entry.spec.title,
-          meta: [entry.spec.description, entry.spec.location ? `地点：${entry.spec.location}` : '']
-            .filter(Boolean)
-            .join(' / '),
-          duration: formatDuration(clippedStart, clippedEnd),
-          color: entry.spec.color || '#0f766e',
-        } satisfies ViewBlock
-      })
-      .filter(Boolean) as ViewBlock[]
-
-    occupied.sort((left, right) => left.start.localeCompare(right.start))
-
-    const free: ViewBlock[] = []
-    let cursor = new Date(startOfDay)
-    occupied.forEach((block) => {
-      const blockStart = parseClock(day, block.start)
-      const blockEnd = parseClock(day, block.end)
-
-      if (blockStart > cursor) {
-        free.push({
-          start: cursor.toLocaleTimeString('zh-CN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          }),
-          end: blockStart.toLocaleTimeString('zh-CN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          }),
-          title: '空闲时间',
-          duration: formatDuration(cursor, blockStart),
-          color: '#94a3b8',
-        })
-      }
-
-      if (blockEnd > cursor) {
-        cursor = blockEnd
-      }
-    })
-
-    if (cursor < endOfDay) {
-      free.push({
-        start: cursor.toLocaleTimeString('zh-CN', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-        }),
-        end: '23:59',
-        title: '空闲时间',
-        duration: formatDuration(cursor, new Date(new Date(day).setHours(23, 59, 0, 0))),
-        color: '#94a3b8',
-      })
-    }
-
-    return {
-      id: day.toISOString(),
-      label: day.toLocaleDateString('zh-CN', { weekday: 'long' }),
-      date: day.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }),
-      occupied,
-      free,
-    }
-  })
 })
 
 const weekRangeLabel = computed(() => {
@@ -180,11 +104,101 @@ const weekRangeLabel = computed(() => {
   return `${formatter.format(weekStart.value)} 至 ${formatter.format(end)}`
 })
 
+const weekDays = computed(() => {
+  return Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(weekStart.value)
+    day.setDate(day.getDate() + index)
+
+    const startOfDay = new Date(day)
+    startOfDay.setHours(0, 0, 0, 0)
+
+    const endOfDay = new Date(day)
+    endOfDay.setDate(endOfDay.getDate() + 1)
+    endOfDay.setHours(0, 0, 0, 0)
+
+    const blocks = entries.value
+      .map((entry) => {
+        const start = new Date(entry.spec.startTime)
+        const end = new Date(entry.spec.endTime)
+
+        if (end <= startOfDay || start >= endOfDay) {
+          return null
+        }
+
+        const clippedStart = start < startOfDay ? startOfDay : start
+        const clippedEnd = end > endOfDay ? endOfDay : end
+        const startMinutes =
+          clippedStart.getHours() * 60 + clippedStart.getMinutes()
+        const durationMinutes = Math.max(
+          Math.round((clippedEnd.getTime() - clippedStart.getTime()) / 60000),
+          30,
+        )
+
+        return {
+          id: `${entry.metadata.name}-${index}`,
+          title: entry.spec.title,
+          meta: [entry.spec.location, entry.spec.description].filter(Boolean).join(' · '),
+          startLabel: formatClock(clippedStart),
+          endLabel: formatClock(clippedEnd),
+          duration: formatDuration(clippedStart, clippedEnd),
+          color: entry.spec.color || '#3b82f6',
+          top: (startMinutes / 60) * hourHeight,
+          height: Math.max((durationMinutes / 60) * hourHeight - 6, 26),
+        } satisfies CalendarBlock
+      })
+      .filter(Boolean) as CalendarBlock[]
+
+    return {
+      id: day.toISOString(),
+      weekday: day.toLocaleDateString('zh-CN', { weekday: 'short' }),
+      date: day.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }),
+      blocks,
+    }
+  })
+})
+
+const currentWeekEntries = computed(() => {
+  const start = weekStart.value.getTime()
+  const end = start + 7 * 24 * 60 * 60 * 1000
+
+  return entries.value.filter((entry) => {
+    const entryStart = new Date(entry.spec.startTime).getTime()
+    const entryEnd = new Date(entry.spec.endTime).getTime()
+    return entryEnd > start && entryStart < end
+  })
+})
+
+const weekOccupiedSummary = computed(() => {
+  const totalMinutes = currentWeekEntries.value.reduce((sum, entry) => {
+    const start = new Date(entry.spec.startTime)
+    const end = new Date(entry.spec.endTime)
+    return sum + Math.max(Math.round((end.getTime() - start.getTime()) / 60000), 0)
+  }, 0)
+
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+
+  if (hours && minutes) {
+    return `${hours} 小时 ${minutes} 分钟`
+  }
+
+  if (hours) {
+    return `${hours} 小时`
+  }
+
+  return `${minutes} 分钟`
+})
+
 const sortedEntries = computed(() => {
   return [...entries.value].sort((left, right) =>
     new Date(left.spec.startTime).getTime() - new Date(right.spec.startTime).getTime(),
   )
 })
+
+const formatDateTime = (value: string) =>
+  new Date(value).toLocaleString('zh-CN', {
+    hour12: false,
+  })
 
 const fetchEntries = async () => {
   loading.value = true
@@ -260,6 +274,10 @@ const removeEntry = async (name: string) => {
   }
 }
 
+const openPublicPage = () => {
+  window.open('/schedule-calendar', '_blank')
+}
+
 onMounted(() => {
   void fetchEntries()
 })
@@ -267,248 +285,213 @@ onMounted(() => {
 
 <template>
   <section class="schedule-view">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">Halo 插件控制台页面</p>
-        <h1>日程日历</h1>
-        <p class="summary">
-          统一维护事项时间段，并预览本周已占用与空闲时间。
-        </p>
-      </div>
-      <a class="public-link" href="/schedule-calendar" target="_blank">打开前台页面</a>
-    </header>
+    <VPageHeader title="日程日历">
+      <template #icon>
+        <IconCalendar class="mr-2 h-5 w-5" />
+      </template>
+      <template #actions>
+        <VButton @click="openPublicPage">
+          <template #icon>
+            <IconExternalLinkLine />
+          </template>
+          打开前台页面
+        </VButton>
+      </template>
+    </VPageHeader>
 
-    <p v-if="error" class="error">{{ error }}</p>
+    <p class="page-description">
+      在系统工具中统一维护事项时间段，并用原生控制台风格展示整周时间栅格。
+    </p>
 
-    <section class="panel panel--form">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">事项录入</p>
-          <h2>新增时间段</h2>
+    <VAlert
+      v-if="error"
+      class="page-alert"
+      type="error"
+      title="操作失败"
+      :description="error"
+      :closable="false"
+    />
+
+    <div class="view-grid">
+      <VCard title="新增事项">
+        <div class="form-grid">
+          <label class="field">
+            <span>事项标题</span>
+            <input v-model="form.title" type="text" placeholder="例如：产品评审" />
+          </label>
+
+          <label class="field">
+            <span>地点 / 链接</span>
+            <input v-model="form.location" type="text" placeholder="会议室 A / 腾讯会议" />
+          </label>
+
+          <label class="field">
+            <span>开始时间</span>
+            <input v-model="form.startTimeLocal" type="datetime-local" />
+          </label>
+
+          <label class="field">
+            <span>结束时间</span>
+            <input v-model="form.endTimeLocal" type="datetime-local" />
+          </label>
+
+          <label class="field field--full">
+            <span>事项说明</span>
+            <textarea
+              v-model="form.description"
+              rows="4"
+              placeholder="可选：补充备注、参与人、准备事项"
+            ></textarea>
+          </label>
+
+          <label class="field">
+            <span>颜色</span>
+            <input v-model="form.color" type="color" class="field__color" />
+          </label>
         </div>
-        <span class="panel__badge">{{ sortedEntries.length }} 条事项</span>
-      </div>
 
-      <div class="form-grid">
-        <label class="field">
-          <span>事项标题</span>
-          <input v-model="form.title" type="text" placeholder="例如：产品评审" />
-        </label>
-
-        <label class="field">
-          <span>地点 / 链接</span>
-          <input v-model="form.location" type="text" placeholder="会议室 A / 腾讯会议" />
-        </label>
-
-        <label class="field">
-          <span>开始时间</span>
-          <input v-model="form.startTimeLocal" type="datetime-local" />
-        </label>
-
-        <label class="field">
-          <span>结束时间</span>
-          <input v-model="form.endTimeLocal" type="datetime-local" />
-        </label>
-
-        <label class="field field--full">
-          <span>事项说明</span>
-          <textarea v-model="form.description" rows="3" placeholder="可选：补充备注、参与人、准备事项"></textarea>
-        </label>
-
-        <label class="field field--color">
-          <span>颜色</span>
-          <input v-model="form.color" type="color" />
-        </label>
-      </div>
-
-      <button class="primary-button" :disabled="saving" @click="createEntry">
-        {{ saving ? '保存中...' : '保存事项' }}
-      </button>
-    </section>
-
-    <section class="week">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">周视图</p>
-          <h2>{{ weekRangeLabel }}</h2>
+        <div class="form-actions">
+          <VButton :loading="saving" @click="createEntry">
+            <template #icon>
+              <IconAddCircle />
+            </template>
+            保存事项
+          </VButton>
         </div>
-        <span class="panel__badge">{{ loading ? '加载中' : '本周预览' }}</span>
-      </div>
+      </VCard>
 
-      <div class="week-grid">
-        <article v-for="day in weekDays" :key="day.id" class="day-card">
-          <header class="day-card__header">
-            <strong>{{ day.label }}</strong>
-            <span>{{ day.date }}</span>
-          </header>
-
-          <div class="block-group">
-            <p class="block-group__title">已占用</p>
-            <div v-if="day.occupied.length" class="block-list">
-              <article
-                v-for="block in day.occupied"
-                :key="`${day.id}-${block.start}-${block.end}-${block.title}`"
-                class="block block--occupied"
-                :style="{ borderLeftColor: block.color }"
-              >
-                <div class="block__time">{{ block.start }} - {{ block.end }} · {{ block.duration }}</div>
-                <div class="block__title">{{ block.title }}</div>
-                <div v-if="block.meta" class="block__meta">{{ block.meta }}</div>
-              </article>
-            </div>
-            <p v-else class="empty">暂无事项</p>
+      <VCard :title="`本周周历 · ${weekRangeLabel}`">
+        <template #actions>
+          <div class="calendar-summary">
+            <span>{{ currentWeekEntries.length }} 个事项</span>
+            <span>总占用 {{ weekOccupiedSummary }}</span>
           </div>
+        </template>
 
-          <div class="block-group">
-            <p class="block-group__title">空闲</p>
-            <div class="block-list">
-              <article
-                v-for="block in day.free"
-                :key="`${day.id}-${block.start}-${block.end}-free`"
-                class="block block--free"
+        <div v-if="loading" class="calendar-loading">
+          <VLoading />
+        </div>
+
+        <div v-else class="calendar-shell">
+          <div class="calendar-grid">
+            <div class="time-column">
+              <div class="time-column__header">时间</div>
+              <div class="time-column__body" :style="{ height: `${dayColumnHeight}px` }">
+                <div
+                  v-for="hour in hourLabels"
+                  :key="hour"
+                  class="time-column__slot"
+                  :style="{ height: `${hourHeight}px` }"
+                >
+                  {{ hour }}
+                </div>
+              </div>
+            </div>
+
+            <div class="day-columns">
+              <div
+                v-for="day in weekDays"
+                :key="day.id"
+                class="day-column"
               >
-                <div class="block__time">{{ block.start }} - {{ block.end }} · {{ block.duration }}</div>
-                <div class="block__title">{{ block.title }}</div>
-              </article>
+                <header class="day-column__header">
+                  <strong>{{ day.weekday }}</strong>
+                  <span>{{ day.date }}</span>
+                </header>
+
+                <div
+                  class="day-column__body"
+                  :style="{ height: `${dayColumnHeight}px` }"
+                >
+                  <div class="day-column__lines"></div>
+
+                  <article
+                    v-for="block in day.blocks"
+                    :key="block.id"
+                    class="calendar-block"
+                    :style="{
+                      top: `${block.top}px`,
+                      height: `${block.height}px`,
+                      background: block.color,
+                    }"
+                  >
+                    <div class="calendar-block__title">{{ block.title }}</div>
+                    <div class="calendar-block__time">{{ block.startLabel }} - {{ block.endLabel }}</div>
+                    <div class="calendar-block__meta">{{ block.duration }}</div>
+                    <div v-if="block.meta" class="calendar-block__meta">{{ block.meta }}</div>
+                  </article>
+                </div>
+              </div>
             </div>
           </div>
-        </article>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">事项列表</p>
-          <h2>已录入事项</h2>
         </div>
-      </div>
+      </VCard>
+    </div>
 
-      <div v-if="sortedEntries.length" class="entry-list">
-        <article v-for="entry in sortedEntries" :key="entry.metadata.name" class="entry-card">
-          <div class="entry-card__accent" :style="{ background: entry.spec.color || '#0f766e' }"></div>
-          <div class="entry-card__content">
-            <strong>{{ entry.spec.title }}</strong>
-            <p>
-              {{ new Date(entry.spec.startTime).toLocaleString('zh-CN', { hour12: false }) }}
-              -
-              {{ new Date(entry.spec.endTime).toLocaleString('zh-CN', { hour12: false }) }}
+    <VCard title="事项列表" class="entry-card-list">
+      <VEntityContainer v-if="sortedEntries.length">
+        <VEntity v-for="entry in sortedEntries" :key="entry.metadata.name">
+          <template #start>
+            <div class="entry-start">
+              <span class="entry-dot" :style="{ background: entry.spec.color || '#3b82f6' }"></span>
+              <VEntityField
+                :title="entry.spec.title"
+                :description="`${formatDateTime(entry.spec.startTime)} - ${formatDateTime(entry.spec.endTime)}`"
+              >
+                <template #extra>
+                  <span v-if="entry.spec.location" class="entry-extra">{{ entry.spec.location }}</span>
+                </template>
+              </VEntityField>
+            </div>
+          </template>
+          <template #end>
+            <VButton ghost @click="removeEntry(entry.metadata.name)">
+              <template #icon>
+                <IconDeleteBin />
+              </template>
+              删除
+            </VButton>
+          </template>
+          <template #footer>
+            <p v-if="entry.spec.description" class="entry-description">
+              {{ entry.spec.description }}
             </p>
-            <p v-if="entry.spec.location">{{ entry.spec.location }}</p>
-            <p v-if="entry.spec.description">{{ entry.spec.description }}</p>
-          </div>
-          <button class="ghost-button" @click="removeEntry(entry.metadata.name)">删除</button>
-        </article>
-      </div>
-      <p v-else class="empty">还没有事项，可以先新增一个时间段。</p>
-    </section>
+          </template>
+        </VEntity>
+      </VEntityContainer>
+
+      <VEmpty
+        v-else
+        title="还没有事项"
+        message="先在上方录入一个时间段，周历里就会出现对应的色块。"
+      />
+    </VCard>
   </section>
 </template>
 
 <style scoped lang="scss">
 .schedule-view {
-  padding: 32px;
-  color: #1f2937;
-  background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 28%),
-    linear-gradient(180deg, #f6f3eb 0%, #eef5f2 100%);
-  min-height: 100vh;
+  padding: 20px;
 }
 
-.hero,
-.panel__header {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 16px;
+.page-description {
+  margin: 12px 0 20px;
+  color: #6b7280;
 }
 
-.hero {
-  margin-bottom: 24px;
+.page-alert {
+  margin-bottom: 20px;
 }
 
-.eyebrow,
-.panel__eyebrow {
-  margin: 0 0 6px;
-  color: #0f766e;
-  font-size: 0.85rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-h1,
-h2,
-p {
-  margin: 0;
-}
-
-h1 {
-  font-size: clamp(2.1rem, 4vw, 3.5rem);
-  line-height: 1;
-}
-
-.summary {
-  margin-top: 10px;
-  max-width: 720px;
-  color: #4b5563;
-}
-
-.public-link,
-.primary-button,
-.ghost-button {
-  border: none;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.public-link,
-.primary-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  padding: 12px 18px;
-  background: #0f766e;
-  color: #fff;
-  font-weight: 700;
-}
-
-.panel,
-.day-card {
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.08);
-  backdrop-filter: blur(10px);
-}
-
-.panel {
-  padding: 24px;
-  margin-top: 24px;
-}
-
-.panel--form {
-  margin-top: 0;
-}
-
-.panel__badge {
-  border-radius: 999px;
-  padding: 8px 12px;
-  background: rgba(15, 118, 110, 0.1);
-  color: #0f766e;
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.form-grid,
-.week-grid {
+.view-grid {
   display: grid;
-  gap: 16px;
+  gap: 20px;
 }
 
 .form-grid {
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin: 20px 0;
+  gap: 16px;
 }
 
 .field {
@@ -518,162 +501,198 @@ h1 {
 }
 
 .field span {
-  font-size: 0.92rem;
-  color: #4b5563;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
 }
 
 .field input,
 .field textarea {
   width: 100%;
-  border-radius: 16px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.92);
-  padding: 14px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px 12px;
   font: inherit;
-  color: inherit;
+  color: #111827;
+  background: #fff;
+}
+
+.field textarea {
+  resize: vertical;
 }
 
 .field--full {
   grid-column: 1 / -1;
 }
 
-.field--color input {
+.field__color {
+  min-height: 42px;
   padding: 6px;
-  height: 52px;
 }
 
-.week {
-  margin-top: 28px;
-}
-
-.week-grid {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  margin-top: 18px;
-}
-
-.day-card {
-  padding: 18px;
-}
-
-.day-card__header {
+.form-actions {
+  margin-top: 16px;
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 16px;
+  justify-content: flex-end;
 }
 
-.day-card__header span {
+.calendar-summary {
+  display: flex;
+  gap: 12px;
   color: #6b7280;
-  font-size: 0.92rem;
+  font-size: 12px;
 }
 
-.block-group + .block-group {
-  margin-top: 18px;
+.calendar-loading {
+  padding: 48px 0;
 }
 
-.block-group__title {
-  margin-bottom: 10px;
-  color: #6b7280;
-  font-size: 0.88rem;
+.calendar-shell {
+  overflow-x: auto;
 }
 
-.block-list {
+.calendar-grid {
+  display: grid;
+  grid-template-columns: 72px minmax(980px, 1fr);
+  gap: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.time-column__header,
+.day-column__header {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  justify-content: center;
+  min-height: 56px;
+  padding: 12px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.block {
-  border-radius: 18px;
-  padding: 12px 14px;
-  border-left: 5px solid transparent;
-}
-
-.block--occupied {
-  background: rgba(15, 118, 110, 0.1);
-}
-
-.block--free {
-  background: rgba(148, 163, 184, 0.14);
-}
-
-.block__time,
-.block__meta,
-.empty,
-.entry-card__content p,
-.error {
+.time-column__header {
+  font-size: 12px;
   color: #6b7280;
-}
-
-.block__time,
-.block__meta,
-.entry-card__content p,
-.empty {
-  font-size: 0.9rem;
-}
-
-.block__title {
-  margin-top: 6px;
-  font-weight: 700;
-}
-
-.block__meta {
-  margin-top: 6px;
-  line-height: 1.5;
-}
-
-.entry-list {
-  display: grid;
-  gap: 14px;
-  margin-top: 18px;
-}
-
-.entry-card {
-  display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) auto;
-  gap: 16px;
   align-items: center;
-  padding: 14px 16px;
-  border-radius: 18px;
-  background: rgba(246, 248, 250, 0.92);
 }
 
-.entry-card__accent {
-  width: 8px;
-  align-self: stretch;
-  border-radius: 999px;
+.time-column__body {
+  background: #fff;
 }
 
-.entry-card__content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.time-column__slot {
+  padding: 4px 10px 0 0;
+  text-align: right;
+  font-size: 12px;
+  color: #9ca3af;
+  border-top: 1px solid #f3f4f6;
 }
 
-.ghost-button {
-  border-radius: 999px;
-  padding: 10px 14px;
-  background: rgba(15, 23, 42, 0.06);
+.day-columns {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(120px, 1fr));
+}
+
+.day-column {
+  border-left: 1px solid #e5e7eb;
+}
+
+.day-column__header strong {
   color: #111827;
 }
 
-.error {
-  margin-bottom: 16px;
+.day-column__header span {
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 12px;
 }
 
-@media (max-width: 860px) {
-  .schedule-view {
-    padding: 20px;
-  }
+.day-column__body {
+  position: relative;
+  background: #fff;
+}
 
-  .hero,
-  .panel__header {
-    flex-direction: column;
-    align-items: start;
-  }
+.day-column__lines {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent calc(56px - 1px),
+    #f3f4f6 calc(56px - 1px),
+    #f3f4f6 56px
+  );
+}
 
+.calendar-block {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  z-index: 1;
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: #fff;
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+}
+
+.calendar-block__title {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.calendar-block__time,
+.calendar-block__meta {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.35;
+  opacity: 0.95;
+}
+
+.entry-card-list {
+  margin-top: 20px;
+}
+
+.entry-start {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.entry-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  margin-top: 6px;
+  flex: none;
+}
+
+.entry-extra {
+  margin-left: 8px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.entry-description {
+  margin: 0;
+  padding: 0 16px 12px 44px;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+@media (max-width: 960px) {
   .form-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .field--full {
+    grid-column: auto;
+  }
+
+  .calendar-summary {
+    display: none;
   }
 }
 </style>

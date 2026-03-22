@@ -129,71 +129,103 @@ public class ScheduleQueryService {
                                 padding: 10px 14px;
                                 border-radius: 999px;
                               }
-                              .grid {
-                                display: grid;
-                                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-                                gap: 18px;
+                              .summary {
+                                display: flex;
+                                gap: 14px;
+                                color: var(--muted);
+                                font-size: 0.95rem;
+                                margin-bottom: 18px;
                               }
-                              .day {
+                              .calendar {
+                                overflow-x: auto;
                                 border: 1px solid var(--line);
+                                border-radius: 20px;
                                 background: var(--panel);
                                 backdrop-filter: blur(8px);
-                                border-radius: 20px;
-                                padding: 18px;
                                 box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
                               }
-                              .day__header {
-                                display: flex;
-                                justify-content: space-between;
-                                align-items: baseline;
-                                margin-bottom: 14px;
+                              .calendar__grid {
+                                display: grid;
+                                grid-template-columns: 78px minmax(980px, 1fr);
                               }
-                              .day__label {
-                                font-size: 1.1rem;
-                                font-weight: 700;
-                              }
-                              .day__date {
-                                color: var(--muted);
-                                font-size: 0.9rem;
-                              }
-                              .day__section-title {
-                                margin: 18px 0 10px;
-                                font-size: 0.9rem;
-                                color: var(--muted);
-                              }
-                              .block-list {
+                              .time-column__header,
+                              .day-column__header {
                                 display: flex;
                                 flex-direction: column;
-                                gap: 10px;
+                                justify-content: center;
+                                min-height: 56px;
+                                padding: 12px;
+                                background: #f9fafb;
+                                border-bottom: 1px solid var(--line);
                               }
-                              .block {
-                                border-radius: 16px;
-                                padding: 12px 14px;
-                                border: 1px solid rgba(15, 23, 42, 0.06);
-                              }
-                              .block--occupied {
-                                background: var(--accent-soft);
-                              }
-                              .block--free {
-                                background: rgba(148, 163, 184, 0.12);
-                              }
-                              .block__time {
-                                font-size: 0.88rem;
+                              .time-column__header {
+                                align-items: center;
+                                font-size: 0.82rem;
                                 color: var(--muted);
                               }
-                              .block__title {
-                                margin-top: 6px;
+                              .time-column__body {
+                                background: #fff;
+                              }
+                              .time-column__slot {
+                                height: 56px;
+                                padding: 6px 12px 0 0;
+                                text-align: right;
+                                font-size: 0.8rem;
+                                color: #9ca3af;
+                                border-top: 1px solid #f3f4f6;
+                              }
+                              .day-columns {
+                                display: grid;
+                                grid-template-columns: repeat(7, minmax(120px, 1fr));
+                              }
+                              .day-column {
+                                border-left: 1px solid var(--line);
+                              }
+                              .day-column__header strong {
+                                font-size: 1rem;
+                              }
+                              .day-column__header span {
+                                margin-top: 4px;
+                                color: var(--muted);
+                                font-size: 0.82rem;
+                              }
+                              .day-column__body {
+                                position: relative;
+                                height: 1344px;
+                                background: #fff;
+                              }
+                              .day-column__lines {
+                                position: absolute;
+                                inset: 0;
+                                background-image: repeating-linear-gradient(
+                                  to bottom,
+                                  transparent,
+                                  transparent 55px,
+                                  #f3f4f6 55px,
+                                  #f3f4f6 56px
+                                );
+                              }
+                              .calendar-block {
+                                position: absolute;
+                                left: 8px;
+                                right: 8px;
+                                z-index: 1;
+                                border-radius: 12px;
+                                padding: 8px 10px;
+                                color: #fff;
+                                box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
+                                overflow: hidden;
+                              }
+                              .calendar-block__title {
                                 font-weight: 700;
+                                line-height: 1.2;
                               }
-                              .block__meta {
-                                margin-top: 6px;
-                                color: var(--muted);
-                                font-size: 0.88rem;
-                                line-height: 1.5;
-                              }
-                              .empty {
-                                color: var(--muted);
-                                font-size: 0.92rem;
+                              .calendar-block__time,
+                              .calendar-block__meta {
+                                margin-top: 4px;
+                                font-size: 0.76rem;
+                                line-height: 1.35;
+                                opacity: 0.95;
                               }
                             </style>
                           </head>
@@ -209,44 +241,70 @@ public class ScheduleQueryService {
                                   <a id="prev-week" href="#">查看上一周</a>
                                 </div>
                               </section>
-                              <section class="grid" id="calendar-grid"></section>
+                              <section class="summary" id="calendar-summary"></section>
+                              <section class="calendar">
+                                <div class="calendar__grid">
+                                  <div class="time-column">
+                                    <div class="time-column__header">时间</div>
+                                    <div class="time-column__body" id="time-column"></div>
+                                  </div>
+                                  <div class="day-columns" id="calendar-grid"></div>
+                                </div>
+                              </section>
                             </main>
                             <script>
                               const payload = %s;
+                              const hourHeight = 56;
+                              const totalHeight = hourHeight * 24;
+                              const toMinutes = (value) => {
+                                const [hours, minutes] = value.split(":").map(Number);
+                                return hours * 60 + minutes;
+                              };
                               const rangeText = `${payload.weekStart} 至 ${payload.weekEnd}`;
                               document.getElementById("week-range").textContent = `本周范围：${rangeText}`;
                               document.getElementById("prev-week").href = `/schedule-calendar?start=${encodeURIComponent(payload.previousWeekStart)}`;
+                              document.getElementById("calendar-summary").innerHTML = `
+                                <span>本周 ${payload.days.reduce((count, day) => count + day.occupied.length, 0)} 个事项</span>
+                                <span>展示方式：周历时间栅格</span>
+                              `;
+                              const timeColumn = document.getElementById("time-column");
+                              Array.from({ length: 24 }, (_, hour) => {
+                                const slot = document.createElement("div");
+                                slot.className = "time-column__slot";
+                                slot.textContent = `${String(hour).padStart(2, "0")}:00`;
+                                timeColumn.appendChild(slot);
+                              });
                               const grid = document.getElementById("calendar-grid");
                               payload.days.forEach((day) => {
-                                const occupied = day.occupied.length
-                                  ? day.occupied.map((block) => `
-                                      <article class="block block--occupied" style="border-left: 4px solid ${block.color}">
-                                        <div class="block__time">${block.start} - ${block.end} · ${block.durationLabel}</div>
-                                        <div class="block__title">${block.title}</div>
-                                        ${block.meta ? `<div class="block__meta">${block.meta}</div>` : ""}
-                                      </article>
-                                    `).join("")
-                                  : '<div class="empty">今天没有已登记事项。</div>';
-                                const free = day.free.length
-                                  ? day.free.map((block) => `
-                                      <article class="block block--free">
-                                        <div class="block__time">${block.start} - ${block.end} · ${block.durationLabel}</div>
-                                        <div class="block__title">空闲时间</div>
-                                      </article>
-                                    `).join("")
-                                  : '<div class="empty">今天没有空闲时间段。</div>';
-                                const section = document.createElement("section");
-                                section.className = "day";
+                                const section = document.createElement("div");
+                                section.className = "day-column";
                                 section.innerHTML = `
-                                  <header class="day__header">
-                                    <div class="day__label">${day.dayLabel}</div>
-                                    <div class="day__date">${day.date}</div>
+                                  <header class="day-column__header">
+                                    <strong>${day.dayLabel}</strong>
+                                    <span>${day.date}</span>
                                   </header>
-                                  <div class="day__section-title">已占用</div>
-                                  <div class="block-list">${occupied}</div>
-                                  <div class="day__section-title">空闲</div>
-                                  <div class="block-list">${free}</div>
+                                  <div class="day-column__body" style="height:${totalHeight}px;">
+                                    <div class="day-column__lines"></div>
+                                  </div>
                                 `;
+                                const body = section.querySelector(".day-column__body");
+                                day.occupied.forEach((block) => {
+                                  const element = document.createElement("article");
+                                  element.className = "calendar-block";
+                                  const top = (toMinutes(block.start) / 60) * hourHeight;
+                                  const duration = Math.max(toMinutes(block.end) - toMinutes(block.start), 30);
+                                  const height = Math.max((duration / 60) * hourHeight - 6, 26);
+                                  element.style.top = `${top}px`;
+                                  element.style.height = `${height}px`;
+                                  element.style.background = block.color;
+                                  element.innerHTML = `
+                                    <div class="calendar-block__title">${block.title}</div>
+                                    <div class="calendar-block__time">${block.start} - ${block.end}</div>
+                                    <div class="calendar-block__meta">${block.durationLabel}</div>
+                                    ${block.meta ? `<div class="calendar-block__meta">${block.meta}</div>` : ""}
+                                  `;
+                                  body.appendChild(element);
+                                });
                                 grid.appendChild(section);
                               });
                             </script>

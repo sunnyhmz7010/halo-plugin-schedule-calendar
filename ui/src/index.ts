@@ -1,6 +1,6 @@
 import { definePlugin } from '@halo-dev/console-shared'
 import HomeView from './views/HomeView.vue'
-import { IconCalendar } from '@halo-dev/components'
+import { IconToolsFill } from '@halo-dev/components'
 import { markRaw } from 'vue'
 import { ScheduleCardExtension } from './editor/schedule-card-extension'
 
@@ -8,7 +8,7 @@ export default definePlugin({
   components: {},
   routes: [
     {
-      parentName: 'Root',
+      parentName: 'ToolsRoot',
       route: {
         path: '/schedule-calendar',
         name: 'ScheduleCalendar',
@@ -18,8 +18,7 @@ export default definePlugin({
           searchable: true,
           menu: {
             name: '日程日历',
-            group: '内容工具',
-            icon: markRaw(IconCalendar),
+            icon: markRaw(IconToolsFill),
             priority: 0,
           },
         },
