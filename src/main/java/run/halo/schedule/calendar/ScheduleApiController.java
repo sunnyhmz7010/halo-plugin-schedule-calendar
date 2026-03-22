@@ -17,7 +17,7 @@ public class ScheduleApiController {
 
     @GetMapping("/week")
     public Mono<ScheduleQueryService.WeekViewResponse> currentWeek(
-        @RequestParam(required = false) LocalDate start
+        @RequestParam(name = "start", required = false) LocalDate start
     ) {
         return scheduleQueryService.getWeekView(start);
     }

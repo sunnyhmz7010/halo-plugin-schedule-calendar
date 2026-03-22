@@ -16,7 +16,7 @@ public class SchedulePageController {
 
     @GetMapping(value = "/schedule-calendar", produces = MediaType.TEXT_HTML_VALUE)
     @ResponseBody
-    public Mono<String> page(@RequestParam(required = false) LocalDate start) {
+    public Mono<String> page(@RequestParam(name = "start", required = false) LocalDate start) {
         return scheduleQueryService.buildPublicCalendarPage(start);
     }
 }
