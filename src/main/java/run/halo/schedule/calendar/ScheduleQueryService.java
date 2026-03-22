@@ -95,7 +95,7 @@ public class ScheduleQueryService {
                                 font-family: "Segoe UI", "PingFang SC", sans-serif;
                                 color: var(--text);
                                 background:
-                                  radial-gradient(circle at top left, rgba(15,118,110,0.16), transparent 36%),
+                                  radial-gradient(circle at top left, rgba(15,118,110,0.16), transparent 36%%),
                                   linear-gradient(135deg, #f8f5ee 0%%, #eef4f2 100%%);
                               }
                               main {
