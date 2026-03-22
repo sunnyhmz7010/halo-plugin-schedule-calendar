@@ -1,5 +1,10 @@
 # 更新日志
 
+## v0.0.1-beta.2
+
+- 修复插件设置扩展未被正确打包，导致安装后提示 `setting extension was not found` 的问题。
+- 将 `schedule-calendar-settings` 设置定义移动到插件扩展资源目录，确保 Halo 能正确加载设置页。
+
 ## v0.0.1-beta.1
 
 - 首次整理为单一测试发布版本。
