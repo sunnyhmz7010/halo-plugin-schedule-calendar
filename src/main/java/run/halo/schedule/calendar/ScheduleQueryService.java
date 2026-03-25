@@ -77,7 +77,7 @@ public class ScheduleQueryService {
         return Mono.zip(
                 getWeekView(requestedStart),
                 settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
-                    .defaultIfEmpty(new ScheduleCalendarSetting("日程日历"))
+                    .defaultIfEmpty(new ScheduleCalendarSetting("日程日历", "📅"))
             )
             .map(tuple -> {
                 var view = tuple.getT1();
