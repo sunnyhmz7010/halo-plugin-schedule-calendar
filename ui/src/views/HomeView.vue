@@ -783,8 +783,28 @@ onMounted(() => {
 .field__color {
   width: 56px;
   min-height: 40px;
-  padding: 4px;
+  height: 40px;
+  padding: 2px;
+  border: 1px solid var(--halo-border-color, #d1d5db);
   border-radius: 10px;
+  background: var(--halo-bg-color, #fff);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.field__color::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.field__color::-webkit-color-swatch {
+  border: none;
+  border-radius: 8px;
+}
+
+.field__color::-moz-color-swatch {
+  border: none;
+  border-radius: 8px;
 }
 
 .modal-footer {
