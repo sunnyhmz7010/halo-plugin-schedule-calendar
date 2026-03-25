@@ -12,3 +12,8 @@ spec:
           label: 页面标题
           value: 日程日历
           help: 用于前台 /schedule-calendar 路由页面的标题和页头文案
+        - $formkit: text
+          name: icon
+          label: 页面图标
+          value: 📅
+          help: 用于前台 /schedule-calendar 页面标题前展示的图标，可填写 emoji 或单个符号

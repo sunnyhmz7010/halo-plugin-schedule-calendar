@@ -83,6 +83,7 @@ public class ScheduleQueryService {
                 var view = tuple.getT1();
                 var setting = tuple.getT2();
                 var pageTitle = setting.effectiveTitle();
+                var pageIcon = setting.effectiveIcon();
                 try {
                     return """
                         <!DOCTYPE html>
@@ -126,6 +127,20 @@ public class ScheduleQueryService {
                               .hero h1 {
                                 margin: 0;
                                 font-size: clamp(2rem, 4vw, 3.4rem);
+                                display: flex;
+                                align-items: center;
+                                gap: 12px;
+                              }
+                              .hero__icon {
+                                display: inline-flex;
+                                align-items: center;
+                                justify-content: center;
+                                width: 56px;
+                                height: 56px;
+                                border-radius: 16px;
+                                background: rgba(255,255,255,0.72);
+                                box-shadow: inset 0 0 0 1px rgba(15,118,110,0.12);
+                                font-size: 1.8rem;
                               }
                               .hero p {
                                 margin: 8px 0 0;
@@ -265,14 +280,14 @@ public class ScheduleQueryService {
                             <main>
                               <section class="hero">
                                 <div>
-                                  <p>公开页面路由</p>
-                                  <h1>%s</h1>
+                                  <h1><span class="hero__icon">%s</span><span>%s</span></h1>
                                   <p id="week-range"></p>
                                 </div>
                                 <div class="week-nav">
                                   <a id="prev-week" href="#">上一周</a>
                                   <input id="week-picker" type="date" />
                                   <a id="next-week" href="#">下一周</a>
+                                  <a id="current-week" href="#">回到本周</a>
                                 </div>
                               </section>
                               <section class="summary" id="calendar-summary"></section>
@@ -299,6 +314,7 @@ public class ScheduleQueryService {
                               document.getElementById("week-range").textContent = `本周范围：${rangeText}`;
                               document.getElementById("prev-week").href = buildWeekUrl(payload.previousWeekStart);
                               document.getElementById("next-week").href = buildWeekUrl(payload.nextWeekStart);
+                              document.getElementById("current-week").href = buildWeekUrl(payload.currentWeekStart);
                               const weekPicker = document.getElementById("week-picker");
                               weekPicker.value = payload.weekStart;
                               weekPicker.addEventListener("change", (event) => {
@@ -310,7 +326,6 @@ public class ScheduleQueryService {
                               });
                               document.getElementById("calendar-summary").innerHTML = `
                                 <span>本周 ${payload.days.reduce((count, day) => count + day.occupied.length, 0)} 个事项</span>
-                                <span>展示方式：周历时间栅格</span>
                               `;
                               const timeColumn = document.getElementById("time-column");
                               Array.from({ length: 24 }, (_, hour) => {
@@ -355,7 +370,7 @@ public class ScheduleQueryService {
                             </script>
                           </body>
                         </html>
-                        """.formatted(pageTitle, CALENDAR_HEADER_HEIGHT, HOUR_HEIGHT, pageTitle,
+                        """.formatted(pageTitle, CALENDAR_HEADER_HEIGHT, HOUR_HEIGHT, pageIcon, pageTitle,
                         objectMapper.writeValueAsString(view), HOUR_HEIGHT);
                 } catch (JsonProcessingException ex) {
                     throw new IllegalStateException("Failed to render schedule calendar page.", ex);
@@ -388,6 +403,7 @@ public class ScheduleQueryService {
         return new WeekViewResponse(
             weekStart.toString(),
             weekEnd.toString(),
+            LocalDate.now(zoneId).with(DayOfWeek.MONDAY).toString(),
             weekStart.minusWeeks(1).toString(),
             weekStart.plusWeeks(1).toString(),
             days
@@ -488,7 +504,8 @@ public class ScheduleQueryService {
         return value == null ? "" : DATE_TIME_FORMATTER.format(value.atZoneSameInstant(ZoneId.systemDefault()));
     }
 
-    public record WeekViewResponse(String weekStart, String weekEnd, String previousWeekStart,
+    public record WeekViewResponse(String weekStart, String weekEnd, String currentWeekStart,
+                                   String previousWeekStart,
                                    String nextWeekStart,
                                    List<DayView> days) {
     }

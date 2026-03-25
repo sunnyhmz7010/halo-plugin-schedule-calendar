@@ -88,6 +88,11 @@ const moveWeek = (offset: number) => {
   syncWeekInput()
 }
 
+const goToCurrentWeek = () => {
+  currentWeekStart.value = startOfWeek(new Date())
+  syncWeekInput()
+}
+
 const applyWeekInput = () => {
   if (!weekInput.value) {
     syncWeekInput()
@@ -321,6 +326,7 @@ const removeEntry = async (name: string) => {
   error.value = ''
 
   try {
+    entries.value = entries.value.filter((entry) => entry.metadata.name !== name)
     await axiosInstance.delete(`${apiBase}/${encodeURIComponent(name)}`)
     await fetchEntries()
   } catch (err) {
@@ -386,6 +392,7 @@ onMounted(() => {
             </template>
             下一周
           </VButton>
+          <VButton @click="goToCurrentWeek">回到本周</VButton>
         </div>
       </template>
 
