@@ -5,20 +5,18 @@ import {
   IconAddCircle,
   IconCalendar,
   IconDeleteBin,
-  IconExternalLinkLine,
   VAlert,
   VButton,
   VCard,
   VDescription,
   VDescriptionItem,
-  VDialog,
   VEmpty,
   VEntity,
   VEntityContainer,
   VEntityField,
   VLoading,
+  VModal,
   VPageHeader,
-  VSpace,
   VStatusDot,
   VTag,
 } from '@halo-dev/components'
@@ -292,10 +290,6 @@ const removeEntry = async (name: string) => {
   }
 }
 
-const openPublicPage = () => {
-  window.open('/schedule-calendar', '_blank')
-}
-
 onMounted(() => {
   void fetchEntries()
 })
@@ -306,22 +300,6 @@ onMounted(() => {
     <VPageHeader title="日程日历">
       <template #icon>
         <IconCalendar class="mr-2 h-5 w-5" />
-      </template>
-      <template #actions>
-        <VSpace>
-          <VButton @click="openPublicPage">
-            <template #icon>
-              <IconExternalLinkLine />
-            </template>
-            打开前台页面
-          </VButton>
-          <VButton type="primary" @click="openCreateDialog">
-            <template #icon>
-              <IconAddCircle />
-            </template>
-            新增事项
-          </VButton>
-        </VSpace>
       </template>
     </VPageHeader>
 
@@ -408,12 +386,14 @@ onMounted(() => {
 
     <VCard title="事项" class="section-card">
       <template #actions>
-        <VButton type="secondary" @click="openCreateDialog">
-          <template #icon>
-            <IconAddCircle />
-          </template>
-          新增事项
-        </VButton>
+        <div class="card-actions">
+          <VButton type="secondary" @click="openCreateDialog">
+            <template #icon>
+              <IconAddCircle />
+            </template>
+            新增事项
+          </VButton>
+        </div>
       </template>
 
       <VEntityContainer v-if="sortedEntries.length">
@@ -454,14 +434,12 @@ onMounted(() => {
       />
     </VCard>
 
-    <VDialog
+    <VModal
       :visible="createDialogVisible"
       title="新增事项"
-      confirm-text="保存事项"
-      cancel-text="取消"
-      :show-cancel="true"
-      :on-confirm="createEntry"
-      :on-cancel="closeCreateDialog"
+      :width="720"
+      :layer-closable="false"
+      :body-class="['schedule-modal-body']"
       @update:visible="createDialogVisible = $event"
     >
       <div class="dialog-form">
@@ -501,13 +479,21 @@ onMounted(() => {
           <input v-model="form.color" type="color" class="field__color" />
         </label>
       </div>
-    </VDialog>
+      <template #footer>
+        <div class="modal-footer">
+          <VButton @click="closeCreateDialog">取消</VButton>
+          <VButton type="primary" :loading="saving" @click="createEntry">
+            保存事项
+          </VButton>
+        </div>
+      </template>
+    </VModal>
   </section>
 </template>
 
 <style scoped lang="scss">
 .schedule-view {
-  padding: 20px;
+  padding: 0 20px 20px;
 }
 
 .page-alert,
@@ -650,9 +636,14 @@ onMounted(() => {
   line-height: 1.6;
 }
 
+.card-actions {
+  padding-right: 8px;
+}
+
 .dialog-form {
   display: grid;
   gap: 16px;
+  padding: 4px 0;
 }
 
 .field-row {
@@ -697,6 +688,12 @@ onMounted(() => {
   min-height: 40px;
   padding: 4px;
   border-radius: 10px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 @media (max-width: 960px) {
