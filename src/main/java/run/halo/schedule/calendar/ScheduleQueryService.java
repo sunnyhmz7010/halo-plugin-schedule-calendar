@@ -274,6 +274,76 @@ public class ScheduleQueryService {
                                 line-height: 1.35;
                                 opacity: 0.95;
                               }
+                              @media (max-width: 960px) {
+                                main {
+                                  padding: 24px 12px 48px;
+                                }
+                                .hero {
+                                  flex-direction: column;
+                                  align-items: stretch;
+                                  gap: 12px;
+                                  margin-bottom: 16px;
+                                }
+                                .hero h1 {
+                                  font-size: clamp(1.6rem, 8vw, 2.4rem);
+                                }
+                                .hero__icon {
+                                  width: 44px;
+                                  height: 44px;
+                                  border-radius: 12px;
+                                  font-size: 1.4rem;
+                                }
+                                .week-nav {
+                                  justify-content: flex-start;
+                                  gap: 8px;
+                                }
+                                .week-nav a,
+                                .week-nav input {
+                                  padding: 8px 10px;
+                                  font-size: 0.9rem;
+                                }
+                                .summary {
+                                  margin-bottom: 12px;
+                                  font-size: 0.85rem;
+                                }
+                                .calendar__grid {
+                                  grid-template-columns: 60px minmax(700px, 1fr);
+                                }
+                                .time-column__header,
+                                .day-column__header {
+                                  padding: 8px;
+                                }
+                                .time-column__slot {
+                                  padding-right: 6px;
+                                  font-size: 0.72rem;
+                                }
+                                .calendar-block {
+                                  left: 4px;
+                                  right: 4px;
+                                  padding: 6px;
+                                  border-radius: 8px;
+                                }
+                                .calendar-block__title {
+                                  font-size: 0.8rem;
+                                }
+                                .calendar-block__time,
+                                .calendar-block__meta {
+                                  margin-top: 2px;
+                                  font-size: 0.66rem;
+                                  line-height: 1.25;
+                                }
+                              }
+                              @media (max-width: 640px) {
+                                .calendar__grid {
+                                  grid-template-columns: 52px minmax(560px, 1fr);
+                                }
+                                .day-column__header strong {
+                                  font-size: 0.75rem;
+                                }
+                                .day-column__header span {
+                                  font-size: 0.65rem;
+                                }
+                              }
                             </style>
                           </head>
                           <body>

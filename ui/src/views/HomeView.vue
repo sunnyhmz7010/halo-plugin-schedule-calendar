@@ -814,16 +814,101 @@ onMounted(() => {
 }
 
 @media (max-width: 960px) {
+  .page-alert,
+  .overview-card,
+  .section-card {
+    margin-top: 12px;
+  }
+
   .week-toolbar {
     flex-wrap: wrap;
+    gap: 8px;
+    padding-right: 0;
   }
 
   .week-picker {
     width: 100%;
   }
 
+  .calendar-grid {
+    grid-template-columns: 60px minmax(700px, 1fr);
+  }
+
+  .time-column__header,
+  .day-column__header {
+    padding: 8px;
+  }
+
+  .time-column__slot {
+    padding-right: 6px;
+    font-size: 11px;
+  }
+
+  .calendar-block {
+    left: 4px;
+    right: 4px;
+    padding: 6px;
+    border-radius: 8px;
+  }
+
+  .calendar-block__title {
+    font-size: 12px;
+  }
+
+  .calendar-block__time,
+  .calendar-block__meta {
+    margin-top: 2px;
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .entry-description {
+    padding-left: 22px;
+  }
+
   .field-row {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card-actions {
+    padding-right: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .schedule-view {
+    font-size: 14px;
+  }
+
+  .calendar-grid {
+    grid-template-columns: 52px minmax(560px, 1fr);
+  }
+
+  .day-column__header strong {
+    font-size: 12px;
+  }
+
+  .day-column__header span {
+    font-size: 10px;
+  }
+
+  .time-column__header {
+    font-size: 11px;
+  }
+
+  .week-toolbar :deep(button),
+  .modal-footer :deep(button) {
+    min-height: 34px;
+  }
+
+  .dialog-form {
+    gap: 12px;
+  }
+
+  .field input,
+  .field textarea,
+  .week-picker {
+    padding: 8px 10px;
   }
 }
 </style>
