@@ -34,6 +34,7 @@ const saving = ref(false)
 const createDialogVisible = ref(false)
 const entries = ref<ScheduleEntry[]>([])
 const error = ref('')
+const colorInputRef = ref<HTMLInputElement | null>(null)
 
 const form = reactive({
   title: '',
@@ -255,6 +256,10 @@ const openCreateDialog = () => {
 
 const closeCreateDialog = () => {
   createDialogVisible.value = false
+}
+
+const openColorPicker = () => {
+  colorInputRef.value?.click()
 }
 
 const fetchEntries = async () => {
@@ -549,10 +554,11 @@ onMounted(() => {
 
         <label class="field field--compact">
           <span>颜色</span>
-          <label class="color-picker">
+          <button type="button" class="color-picker" @click="openColorPicker">
             <span class="color-picker__preview" :style="{ background: form.color }"></span>
-            <input v-model="form.color" type="color" class="field__color" />
-          </label>
+            <span class="color-picker__value">{{ form.color }}</span>
+          </button>
+          <input ref="colorInputRef" v-model="form.color" type="color" class="field__color" />
         </label>
       </div>
       <template #footer>
@@ -573,8 +579,9 @@ onMounted(() => {
 }
 
 .page-body {
-  padding-inline: 20px;
-  padding-bottom: 20px;
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+  padding-bottom: 20px !important;
 }
 
 .page-alert,
@@ -791,55 +798,41 @@ onMounted(() => {
 }
 
 .color-picker {
-  position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 56px;
+  gap: 10px;
+  width: auto;
+  min-width: 136px;
   height: 40px;
+  padding: 4px 10px 4px 4px;
   border: 1px solid var(--halo-border-color, #d1d5db);
   border-radius: 10px;
   background: var(--halo-bg-color, #fff);
-  overflow: hidden;
   cursor: pointer;
+  font: inherit;
 }
 
 .color-picker__preview {
-  width: calc(100% - 6px);
-  height: calc(100% - 6px);
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
+  flex: none;
+}
+
+.color-picker__value {
+  color: var(--halo-text-color, #111827);
+  font-size: 12px;
+  letter-spacing: 0.02em;
 }
 
 .field__color {
   position: absolute;
-  inset: 0;
-  width: 100% !important;
-  min-width: 100%;
-  max-width: 100%;
-  height: 100%;
-  min-height: 100%;
+  width: 1px !important;
+  height: 1px !important;
   padding: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  cursor: pointer;
+  border: 0;
   opacity: 0;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.field__color::-webkit-color-swatch-wrapper {
-  padding: 0;
-}
-
-.field__color::-webkit-color-swatch {
-  border: none;
-  border-radius: 8px;
-}
-
-.field__color::-moz-color-swatch {
-  border: none;
-  border-radius: 8px;
+  pointer-events: none;
 }
 
 .modal-footer {
@@ -850,8 +843,9 @@ onMounted(() => {
 
 @media (max-width: 960px) {
   .page-body {
-    padding-inline: 16px;
-    padding-bottom: 16px;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    padding-bottom: 16px !important;
   }
 
   .page-alert,
@@ -921,8 +915,9 @@ onMounted(() => {
   }
 
   .page-body {
-    padding-inline: 12px;
-    padding-bottom: 12px;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    padding-bottom: 12px !important;
   }
 
   .calendar-grid {
