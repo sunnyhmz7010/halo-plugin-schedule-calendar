@@ -30,6 +30,8 @@ public class ScheduleQueryService {
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final DateTimeFormatter TIME_FORMATTER =
         DateTimeFormatter.ofPattern("HH:mm");
+    private static final int CALENDAR_HEADER_HEIGHT = 64;
+    private static final int HOUR_HEIGHT = 56;
     private static final Locale ZH_CN = Locale.SIMPLIFIED_CHINESE;
 
     private final ReactiveExtensionClient client;
@@ -129,6 +131,13 @@ public class ScheduleQueryService {
                                 margin: 8px 0 0;
                                 color: var(--muted);
                               }
+                              .week-nav {
+                                display: flex;
+                                flex-wrap: wrap;
+                                justify-content: flex-end;
+                                align-items: center;
+                                gap: 10px;
+                              }
                               .week-nav a {
                                 display: inline-flex;
                                 align-items: center;
@@ -139,6 +148,14 @@ public class ScheduleQueryService {
                                 border: 1px solid rgba(15,118,110,0.16);
                                 padding: 10px 14px;
                                 border-radius: 999px;
+                              }
+                              .week-nav input {
+                                border: 1px solid rgba(15,118,110,0.16);
+                                background: rgba(255,255,255,0.75);
+                                color: var(--text);
+                                padding: 10px 14px;
+                                border-radius: 12px;
+                                font: inherit;
                               }
                               .summary {
                                 display: flex;
@@ -162,23 +179,27 @@ public class ScheduleQueryService {
                               .time-column__header,
                               .day-column__header {
                                 display: flex;
-                                flex-direction: column;
                                 justify-content: center;
-                                min-height: 56px;
-                                padding: 12px;
+                                height: %dpx;
+                                padding: 10px 12px;
                                 background: #f9fafb;
                                 border-bottom: 1px solid var(--line);
+                                box-sizing: border-box;
                               }
                               .time-column__header {
                                 align-items: center;
                                 font-size: 0.82rem;
                                 color: var(--muted);
                               }
+                              .day-column__header {
+                                flex-direction: column;
+                                align-items: flex-start;
+                              }
                               .time-column__body {
                                 background: #fff;
                               }
                               .time-column__slot {
-                                height: 56px;
+                                height: %dpx;
                                 padding: 6px 12px 0 0;
                                 text-align: right;
                                 font-size: 0.8rem;
@@ -249,7 +270,9 @@ public class ScheduleQueryService {
                                   <p id="week-range"></p>
                                 </div>
                                 <div class="week-nav">
-                                  <a id="prev-week" href="#">查看上一周</a>
+                                  <a id="prev-week" href="#">上一周</a>
+                                  <input id="week-picker" type="date" />
+                                  <a id="next-week" href="#">下一周</a>
                                 </div>
                               </section>
                               <section class="summary" id="calendar-summary"></section>
@@ -265,15 +288,26 @@ public class ScheduleQueryService {
                             </main>
                             <script>
                               const payload = %s;
-                              const hourHeight = 56;
+                              const hourHeight = %d;
                               const totalHeight = hourHeight * 24;
+                              const buildWeekUrl = (start) => `/schedule-calendar?start=${encodeURIComponent(start)}`;
                               const toMinutes = (value) => {
                                 const [hours, minutes] = value.split(":").map(Number);
                                 return hours * 60 + minutes;
                               };
                               const rangeText = `${payload.weekStart} 至 ${payload.weekEnd}`;
                               document.getElementById("week-range").textContent = `本周范围：${rangeText}`;
-                              document.getElementById("prev-week").href = `/schedule-calendar?start=${encodeURIComponent(payload.previousWeekStart)}`;
+                              document.getElementById("prev-week").href = buildWeekUrl(payload.previousWeekStart);
+                              document.getElementById("next-week").href = buildWeekUrl(payload.nextWeekStart);
+                              const weekPicker = document.getElementById("week-picker");
+                              weekPicker.value = payload.weekStart;
+                              weekPicker.addEventListener("change", (event) => {
+                                const value = event.target.value;
+                                if (!value) {
+                                  return;
+                                }
+                                window.location.href = buildWeekUrl(value);
+                              });
                               document.getElementById("calendar-summary").innerHTML = `
                                 <span>本周 ${payload.days.reduce((count, day) => count + day.occupied.length, 0)} 个事项</span>
                                 <span>展示方式：周历时间栅格</span>
@@ -321,7 +355,8 @@ public class ScheduleQueryService {
                             </script>
                           </body>
                         </html>
-                        """.formatted(pageTitle, pageTitle, objectMapper.writeValueAsString(view));
+                        """.formatted(pageTitle, CALENDAR_HEADER_HEIGHT, HOUR_HEIGHT, pageTitle,
+                        objectMapper.writeValueAsString(view), HOUR_HEIGHT);
                 } catch (JsonProcessingException ex) {
                     throw new IllegalStateException("Failed to render schedule calendar page.", ex);
                 }
@@ -354,6 +389,7 @@ public class ScheduleQueryService {
             weekStart.toString(),
             weekEnd.toString(),
             weekStart.minusWeeks(1).toString(),
+            weekStart.plusWeeks(1).toString(),
             days
         );
     }
@@ -453,6 +489,7 @@ public class ScheduleQueryService {
     }
 
     public record WeekViewResponse(String weekStart, String weekEnd, String previousWeekStart,
+                                   String nextWeekStart,
                                    List<DayView> days) {
     }
 

@@ -3,6 +3,8 @@ import { axiosInstance } from '@halo-dev/api-client'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   IconAddCircle,
+  IconArrowLeft,
+  IconArrowRight,
   IconCalendar,
   IconDeleteBin,
   VAlert,
@@ -25,6 +27,7 @@ import type { ExtensionListResult, ScheduleEntry } from '../types/schedule'
 const apiBase = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
 const hourHeight = 56
 const dayColumnHeight = hourHeight * 24
+const headerHeight = 64
 
 const loading = ref(false)
 const saving = ref(false)
@@ -54,6 +57,52 @@ interface CalendarBlock {
 }
 
 const hourLabels = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`)
+
+const startOfWeek = (source: Date) => {
+  const date = new Date(source)
+  const day = date.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  date.setHours(0, 0, 0, 0)
+  date.setDate(date.getDate() + diff)
+  return date
+}
+
+const formatDateInput = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const currentWeekStart = ref(startOfWeek(new Date()))
+const weekInput = ref(formatDateInput(currentWeekStart.value))
+
+const syncWeekInput = () => {
+  weekInput.value = formatDateInput(currentWeekStart.value)
+}
+
+const moveWeek = (offset: number) => {
+  const next = new Date(currentWeekStart.value)
+  next.setDate(next.getDate() + offset * 7)
+  currentWeekStart.value = startOfWeek(next)
+  syncWeekInput()
+}
+
+const applyWeekInput = () => {
+  if (!weekInput.value) {
+    syncWeekInput()
+    return
+  }
+
+  const next = new Date(`${weekInput.value}T00:00:00`)
+  if (Number.isNaN(next.getTime())) {
+    syncWeekInput()
+    return
+  }
+
+  currentWeekStart.value = startOfWeek(next)
+  syncWeekInput()
+}
 
 const resetForm = () => {
   form.title = ''
@@ -87,18 +136,8 @@ const formatClock = (date: Date) =>
     hour12: false,
   })
 
-const weekStart = computed(() => {
-  const now = new Date()
-  const copy = new Date(now)
-  const day = copy.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  copy.setHours(0, 0, 0, 0)
-  copy.setDate(copy.getDate() + diff)
-  return copy
-})
-
 const weekRangeLabel = computed(() => {
-  const end = new Date(weekStart.value)
+  const end = new Date(currentWeekStart.value)
   end.setDate(end.getDate() + 6)
 
   const formatter = new Intl.DateTimeFormat('zh-CN', {
@@ -106,12 +145,12 @@ const weekRangeLabel = computed(() => {
     day: 'numeric',
   })
 
-  return `${formatter.format(weekStart.value)} 至 ${formatter.format(end)}`
+  return `${formatter.format(currentWeekStart.value)} 至 ${formatter.format(end)}`
 })
 
 const weekDays = computed(() => {
   return Array.from({ length: 7 }, (_, index) => {
-    const day = new Date(weekStart.value)
+    const day = new Date(currentWeekStart.value)
     day.setDate(day.getDate() + index)
 
     const startOfDay = new Date(day)
@@ -162,7 +201,7 @@ const weekDays = computed(() => {
 })
 
 const currentWeekEntries = computed(() => {
-  const start = weekStart.value.getTime()
+  const start = currentWeekStart.value.getTime()
   const end = start + 7 * 24 * 60 * 60 * 1000
 
   return entries.value.filter((entry) => {
@@ -291,6 +330,7 @@ const removeEntry = async (name: string) => {
 }
 
 onMounted(() => {
+  syncWeekInput()
   void fetchEntries()
 })
 </script>
@@ -325,6 +365,30 @@ onMounted(() => {
     </VCard>
 
     <VCard :title="`本周周历 · ${weekRangeLabel}`" class="section-card">
+      <template #actions>
+        <div class="week-toolbar">
+          <VButton @click="moveWeek(-1)">
+            <template #icon>
+              <IconArrowLeft />
+            </template>
+            上一周
+          </VButton>
+          <input
+            v-model="weekInput"
+            class="week-picker"
+            type="date"
+            @change="applyWeekInput"
+            @keyup.enter="applyWeekInput"
+          />
+          <VButton @click="moveWeek(1)">
+            <template #icon>
+              <IconArrowRight />
+            </template>
+            下一周
+          </VButton>
+        </div>
+      </template>
+
       <div v-if="loading" class="calendar-loading">
         <VLoading />
       </div>
@@ -332,7 +396,7 @@ onMounted(() => {
       <div v-else class="calendar-shell">
         <div class="calendar-grid">
           <div class="time-column">
-            <div class="time-column__header">时间</div>
+            <div class="time-column__header" :style="{ height: `${headerHeight}px` }">时间</div>
             <div class="time-column__body" :style="{ height: `${dayColumnHeight}px` }">
               <div
                 v-for="hour in hourLabels"
@@ -351,7 +415,7 @@ onMounted(() => {
               :key="day.id"
               class="day-column"
             >
-              <header class="day-column__header">
+              <header class="day-column__header" :style="{ height: `${headerHeight}px` }">
                 <strong>{{ day.weekday }}</strong>
                 <span>{{ day.date }}</span>
               </header>
@@ -502,6 +566,23 @@ onMounted(() => {
   margin-top: 16px;
 }
 
+.week-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 8px;
+}
+
+.week-picker {
+  width: 160px;
+  border: 1px solid var(--halo-border-color, #d1d5db);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: inherit;
+  color: var(--halo-text-color, #111827);
+  background: var(--halo-bg-color, #fff);
+}
+
 .calendar-loading {
   padding: 48px 0;
 }
@@ -521,18 +602,22 @@ onMounted(() => {
 .time-column__header,
 .day-column__header {
   display: flex;
-  flex-direction: column;
   justify-content: center;
-  min-height: 56px;
-  padding: 12px;
+  padding: 10px 12px;
   background: var(--halo-bg-color-secondary, #f8fafc);
   border-bottom: 1px solid var(--halo-border-color, #e5e7eb);
+  box-sizing: border-box;
 }
 
 .time-column__header {
   align-items: center;
   font-size: 12px;
   color: var(--halo-text-color-secondary, #6b7280);
+}
+
+.day-column__header {
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .time-column__body,
@@ -697,6 +782,14 @@ onMounted(() => {
 }
 
 @media (max-width: 960px) {
+  .week-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .week-picker {
+    width: 100%;
+  }
+
   .field-row {
     grid-template-columns: minmax(0, 1fr);
   }
