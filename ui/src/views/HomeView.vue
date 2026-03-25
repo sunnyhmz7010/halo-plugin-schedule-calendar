@@ -349,28 +349,29 @@ onMounted(() => {
       </template>
     </VPageHeader>
 
-    <VAlert
-      v-if="error"
-      class="page-alert"
-      type="error"
-      title="操作失败"
-      :description="error"
-      :closable="false"
-    />
+    <div class="page-body">
+      <VAlert
+        v-if="error"
+        class="page-alert"
+        type="error"
+        title="操作失败"
+        :description="error"
+        :closable="false"
+      />
 
-    <VCard class="overview-card">
-      <VDescription>
-        <VDescriptionItem label="周范围" :content="weekRangeLabel" />
-        <VDescriptionItem label="事项数">
-          <VTag theme="default">{{ currentWeekEntries.length }} 个事项</VTag>
-        </VDescriptionItem>
-        <VDescriptionItem label="总占用">
-          <VStatusDot state="success" :text="weekOccupiedSummary" />
-        </VDescriptionItem>
-      </VDescription>
-    </VCard>
+      <VCard class="overview-card">
+        <VDescription>
+          <VDescriptionItem label="周范围" :content="weekRangeLabel" />
+          <VDescriptionItem label="事项数">
+            <VTag theme="default">{{ currentWeekEntries.length }} 个事项</VTag>
+          </VDescriptionItem>
+          <VDescriptionItem label="总占用">
+            <VStatusDot state="success" :text="weekOccupiedSummary" />
+          </VDescriptionItem>
+        </VDescription>
+      </VCard>
 
-    <VCard :title="`本周周历 · ${weekRangeLabel}`" class="section-card">
+      <VCard :title="`本周周历 · ${weekRangeLabel}`" class="section-card">
       <template #actions>
         <div class="week-toolbar">
           <VButton @click="moveWeek(-1)">
@@ -453,57 +454,58 @@ onMounted(() => {
           </div>
         </div>
       </div>
-    </VCard>
+      </VCard>
 
-    <VCard title="事项" class="section-card">
-      <template #actions>
-        <div class="card-actions">
-          <VButton type="secondary" @click="openCreateDialog">
-            <template #icon>
-              <IconAddCircle />
-            </template>
-            新增事项
-          </VButton>
-        </div>
-      </template>
-
-      <VEntityContainer v-if="sortedEntries.length">
-        <VEntity v-for="entry in sortedEntries" :key="entry.metadata.name">
-          <template #start>
-            <div class="entry-start">
-              <span class="entry-dot" :style="{ background: entry.spec.color || '#3b82f6' }"></span>
-              <VEntityField
-                :title="entry.spec.title"
-                :description="`${formatDateTime(entry.spec.startTime)} - ${formatDateTime(entry.spec.endTime)}`"
-              >
-                <template #extra>
-                  <span v-if="entry.spec.location" class="entry-extra">{{ entry.spec.location }}</span>
-                </template>
-              </VEntityField>
-            </div>
-          </template>
-          <template #end>
-            <VButton ghost @click="removeEntry(entry.metadata.name)">
+      <VCard title="事项" class="section-card">
+        <template #actions>
+          <div class="card-actions">
+            <VButton type="secondary" @click="openCreateDialog">
               <template #icon>
-                <IconDeleteBin />
+                <IconAddCircle />
               </template>
-              删除
+              新增事项
             </VButton>
-          </template>
-          <template #footer>
-            <p v-if="entry.spec.description" class="entry-description">
-              {{ entry.spec.description }}
-            </p>
-          </template>
-        </VEntity>
-      </VEntityContainer>
+          </div>
+        </template>
 
-      <VEmpty
-        v-else
-        title="还没有事项"
-        message="新增一个事项后，会同时显示在下方列表和上方周历中。"
-      />
-    </VCard>
+        <VEntityContainer v-if="sortedEntries.length">
+          <VEntity v-for="entry in sortedEntries" :key="entry.metadata.name">
+            <template #start>
+              <div class="entry-start">
+                <span class="entry-dot" :style="{ background: entry.spec.color || '#3b82f6' }"></span>
+                <VEntityField
+                  :title="entry.spec.title"
+                  :description="`${formatDateTime(entry.spec.startTime)} - ${formatDateTime(entry.spec.endTime)}`"
+                >
+                  <template #extra>
+                    <span v-if="entry.spec.location" class="entry-extra">{{ entry.spec.location }}</span>
+                  </template>
+                </VEntityField>
+              </div>
+            </template>
+            <template #end>
+              <VButton ghost @click="removeEntry(entry.metadata.name)">
+                <template #icon>
+                  <IconDeleteBin />
+                </template>
+                删除
+              </VButton>
+            </template>
+            <template #footer>
+              <p v-if="entry.spec.description" class="entry-description">
+                {{ entry.spec.description }}
+              </p>
+            </template>
+          </VEntity>
+        </VEntityContainer>
+
+        <VEmpty
+          v-else
+          title="还没有事项"
+          message="新增一个事项后，会同时显示在下方列表和上方周历中。"
+        />
+      </VCard>
+    </div>
 
     <VModal
       :visible="createDialogVisible"
@@ -565,6 +567,10 @@ onMounted(() => {
 <style scoped lang="scss">
 .schedule-view {
   padding: 0;
+}
+
+.page-body {
+  padding: 0 20px 20px;
 }
 
 .page-alert,
@@ -781,9 +787,13 @@ onMounted(() => {
 }
 
 .field__color {
-  width: 56px;
+  width: 56px !important;
+  min-width: 56px;
+  max-width: 56px;
   min-height: 40px;
   height: 40px;
+  display: block;
+  flex: none;
   padding: 2px;
   border: 1px solid var(--halo-border-color, #d1d5db);
   border-radius: 10px;
@@ -814,6 +824,10 @@ onMounted(() => {
 }
 
 @media (max-width: 960px) {
+  .page-body {
+    padding: 0 16px 16px;
+  }
+
   .page-alert,
   .overview-card,
   .section-card {
@@ -878,6 +892,10 @@ onMounted(() => {
 @media (max-width: 640px) {
   .schedule-view {
     font-size: 14px;
+  }
+
+  .page-body {
+    padding: 0 12px 12px;
   }
 
   .calendar-grid {

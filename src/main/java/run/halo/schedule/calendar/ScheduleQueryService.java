@@ -77,13 +77,12 @@ public class ScheduleQueryService {
         return Mono.zip(
                 getWeekView(requestedStart),
                 settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
-                    .defaultIfEmpty(new ScheduleCalendarSetting("日程日历", "📅"))
+                    .defaultIfEmpty(new ScheduleCalendarSetting("日程日历"))
             )
             .map(tuple -> {
                 var view = tuple.getT1();
                 var setting = tuple.getT2();
                 var pageTitle = setting.effectiveTitle();
-                var pageIcon = setting.effectiveIcon();
                 try {
                     return """
                         <!DOCTYPE html>
@@ -127,20 +126,6 @@ public class ScheduleQueryService {
                               .hero h1 {
                                 margin: 0;
                                 font-size: clamp(2rem, 4vw, 3.4rem);
-                                display: flex;
-                                align-items: center;
-                                gap: 12px;
-                              }
-                              .hero__icon {
-                                display: inline-flex;
-                                align-items: center;
-                                justify-content: center;
-                                width: 56px;
-                                height: 56px;
-                                border-radius: 16px;
-                                background: rgba(255,255,255,0.72);
-                                box-shadow: inset 0 0 0 1px rgba(15,118,110,0.12);
-                                font-size: 1.8rem;
                               }
                               .hero p {
                                 margin: 8px 0 0;
@@ -287,12 +272,6 @@ public class ScheduleQueryService {
                                 .hero h1 {
                                   font-size: clamp(1.6rem, 8vw, 2.4rem);
                                 }
-                                .hero__icon {
-                                  width: 44px;
-                                  height: 44px;
-                                  border-radius: 12px;
-                                  font-size: 1.4rem;
-                                }
                                 .week-nav {
                                   justify-content: flex-start;
                                   gap: 8px;
@@ -350,7 +329,7 @@ public class ScheduleQueryService {
                             <main>
                               <section class="hero">
                                 <div>
-                                  <h1><span class="hero__icon">%s</span><span>%s</span></h1>
+                                  <h1>%s</h1>
                                   <p id="week-range"></p>
                                 </div>
                                 <div class="week-nav">
@@ -440,7 +419,7 @@ public class ScheduleQueryService {
                             </script>
                           </body>
                         </html>
-                        """.formatted(pageTitle, CALENDAR_HEADER_HEIGHT, HOUR_HEIGHT, pageIcon, pageTitle,
+                        """.formatted(pageTitle, CALENDAR_HEADER_HEIGHT, HOUR_HEIGHT, pageTitle,
                         objectMapper.writeValueAsString(view), HOUR_HEIGHT);
                 } catch (JsonProcessingException ex) {
                     throw new IllegalStateException("Failed to render schedule calendar page.", ex);
