@@ -549,7 +549,10 @@ onMounted(() => {
 
         <label class="field field--compact">
           <span>颜色</span>
-          <input v-model="form.color" type="color" class="field__color" />
+          <label class="color-picker">
+            <span class="color-picker__preview" :style="{ background: form.color }"></span>
+            <input v-model="form.color" type="color" class="field__color" />
+          </label>
         </label>
       </div>
       <template #footer>
@@ -570,7 +573,8 @@ onMounted(() => {
 }
 
 .page-body {
-  padding: 0 20px 20px;
+  padding-inline: 20px;
+  padding-bottom: 20px;
 }
 
 .page-alert,
@@ -786,21 +790,42 @@ onMounted(() => {
   width: fit-content;
 }
 
-.field__color {
-  width: 56px !important;
-  min-width: 56px;
-  max-width: 56px;
-  min-height: 40px;
+.color-picker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
   height: 40px;
-  display: block;
-  flex: none;
-  padding: 2px;
   border: 1px solid var(--halo-border-color, #d1d5db);
   border-radius: 10px;
   background: var(--halo-bg-color, #fff);
+  overflow: hidden;
   cursor: pointer;
-  appearance: none;
+}
+
+.color-picker__preview {
+  width: calc(100% - 6px);
+  height: calc(100% - 6px);
+  border-radius: 8px;
+}
+
+.field__color {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  min-width: 100%;
+  max-width: 100%;
+  height: 100%;
+  min-height: 100%;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
   -webkit-appearance: none;
+  appearance: none;
 }
 
 .field__color::-webkit-color-swatch-wrapper {
@@ -825,7 +850,8 @@ onMounted(() => {
 
 @media (max-width: 960px) {
   .page-body {
-    padding: 0 16px 16px;
+    padding-inline: 16px;
+    padding-bottom: 16px;
   }
 
   .page-alert,
@@ -895,7 +921,8 @@ onMounted(() => {
   }
 
   .page-body {
-    padding: 0 12px 12px;
+    padding-inline: 12px;
+    padding-bottom: 12px;
   }
 
   .calendar-grid {
