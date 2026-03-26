@@ -599,9 +599,13 @@ onMounted(() => {
 
 .week-picker {
   width: 160px;
+  height: 40px;
+  min-height: 40px;
   border: 1px solid var(--halo-border-color, #d1d5db);
   border-radius: 8px;
   padding: 8px 12px;
+  line-height: 1.2;
+  box-sizing: border-box;
   font: inherit;
   color: var(--halo-text-color, #111827);
   background: var(--halo-bg-color, #fff);
