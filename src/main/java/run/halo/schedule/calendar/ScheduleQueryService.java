@@ -33,6 +33,7 @@ public class ScheduleQueryService {
     private static final int CALENDAR_HEADER_HEIGHT = 64;
     private static final int HOUR_HEIGHT = 56;
     private static final Locale ZH_CN = Locale.SIMPLIFIED_CHINESE;
+    private static final String DEFAULT_TITLE = "日程日历";
 
     private final ReactiveExtensionClient client;
     private final ReactiveSettingFetcher settingFetcher;
@@ -77,7 +78,7 @@ public class ScheduleQueryService {
         return Mono.zip(
                 getWeekView(requestedStart),
                 settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
-                    .defaultIfEmpty(new ScheduleCalendarSetting("日程日历"))
+                    .defaultIfEmpty(new ScheduleCalendarSetting(DEFAULT_TITLE))
             )
             .map(tuple -> {
                 var view = tuple.getT1();
@@ -193,7 +194,8 @@ public class ScheduleQueryService {
                               }
                               .day-column__header {
                                 flex-direction: column;
-                                align-items: flex-start;
+                                align-items: center;
+                                text-align: center;
                               }
                               .time-column__body {
                                 background: #fff;
@@ -239,14 +241,17 @@ public class ScheduleQueryService {
                               }
                               .calendar-block {
                                 position: absolute;
-                                left: 8px;
-                                right: 8px;
                                 z-index: 1;
+                                display: flex;
+                                flex-direction: column;
+                                justify-content: center;
+                                align-items: center;
                                 border-radius: 12px;
                                 padding: 8px 10px;
                                 color: #fff;
                                 box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
                                 overflow: hidden;
+                                text-align: center;
                               }
                               .calendar-block__title {
                                 font-weight: 700;
@@ -297,8 +302,6 @@ public class ScheduleQueryService {
                                   font-size: 0.72rem;
                                 }
                                 .calendar-block {
-                                  left: 4px;
-                                  right: 4px;
                                   padding: 6px;
                                   border-radius: 8px;
                                 }
@@ -359,7 +362,76 @@ public class ScheduleQueryService {
                                 const [hours, minutes] = value.split(":").map(Number);
                                 return hours * 60 + minutes;
                               };
+                              const assignColumns = (blocks) => {
+                                const prepared = blocks.map((block) => ({
+                                  ...block,
+                                  startMinutes: toMinutes(block.start),
+                                  endMinutes: toMinutes(block.end),
+                                }));
+                                const groups = [];
+                                let currentGroup = [];
+                                let currentGroupEnd = -1;
+                                prepared.forEach((block) => {
+                                  if (!currentGroup.length || block.startMinutes < currentGroupEnd) {
+                                    currentGroup.push(block);
+                                    currentGroupEnd = Math.max(currentGroupEnd, block.endMinutes);
+                                    return;
+                                  }
+                                  groups.push(currentGroup);
+                                  currentGroup = [block];
+                                  currentGroupEnd = block.endMinutes;
+                                });
+                                if (currentGroup.length) {
+                                  groups.push(currentGroup);
+                                }
+                                return groups.flatMap((group) => {
+                                  const columns = [];
+                                  return group.map((block) => {
+                                    let columnIndex = 0;
+                                    while (columnIndex < columns.length && columns[columnIndex] > block.startMinutes) {
+                                      columnIndex += 1;
+                                    }
+                                    if (columnIndex === columns.length) {
+                                      columns.push(block.endMinutes);
+                                    } else {
+                                      columns[columnIndex] = block.endMinutes;
+                                    }
+                                    const columnCount = Math.max(columns.length, 1);
+                                    const gap = 6;
+                                    const width = `calc((100%% - ${(columnCount + 1) * gap}px) / ${columnCount})`;
+                                    const left = `calc(${gap}px + (${width} + ${gap}px) * ${columnIndex})`;
+                                    const duration = Math.max(block.endMinutes - block.startMinutes, 30);
+                                    const height = Math.max((duration / 60) * hourHeight - 6, 26);
+                                    const density =
+                                      height < 42 ? "minimal" : height < 76 ? "compact" : "full";
+                                    return {
+                                      ...block,
+                                      left,
+                                      width,
+                                      height,
+                                      top: (block.startMinutes / 60) * hourHeight,
+                                      density,
+                                    };
+                                  });
+                                });
+                              };
                               const rangeText = `${payload.weekStart} 至 ${payload.weekEnd}`;
+                              const occupiedMinutes = payload.days.reduce(
+                                (sum, day) =>
+                                  sum + day.occupied.reduce((daySum, block) => {
+                                    const duration = Math.max(toMinutes(block.end) - toMinutes(block.start), 0);
+                                    return daySum + duration;
+                                  }, 0),
+                                0
+                              );
+                              const occupiedHours = Math.floor(occupiedMinutes / 60);
+                              const occupiedRemainMinutes = occupiedMinutes %% 60;
+                              const occupiedLabel =
+                                occupiedHours > 0 && occupiedRemainMinutes > 0
+                                  ? `${occupiedHours} 小时 ${occupiedRemainMinutes} 分钟`
+                                  : occupiedHours > 0
+                                    ? `${occupiedHours} 小时`
+                                    : `${occupiedRemainMinutes} 分钟`;
                               document.getElementById("week-range").textContent = `本周范围：${rangeText}`;
                               document.getElementById("prev-week").href = buildWeekUrl(payload.previousWeekStart);
                               document.getElementById("next-week").href = buildWeekUrl(payload.nextWeekStart);
@@ -375,6 +447,7 @@ public class ScheduleQueryService {
                               });
                               document.getElementById("calendar-summary").innerHTML = `
                                 <span>本周 ${payload.days.reduce((count, day) => count + day.occupied.length, 0)} 个事项</span>
+                                <span>占用时间 ${occupiedLabel}</span>
                               `;
                               const timeColumn = document.getElementById("time-column");
                               Array.from({ length: 24 }, (_, hour) => {
@@ -397,20 +470,20 @@ public class ScheduleQueryService {
                                   </div>
                                 `;
                                 const body = section.querySelector(".day-column__body");
-                                day.occupied.forEach((block) => {
+                                assignColumns(day.occupied).forEach((block) => {
                                   const element = document.createElement("article");
                                   element.className = "calendar-block";
-                                  const top = (toMinutes(block.start) / 60) * hourHeight;
-                                  const duration = Math.max(toMinutes(block.end) - toMinutes(block.start), 30);
-                                  const height = Math.max((duration / 60) * hourHeight - 6, 26);
-                                  element.style.top = `${top}px`;
-                                  element.style.height = `${height}px`;
+                                  element.title = `${block.title} ${block.start} - ${block.end}${block.meta ? ` ${block.meta}` : ""}`;
+                                  element.style.top = `${block.top}px`;
+                                  element.style.left = block.left;
+                                  element.style.width = block.width;
+                                  element.style.height = `${block.height}px`;
                                   element.style.background = block.color;
                                   element.innerHTML = `
                                     <div class="calendar-block__title">${block.title}</div>
-                                    <div class="calendar-block__time">${block.start} - ${block.end}</div>
-                                    <div class="calendar-block__meta">${block.durationLabel}</div>
-                                    ${block.meta ? `<div class="calendar-block__meta">${block.meta}</div>` : ""}
+                                    ${block.density !== "minimal" ? `<div class="calendar-block__time">${block.start} - ${block.end}</div>` : ""}
+                                    ${block.density === "full" ? `<div class="calendar-block__meta">${block.durationLabel}</div>` : ""}
+                                    ${block.density === "full" && block.meta ? `<div class="calendar-block__meta">${block.meta}</div>` : ""}
                                   `;
                                   body.appendChild(element);
                                 });

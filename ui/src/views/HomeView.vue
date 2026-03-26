@@ -33,7 +33,8 @@ const loading = ref(false)
 const saving = ref(false)
 const createDialogVisible = ref(false)
 const entries = ref<ScheduleEntry[]>([])
-const error = ref('')
+const pageError = ref('')
+const dialogError = ref('')
 const colorInputRef = ref<HTMLInputElement | null>(null)
 
 const form = reactive({
@@ -53,8 +54,13 @@ interface CalendarBlock {
   endLabel: string
   duration: string
   color: string
+  startMinutes: number
+  endMinutes: number
   top: number
   height: number
+  left: string
+  width: string
+  density: 'full' | 'compact' | 'minimal'
 }
 
 const hourLabels = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`)
@@ -86,11 +92,6 @@ const moveWeek = (offset: number) => {
   const next = new Date(currentWeekStart.value)
   next.setDate(next.getDate() + offset * 7)
   currentWeekStart.value = startOfWeek(next)
-  syncWeekInput()
-}
-
-const goToCurrentWeek = () => {
-  currentWeekStart.value = startOfWeek(new Date())
   syncWeekInput()
 }
 
@@ -154,6 +155,98 @@ const weekRangeLabel = computed(() => {
   return `${formatter.format(currentWeekStart.value)} 至 ${formatter.format(end)}`
 })
 
+const buildDayBlocks = (
+  dayEntries: ScheduleEntry[],
+  startOfDay: Date,
+  endOfDay: Date,
+  dayIndex: number,
+) => {
+  const rawBlocks = dayEntries
+    .map((entry) => {
+      const start = new Date(entry.spec.startTime)
+      const end = new Date(entry.spec.endTime)
+
+      if (end <= startOfDay || start >= endOfDay) {
+        return null
+      }
+
+      const clippedStart = start < startOfDay ? startOfDay : start
+      const clippedEnd = end > endOfDay ? endOfDay : end
+      const startMinutes = clippedStart.getHours() * 60 + clippedStart.getMinutes()
+      const endMinutes = clippedEnd.getHours() * 60 + clippedEnd.getMinutes()
+      const durationMinutes = Math.max(Math.round((clippedEnd.getTime() - clippedStart.getTime()) / 60000), 30)
+      const height = Math.max((durationMinutes / 60) * hourHeight - 6, 26)
+
+      return {
+        id: `${entry.metadata.name}-${dayIndex}`,
+        title: entry.spec.title,
+        meta: [entry.spec.location, entry.spec.description].filter(Boolean).join(' · '),
+        startLabel: formatClock(clippedStart),
+        endLabel: formatClock(clippedEnd),
+        duration: formatDuration(clippedStart, clippedEnd),
+        color: entry.spec.color || '#3b82f6',
+        startMinutes,
+        endMinutes,
+        top: (startMinutes / 60) * hourHeight,
+        height,
+      }
+    })
+    .filter(Boolean)
+    .sort((left, right) => left!.startMinutes - right!.startMinutes) as Array<
+    Omit<CalendarBlock, 'left' | 'width' | 'density'>
+  >
+
+  const groups: typeof rawBlocks[] = []
+  let currentGroup: typeof rawBlocks = []
+  let currentGroupEnd = -1
+
+  rawBlocks.forEach((block) => {
+    if (!currentGroup.length || block.startMinutes < currentGroupEnd) {
+      currentGroup.push(block)
+      currentGroupEnd = Math.max(currentGroupEnd, block.endMinutes)
+      return
+    }
+
+    groups.push(currentGroup)
+    currentGroup = [block]
+    currentGroupEnd = block.endMinutes
+  })
+
+  if (currentGroup.length) {
+    groups.push(currentGroup)
+  }
+
+  return groups.flatMap((group) => {
+    const columns: number[] = []
+
+    return group.map((block) => {
+      let columnIndex = 0
+      while (columnIndex < columns.length && columns[columnIndex] > block.startMinutes) {
+        columnIndex += 1
+      }
+
+      if (columnIndex === columns.length) {
+        columns.push(block.endMinutes)
+      } else {
+        columns[columnIndex] = block.endMinutes
+      }
+
+      const columnCount = Math.max(columns.length, 1)
+      const gap = 6
+      const width = `calc((100% - ${(columnCount + 1) * gap}px) / ${columnCount})`
+      const left = `calc(${gap}px + (${width} + ${gap}px) * ${columnIndex})`
+      const density = block.height < 42 ? 'minimal' : block.height < 76 ? 'compact' : 'full'
+
+      return {
+        ...block,
+        left,
+        width,
+        density,
+      } satisfies CalendarBlock
+    })
+  })
+}
+
 const weekDays = computed(() => {
   return Array.from({ length: 7 }, (_, index) => {
     const day = new Date(currentWeekStart.value)
@@ -166,36 +259,7 @@ const weekDays = computed(() => {
     endOfDay.setDate(endOfDay.getDate() + 1)
     endOfDay.setHours(0, 0, 0, 0)
 
-    const blocks = entries.value
-      .map((entry) => {
-        const start = new Date(entry.spec.startTime)
-        const end = new Date(entry.spec.endTime)
-
-        if (end <= startOfDay || start >= endOfDay) {
-          return null
-        }
-
-        const clippedStart = start < startOfDay ? startOfDay : start
-        const clippedEnd = end > endOfDay ? endOfDay : end
-        const startMinutes = clippedStart.getHours() * 60 + clippedStart.getMinutes()
-        const durationMinutes = Math.max(
-          Math.round((clippedEnd.getTime() - clippedStart.getTime()) / 60000),
-          30,
-        )
-
-        return {
-          id: `${entry.metadata.name}-${index}`,
-          title: entry.spec.title,
-          meta: [entry.spec.location, entry.spec.description].filter(Boolean).join(' · '),
-          startLabel: formatClock(clippedStart),
-          endLabel: formatClock(clippedEnd),
-          duration: formatDuration(clippedStart, clippedEnd),
-          color: entry.spec.color || '#3b82f6',
-          top: (startMinutes / 60) * hourHeight,
-          height: Math.max((durationMinutes / 60) * hourHeight - 6, 26),
-        } satisfies CalendarBlock
-      })
-      .filter(Boolean) as CalendarBlock[]
+    const blocks = buildDayBlocks(entries.value, startOfDay, endOfDay, index)
 
     return {
       id: day.toISOString(),
@@ -250,12 +314,13 @@ const formatDateTime = (value: string) =>
   })
 
 const openCreateDialog = () => {
-  error.value = ''
+  dialogError.value = ''
   createDialogVisible.value = true
 }
 
 const closeCreateDialog = () => {
   createDialogVisible.value = false
+  dialogError.value = ''
 }
 
 const openColorPicker = () => {
@@ -264,7 +329,7 @@ const openColorPicker = () => {
 
 const fetchEntries = async () => {
   loading.value = true
-  error.value = ''
+  pageError.value = ''
 
   try {
     const { data } = await axiosInstance.get<ExtensionListResult<ScheduleEntry>>(apiBase, {
@@ -275,7 +340,7 @@ const fetchEntries = async () => {
     })
     entries.value = data.items ?? []
   } catch (err) {
-    error.value = '事项加载失败，请检查插件权限或 Halo 运行状态。'
+    pageError.value = '事项加载失败，请检查插件权限或 Halo 运行状态。'
     console.error(err)
   } finally {
     loading.value = false
@@ -283,17 +348,17 @@ const fetchEntries = async () => {
 }
 
 const createEntry = async () => {
-  error.value = ''
+  dialogError.value = ''
 
   if (!form.title || !form.startTimeLocal || !form.endTimeLocal) {
-    error.value = '标题、开始时间、结束时间是必填项。'
+    dialogError.value = '标题、开始时间、结束时间是必填项。'
     return
   }
 
   const startDate = new Date(form.startTimeLocal)
   const endDate = new Date(form.endTimeLocal)
   if (endDate <= startDate) {
-    error.value = '结束时间必须晚于开始时间。'
+    dialogError.value = '结束时间必须晚于开始时间。'
     return
   }
 
@@ -320,7 +385,7 @@ const createEntry = async () => {
     closeCreateDialog()
     await fetchEntries()
   } catch (err) {
-    error.value = '事项创建失败。'
+    dialogError.value = '事项创建失败。'
     console.error(err)
   } finally {
     saving.value = false
@@ -328,14 +393,15 @@ const createEntry = async () => {
 }
 
 const removeEntry = async (name: string) => {
-  error.value = ''
+  pageError.value = ''
+  const previousEntries = [...entries.value]
 
   try {
     entries.value = entries.value.filter((entry) => entry.metadata.name !== name)
     await axiosInstance.delete(`${apiBase}/${encodeURIComponent(name)}`)
-    await fetchEntries()
   } catch (err) {
-    error.value = '事项删除失败。'
+    entries.value = previousEntries
+    pageError.value = '事项删除失败。'
     console.error(err)
   }
 }
@@ -356,11 +422,11 @@ onMounted(() => {
 
     <div class="page-body">
       <VAlert
-        v-if="error"
+        v-if="pageError"
         class="page-alert"
         type="error"
         title="操作失败"
-        :description="error"
+        :description="pageError"
         :closable="false"
       />
 
@@ -376,89 +442,102 @@ onMounted(() => {
         </VDescription>
       </VCard>
 
-      <VCard :title="`本周周历 · ${weekRangeLabel}`" class="section-card">
-      <template #actions>
+      <VCard class="section-card">
         <div class="week-toolbar">
-          <VButton @click="moveWeek(-1)">
-            <template #icon>
-              <IconArrowLeft />
-            </template>
-            上一周
-          </VButton>
-          <input
-            v-model="weekInput"
-            class="week-picker"
-            type="date"
-            @change="applyWeekInput"
-            @keyup.enter="applyWeekInput"
-          />
-          <VButton @click="moveWeek(1)">
-            <template #icon>
-              <IconArrowRight />
-            </template>
-            下一周
-          </VButton>
-          <VButton @click="goToCurrentWeek">回到本周</VButton>
-        </div>
-      </template>
-
-      <div v-if="loading" class="calendar-loading">
-        <VLoading />
-      </div>
-
-      <div v-else class="calendar-shell">
-        <div class="calendar-grid">
-          <div class="time-column">
-            <div class="time-column__header" :style="{ height: `${headerHeight}px` }">时间</div>
-            <div class="time-column__body" :style="{ height: `${dayColumnHeight}px` }">
-              <div
-                v-for="hour in hourLabels"
-                :key="hour"
-                class="time-column__slot"
-                :style="{ height: `${hourHeight}px` }"
-              >
-                {{ hour }}
-              </div>
-            </div>
+          <div class="week-toolbar__side week-toolbar__side--left">
+            <VButton @click="moveWeek(-1)">
+              <template #icon>
+                <IconArrowLeft />
+              </template>
+              上一周
+            </VButton>
           </div>
 
-          <div class="day-columns">
-            <div
-              v-for="day in weekDays"
-              :key="day.id"
-              class="day-column"
-            >
-              <header class="day-column__header" :style="{ height: `${headerHeight}px` }">
-                <strong>{{ day.weekday }}</strong>
-                <span>{{ day.date }}</span>
-              </header>
+          <div class="week-toolbar__center">
+            <span class="week-toolbar__range">{{ weekRangeLabel }}</span>
+            <input
+              v-model="weekInput"
+              class="week-picker"
+              type="date"
+              @change="applyWeekInput"
+              @keyup.enter="applyWeekInput"
+            />
+          </div>
 
+          <div class="week-toolbar__side week-toolbar__side--right">
+            <VButton @click="moveWeek(1)">
+              下一周
+              <template #icon>
+                <IconArrowRight />
+              </template>
+            </VButton>
+          </div>
+        </div>
+
+        <div v-if="loading" class="calendar-loading">
+          <VLoading />
+        </div>
+
+        <div v-else class="calendar-shell">
+          <div class="calendar-grid">
+            <div class="time-column">
+              <div class="time-column__header" :style="{ height: `${headerHeight}px` }">时间</div>
+              <div class="time-column__body" :style="{ height: `${dayColumnHeight}px` }">
+                <div
+                  v-for="hour in hourLabels"
+                  :key="hour"
+                  class="time-column__slot"
+                  :style="{ height: `${hourHeight}px` }"
+                >
+                  {{ hour }}
+                </div>
+              </div>
+            </div>
+
+            <div class="day-columns">
               <div
-                class="day-column__body"
-                :style="{ height: `${dayColumnHeight}px` }"
+                v-for="day in weekDays"
+                :key="day.id"
+                class="day-column"
               >
-                <div class="day-column__lines"></div>
+                <header class="day-column__header" :style="{ height: `${headerHeight}px` }">
+                  <strong>{{ day.weekday }}</strong>
+                  <span>{{ day.date }}</span>
+                </header>
 
-                <article
-                  v-for="block in day.blocks"
-                  :key="block.id"
-                  class="calendar-block"
+                <div
+                  class="day-column__body"
+                  :style="{ height: `${dayColumnHeight}px` }"
+                >
+                  <div class="day-column__lines"></div>
+
+                  <article
+                    v-for="block in day.blocks"
+                    :key="block.id"
+                    class="calendar-block"
                   :style="{
                     top: `${block.top}px`,
                     height: `${block.height}px`,
+                    left: block.left,
+                    width: block.width,
                     background: block.color,
                   }"
+                  :title="`${block.title} ${block.startLabel} - ${block.endLabel}${block.meta ? ` ${block.meta}` : ''}`"
                 >
                   <div class="calendar-block__title">{{ block.title }}</div>
-                  <div class="calendar-block__time">{{ block.startLabel }} - {{ block.endLabel }}</div>
-                  <div class="calendar-block__meta">{{ block.duration }}</div>
-                  <div v-if="block.meta" class="calendar-block__meta">{{ block.meta }}</div>
+                  <div v-if="block.density !== 'minimal'" class="calendar-block__time">
+                    {{ block.startLabel }} - {{ block.endLabel }}
+                  </div>
+                  <div v-if="block.density === 'full'" class="calendar-block__meta">{{ block.duration }}</div>
+                  <div v-if="block.density === 'full' && block.meta" class="calendar-block__meta">
+                    {{ block.meta }}
+                  </div>
                 </article>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
       </VCard>
 
       <VCard title="事项" class="section-card">
@@ -521,6 +600,14 @@ onMounted(() => {
       @update:visible="createDialogVisible = $event"
     >
       <div class="dialog-form">
+        <VAlert
+          v-if="dialogError"
+          type="error"
+          title="操作失败"
+          :description="dialogError"
+          :closable="false"
+        />
+
         <label class="field">
           <span>事项标题</span>
           <input v-model="form.title" type="text" placeholder="例如：产品评审" />
@@ -593,8 +680,34 @@ onMounted(() => {
 .week-toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-right: 8px;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.week-toolbar__side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.week-toolbar__side--right {
+  justify-content: flex-end;
+}
+
+.week-toolbar__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 220px;
+}
+
+.week-toolbar__range {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--halo-text-color, #111827);
 }
 
 .week-picker {
@@ -645,7 +758,8 @@ onMounted(() => {
 
 .day-column__header {
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  text-align: center;
 }
 
 .time-column__body,
@@ -698,8 +812,6 @@ onMounted(() => {
 
 .calendar-block {
   position: absolute;
-  left: 8px;
-  right: 8px;
   z-index: 1;
   display: flex;
   flex-direction: column;
@@ -860,12 +972,25 @@ onMounted(() => {
 
   .week-toolbar {
     flex-wrap: wrap;
-    gap: 8px;
-    padding-right: 0;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .week-toolbar__side,
+  .week-toolbar__side--right {
+    justify-content: center;
+    flex: none;
+    width: 100%;
+  }
+
+  .week-toolbar__center {
+    width: 100%;
+    min-width: 0;
   }
 
   .week-picker {
     width: 100%;
+    max-width: 320px;
   }
 
   .calendar-grid {
@@ -883,8 +1008,6 @@ onMounted(() => {
   }
 
   .calendar-block {
-    left: 4px;
-    right: 4px;
     padding: 6px;
     border-radius: 8px;
   }
