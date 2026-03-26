@@ -369,7 +369,7 @@ public class ScheduleQueryService {
                                 }
                                 return groups.flatMap((group) => {
                                   const columns = [];
-                                  return group.map((block) => {
+                                  const placements = group.map((block) => {
                                     let columnIndex = 0;
                                     while (columnIndex < columns.length && columns[columnIndex] > block.startMinutes) {
                                       columnIndex += 1;
@@ -379,9 +379,15 @@ public class ScheduleQueryService {
                                     } else {
                                       columns[columnIndex] = block.endMinutes;
                                     }
-                                    const columnCount = Math.max(columns.length, 1);
-                                    const gap = 6;
-                                    const width = `calc((100%% - ${(columnCount + 1) * gap}px) / ${columnCount})`;
+                                    return {
+                                      block,
+                                      columnIndex,
+                                    };
+                                  });
+                                  const columnCount = Math.max(columns.length, 1);
+                                  const gap = 6;
+                                  const width = `calc((100%% - ${(columnCount + 1) * gap}px) / ${columnCount})`;
+                                  return placements.map(({ block, columnIndex }) => {
                                     const left = `calc(${gap}px + (${width} + ${gap}px) * ${columnIndex})`;
                                     const duration = Math.max(block.endMinutes - block.startMinutes, 30);
                                     const height = Math.max((duration / 60) * hourHeight - 6, 26);

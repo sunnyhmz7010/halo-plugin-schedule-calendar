@@ -234,8 +234,7 @@ const buildDayBlocks = (
 
   return groups.flatMap((group) => {
     const columns: number[] = []
-
-    return group.map((block) => {
+    const placements = group.map((block) => {
       let columnIndex = 0
       while (columnIndex < columns.length && columns[columnIndex] > block.startMinutes) {
         columnIndex += 1
@@ -247,9 +246,17 @@ const buildDayBlocks = (
         columns[columnIndex] = block.endMinutes
       }
 
-      const columnCount = Math.max(columns.length, 1)
-      const gap = 6
-      const width = `calc((100% - ${(columnCount + 1) * gap}px) / ${columnCount})`
+      return {
+        block,
+        columnIndex,
+      }
+    })
+
+    const columnCount = Math.max(columns.length, 1)
+    const gap = 6
+    const width = `calc((100% - ${(columnCount + 1) * gap}px) / ${columnCount})`
+
+    return placements.map(({ block, columnIndex }) => {
       const left = `calc(${gap}px + (${width} + ${gap}px) * ${columnIndex})`
       const density = block.height < 42 ? 'minimal' : block.height < 76 ? 'compact' : 'full'
 
