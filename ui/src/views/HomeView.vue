@@ -21,6 +21,7 @@ import {
   VPageHeader,
   VStatusDot,
   VTag,
+  Toast,
 } from '@halo-dev/components'
 import type { ExtensionListResult, ScheduleEntry } from '../types/schedule'
 
@@ -50,6 +51,7 @@ interface CalendarBlock {
   id: string
   title: string
   meta?: string
+  tooltipMeta?: string
   startLabel: string
   endLabel: string
   duration: string
@@ -155,6 +157,19 @@ const weekRangeLabel = computed(() => {
   return `${formatter.format(currentWeekStart.value)} 至 ${formatter.format(end)}`
 })
 
+const goToCurrentWeek = () => {
+  currentWeekStart.value = startOfWeek(new Date())
+  syncWeekInput()
+}
+
+const buildBlockMeta = (entry: ScheduleEntry) =>
+  [entry.spec.location, entry.spec.description].filter(Boolean).join(' · ')
+
+const buildTooltipMeta = (entry: ScheduleEntry) =>
+  [entry.spec.location ? `地点：${entry.spec.location}` : '', entry.spec.description]
+    .filter(Boolean)
+    .join(' · ')
+
 const buildDayBlocks = (
   dayEntries: ScheduleEntry[],
   startOfDay: Date,
@@ -180,7 +195,8 @@ const buildDayBlocks = (
       return {
         id: `${entry.metadata.name}-${dayIndex}`,
         title: entry.spec.title,
-        meta: [entry.spec.location, entry.spec.description].filter(Boolean).join(' · '),
+        meta: buildBlockMeta(entry),
+        tooltipMeta: buildTooltipMeta(entry),
         startLabel: formatClock(clippedStart),
         endLabel: formatClock(clippedEnd),
         duration: formatDuration(clippedStart, clippedEnd),
@@ -399,9 +415,11 @@ const removeEntry = async (name: string) => {
   try {
     entries.value = entries.value.filter((entry) => entry.metadata.name !== name)
     await axiosInstance.delete(`${apiBase}/${encodeURIComponent(name)}`)
+    Toast.success('事项已删除')
   } catch (err) {
     entries.value = previousEntries
     pageError.value = '事项删除失败。'
+    Toast.error('事项删除失败')
     console.error(err)
   }
 }
@@ -454,7 +472,6 @@ onMounted(() => {
           </div>
 
           <div class="week-toolbar__center">
-            <span class="week-toolbar__range">{{ weekRangeLabel }}</span>
             <input
               v-model="weekInput"
               class="week-picker"
@@ -465,6 +482,7 @@ onMounted(() => {
           </div>
 
           <div class="week-toolbar__side week-toolbar__side--right">
+            <VButton @click="goToCurrentWeek">回到本周</VButton>
             <VButton @click="moveWeek(1)">
               下一周
               <template #icon>
@@ -522,7 +540,7 @@ onMounted(() => {
                     width: block.width,
                     background: block.color,
                   }"
-                  :title="`${block.title} ${block.startLabel} - ${block.endLabel}${block.meta ? ` ${block.meta}` : ''}`"
+                  :title="`${block.title} ${block.startLabel} - ${block.endLabel}${block.tooltipMeta ? ` ${block.tooltipMeta}` : ''}`"
                 >
                   <div class="calendar-block__title">{{ block.title }}</div>
                   <div v-if="block.density !== 'minimal'" class="calendar-block__time">

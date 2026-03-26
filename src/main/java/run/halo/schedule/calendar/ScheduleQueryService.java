@@ -128,10 +128,6 @@ public class ScheduleQueryService {
                                 margin: 0;
                                 font-size: clamp(2rem, 4vw, 3.4rem);
                               }
-                              .hero p {
-                                margin: 8px 0 0;
-                                color: var(--muted);
-                              }
                               .week-nav {
                                 display: flex;
                                 flex-wrap: wrap;
@@ -157,13 +153,6 @@ public class ScheduleQueryService {
                                 padding: 10px 14px;
                                 border-radius: 12px;
                                 font: inherit;
-                              }
-                              .summary {
-                                display: flex;
-                                gap: 14px;
-                                color: var(--muted);
-                                font-size: 0.95rem;
-                                margin-bottom: 18px;
                               }
                               .calendar {
                                 overflow-x: auto;
@@ -286,10 +275,6 @@ public class ScheduleQueryService {
                                   padding: 8px 10px;
                                   font-size: 0.9rem;
                                 }
-                                .summary {
-                                  margin-bottom: 12px;
-                                  font-size: 0.85rem;
-                                }
                                 .calendar__grid {
                                   grid-template-columns: 60px minmax(700px, 1fr);
                                 }
@@ -333,7 +318,6 @@ public class ScheduleQueryService {
                               <section class="hero">
                                 <div>
                                   <h1>%s</h1>
-                                  <p id="week-range"></p>
                                 </div>
                                 <div class="week-nav">
                                   <a id="prev-week" href="#">上一周</a>
@@ -342,7 +326,6 @@ public class ScheduleQueryService {
                                   <a id="current-week" href="#">回到本周</a>
                                 </div>
                               </section>
-                              <section class="summary" id="calendar-summary"></section>
                               <section class="calendar">
                                 <div class="calendar__grid">
                                   <div class="time-column">
@@ -415,24 +398,6 @@ public class ScheduleQueryService {
                                   });
                                 });
                               };
-                              const rangeText = `${payload.weekStart} 至 ${payload.weekEnd}`;
-                              const occupiedMinutes = payload.days.reduce(
-                                (sum, day) =>
-                                  sum + day.occupied.reduce((daySum, block) => {
-                                    const duration = Math.max(toMinutes(block.end) - toMinutes(block.start), 0);
-                                    return daySum + duration;
-                                  }, 0),
-                                0
-                              );
-                              const occupiedHours = Math.floor(occupiedMinutes / 60);
-                              const occupiedRemainMinutes = occupiedMinutes %% 60;
-                              const occupiedLabel =
-                                occupiedHours > 0 && occupiedRemainMinutes > 0
-                                  ? `${occupiedHours} 小时 ${occupiedRemainMinutes} 分钟`
-                                  : occupiedHours > 0
-                                    ? `${occupiedHours} 小时`
-                                    : `${occupiedRemainMinutes} 分钟`;
-                              document.getElementById("week-range").textContent = `本周范围：${rangeText}`;
                               document.getElementById("prev-week").href = buildWeekUrl(payload.previousWeekStart);
                               document.getElementById("next-week").href = buildWeekUrl(payload.nextWeekStart);
                               document.getElementById("current-week").href = buildWeekUrl(payload.currentWeekStart);
@@ -445,10 +410,6 @@ public class ScheduleQueryService {
                                 }
                                 window.location.href = buildWeekUrl(value);
                               });
-                              document.getElementById("calendar-summary").innerHTML = `
-                                <span>本周 ${payload.days.reduce((count, day) => count + day.occupied.length, 0)} 个事项</span>
-                                <span>占用时间 ${occupiedLabel}</span>
-                              `;
                               const timeColumn = document.getElementById("time-column");
                               Array.from({ length: 24 }, (_, hour) => {
                                 const slot = document.createElement("div");
