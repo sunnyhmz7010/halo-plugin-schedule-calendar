@@ -1,0 +1,14 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="256" height="256" rx="56" fill="#F4F1EA"/>
+  <rect x="40" y="52" width="176" height="164" rx="28" fill="#FFFFFF"/>
+  <rect x="40" y="52" width="176" height="44" rx="28" fill="#0F766E"/>
+  <path d="M84 36C89.5228 36 94 40.4772 94 46V68C94 73.5228 89.5228 78 84 78C78.4772 78 74 73.5228 74 68V46C74 40.4772 78.4772 36 84 36Z" fill="#134E4A"/>
+  <path d="M172 36C177.523 36 182 40.4772 182 46V68C182 73.5228 177.523 78 172 78C166.477 78 162 73.5228 162 68V46C162 40.4772 166.477 36 172 36Z" fill="#134E4A"/>
+  <rect x="64" y="118" width="36" height="36" rx="12" fill="#14B8A6"/>
+  <rect x="110" y="118" width="36" height="36" rx="12" fill="#CCFBF1"/>
+  <rect x="156" y="118" width="36" height="36" rx="12" fill="#CCFBF1"/>
+  <rect x="64" y="164" width="36" height="36" rx="12" fill="#CCFBF1"/>
+  <rect x="110" y="164" width="36" height="36" rx="12" fill="#0F766E"/>
+  <path d="M119 182L126 189L138 175" stroke="#F8FAFC" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="156" y="164" width="36" height="36" rx="12" fill="#CCFBF1"/>
+</svg>

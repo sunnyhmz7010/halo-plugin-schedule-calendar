@@ -13,7 +13,7 @@ spec:
   author:
     name: Sunny
     website: https://github.com
-  logo: logo.png
+  logo: logo.svg
   homepage: https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar#readme
   repo: https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar
   issues: https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/issues
