@@ -23,7 +23,17 @@ import {
   VTag,
   Toast,
 } from '@halo-dev/components'
-import type { ExtensionListResult, ScheduleEntry } from '../types/schedule'
+import type {
+  ExtensionListResult,
+  ScheduleEntry,
+  ScheduleEntryRecurrenceFrequency,
+} from '../types/schedule'
+import {
+  expandEntryOccurrences,
+  formatEntryScheduleSummary,
+  formatRecurrenceDescription,
+  isRecurringEntry,
+} from '../utils/recurrence'
 
 const apiBase = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
 const hourHeight = 56
@@ -45,6 +55,9 @@ const form = reactive({
   startTimeLocal: '',
   endTimeLocal: '',
   color: '#3b82f6',
+  recurrenceFrequency: 'NONE' as ScheduleEntryRecurrenceFrequency,
+  recurrenceInterval: 1,
+  recurrenceUntil: '',
 })
 
 interface CalendarBlock {
@@ -63,6 +76,13 @@ interface CalendarBlock {
   left: string
   width: string
   density: 'full' | 'compact' | 'minimal'
+}
+
+interface CalendarOccurrence {
+  id: string
+  entry: ScheduleEntry
+  start: Date
+  end: Date
 }
 
 const hourLabels = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`)
@@ -120,6 +140,9 @@ const resetForm = () => {
   form.startTimeLocal = ''
   form.endTimeLocal = ''
   form.color = '#3b82f6'
+  form.recurrenceFrequency = 'NONE'
+  form.recurrenceInterval = 1
+  form.recurrenceUntil = ''
 }
 
 const formatDuration = (start: Date, end: Date) => {
@@ -163,23 +186,30 @@ const goToCurrentWeek = () => {
 }
 
 const buildBlockMeta = (entry: ScheduleEntry) =>
-  [entry.spec.location, entry.spec.description].filter(Boolean).join(' · ')
+  [entry.spec.location, entry.spec.description, formatRecurrenceDescription(entry.spec.recurrence)]
+    .filter(Boolean)
+    .join(' · ')
 
 const buildTooltipMeta = (entry: ScheduleEntry) =>
-  [entry.spec.location ? `地点：${entry.spec.location}` : '', entry.spec.description]
+  [
+    entry.spec.location ? `地点：${entry.spec.location}` : '',
+    entry.spec.description,
+    formatRecurrenceDescription(entry.spec.recurrence),
+  ]
     .filter(Boolean)
     .join(' · ')
 
 const buildDayBlocks = (
-  dayEntries: ScheduleEntry[],
+  occurrences: CalendarOccurrence[],
   startOfDay: Date,
   endOfDay: Date,
   dayIndex: number,
 ) => {
-  const rawBlocks = dayEntries
-    .map((entry) => {
-      const start = new Date(entry.spec.startTime)
-      const end = new Date(entry.spec.endTime)
+  const rawBlocks = occurrences
+    .map((occurrence) => {
+      const start = occurrence.start
+      const end = occurrence.end
+      const entry = occurrence.entry
 
       if (end <= startOfDay || start >= endOfDay) {
         return null
@@ -193,7 +223,7 @@ const buildDayBlocks = (
       const height = Math.max((durationMinutes / 60) * hourHeight - 6, 26)
 
       return {
-        id: `${entry.metadata.name}-${dayIndex}`,
+        id: `${occurrence.id}-${dayIndex}`,
         title: entry.spec.title,
         meta: buildBlockMeta(entry),
         tooltipMeta: buildTooltipMeta(entry),
@@ -282,7 +312,7 @@ const weekDays = computed(() => {
     endOfDay.setDate(endOfDay.getDate() + 1)
     endOfDay.setHours(0, 0, 0, 0)
 
-    const blocks = buildDayBlocks(entries.value, startOfDay, endOfDay, index)
+    const blocks = buildDayBlocks(currentWeekOccurrences.value, startOfDay, endOfDay, index)
 
     return {
       id: day.toISOString(),
@@ -293,21 +323,20 @@ const weekDays = computed(() => {
   })
 })
 
-const currentWeekEntries = computed(() => {
-  const start = currentWeekStart.value.getTime()
-  const end = start + 7 * 24 * 60 * 60 * 1000
+const currentWeekOccurrences = computed(() => {
+  const rangeStart = new Date(currentWeekStart.value)
+  const rangeEnd = new Date(currentWeekStart.value)
+  rangeEnd.setDate(rangeEnd.getDate() + 7)
 
-  return entries.value.filter((entry) => {
-    const entryStart = new Date(entry.spec.startTime).getTime()
-    const entryEnd = new Date(entry.spec.endTime).getTime()
-    return entryEnd > start && entryStart < end
-  })
+  return entries.value
+    .flatMap((entry) => expandEntryOccurrences(entry, rangeStart, rangeEnd))
+    .sort((left, right) => left.start.getTime() - right.start.getTime())
 })
 
 const weekOccupiedSummary = computed(() => {
-  const totalMinutes = currentWeekEntries.value.reduce((sum, entry) => {
-    const start = new Date(entry.spec.startTime)
-    const end = new Date(entry.spec.endTime)
+  const totalMinutes = currentWeekOccurrences.value.reduce((sum, occurrence) => {
+    const start = occurrence.start
+    const end = occurrence.end
     return sum + Math.max(Math.round((end.getTime() - start.getTime()) / 60000), 0)
   }, 0)
 
@@ -331,10 +360,7 @@ const sortedEntries = computed(() => {
   )
 })
 
-const formatDateTime = (value: string) =>
-  new Date(value).toLocaleString('zh-CN', {
-    hour12: false,
-  })
+const formatEntryMeta = (entry: ScheduleEntry) => formatEntryScheduleSummary(entry)
 
 const openCreateDialog = () => {
   dialogError.value = ''
@@ -385,6 +411,19 @@ const createEntry = async () => {
     return
   }
 
+  if (form.recurrenceFrequency !== 'NONE') {
+    if (!Number.isInteger(form.recurrenceInterval) || form.recurrenceInterval < 1) {
+      dialogError.value = '循环间隔必须是大于 0 的整数。'
+      return
+    }
+
+    const startDateKey = form.startTimeLocal.slice(0, 10)
+    if (form.recurrenceUntil && form.recurrenceUntil < startDateKey) {
+      dialogError.value = '循环截止日期不能早于开始日期。'
+      return
+    }
+  }
+
   saving.value = true
 
   try {
@@ -401,6 +440,14 @@ const createEntry = async () => {
         startTime: startDate.toISOString(),
         endTime: endDate.toISOString(),
         color: form.color,
+        recurrence:
+          form.recurrenceFrequency === 'NONE'
+            ? undefined
+            : {
+                frequency: form.recurrenceFrequency,
+                interval: form.recurrenceInterval,
+                until: form.recurrenceUntil || undefined,
+              },
       },
     })
 
@@ -459,7 +506,7 @@ onMounted(() => {
         <VDescription>
           <VDescriptionItem label="周范围" :content="weekRangeLabel" />
           <VDescriptionItem label="事项数">
-            <VTag theme="default">{{ currentWeekEntries.length }} 个事项</VTag>
+            <VTag theme="default">{{ currentWeekOccurrences.length }} 个事项</VTag>
           </VDescriptionItem>
           <VDescriptionItem label="总占用">
             <VStatusDot state="success" :text="weekOccupiedSummary" />
@@ -584,10 +631,11 @@ onMounted(() => {
                 <span class="entry-dot" :style="{ background: entry.spec.color || '#3b82f6' }"></span>
                 <VEntityField
                   :title="entry.spec.title"
-                  :description="`${formatDateTime(entry.spec.startTime)} - ${formatDateTime(entry.spec.endTime)}`"
+                  :description="formatEntryMeta(entry)"
                 >
                   <template #extra>
                     <span v-if="entry.spec.location" class="entry-extra">{{ entry.spec.location }}</span>
+                    <VTag v-if="isRecurringEntry(entry)" theme="default">{{ formatRecurrenceDescription(entry.spec.recurrence) }}</VTag>
                   </template>
                 </VEntityField>
               </div>
@@ -652,6 +700,29 @@ onMounted(() => {
           <label class="field">
             <span>结束时间</span>
             <input v-model="form.endTimeLocal" type="datetime-local" />
+          </label>
+        </div>
+
+        <div class="field-row field-row--recurrence">
+          <label class="field">
+            <span>循环规则</span>
+            <select v-model="form.recurrenceFrequency">
+              <option value="NONE">不重复</option>
+              <option value="DAILY">每天</option>
+              <option value="WEEKLY">每周</option>
+              <option value="MONTHLY">每月</option>
+              <option value="YEARLY">每年</option>
+            </select>
+          </label>
+
+          <label v-if="form.recurrenceFrequency !== 'NONE'" class="field">
+            <span>循环间隔</span>
+            <input v-model.number="form.recurrenceInterval" type="number" min="1" step="1" />
+          </label>
+
+          <label v-if="form.recurrenceFrequency !== 'NONE'" class="field">
+            <span>截止日期</span>
+            <input v-model="form.recurrenceUntil" type="date" />
           </label>
         </div>
 
@@ -907,6 +978,10 @@ onMounted(() => {
   gap: 16px;
 }
 
+.field-row--recurrence {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -920,6 +995,7 @@ onMounted(() => {
 }
 
 .field input,
+.field select,
 .field textarea {
   width: 100%;
   border: 1px solid var(--halo-border-color, #d1d5db);

@@ -3,6 +3,7 @@ package run.halo.schedule.calendar;
 import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -37,5 +38,30 @@ public class ScheduleEntry extends AbstractExtension {
 
         @Schema(description = "Hex color used to render this entry.")
         private String color;
+
+        @Schema(description = "Optional recurrence rule used to create repeating schedule entries.")
+        private Recurrence recurrence;
+    }
+
+    public enum RecurrenceFrequency {
+        NONE,
+        DAILY,
+        WEEKLY,
+        MONTHLY,
+        YEARLY
+    }
+
+    @Data
+    public static class Recurrence {
+        @Schema(description = "Repeat frequency.", allowableValues = {
+            "NONE", "DAILY", "WEEKLY", "MONTHLY", "YEARLY"
+        })
+        private RecurrenceFrequency frequency;
+
+        @Schema(description = "Repeat every N frequency units. Defaults to 1.")
+        private Integer interval;
+
+        @Schema(description = "Last occurrence date in local time, inclusive.")
+        private LocalDate until;
     }
 }

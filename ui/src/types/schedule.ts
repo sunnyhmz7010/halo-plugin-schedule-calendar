@@ -1,3 +1,11 @@
+export type ScheduleEntryRecurrenceFrequency = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'
+
+export interface ScheduleEntryRecurrence {
+  frequency?: ScheduleEntryRecurrenceFrequency
+  interval?: number
+  until?: string
+}
+
 export interface ScheduleEntrySpec {
   title: string
   description?: string
@@ -5,6 +13,7 @@ export interface ScheduleEntrySpec {
   startTime: string
   endTime: string
   color?: string
+  recurrence?: ScheduleEntryRecurrence
 }
 
 export interface ScheduleEntry {

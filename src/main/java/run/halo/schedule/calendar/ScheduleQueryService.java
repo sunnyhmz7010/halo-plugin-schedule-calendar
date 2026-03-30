@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
+import java.time.temporal.ChronoUnit;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -69,6 +70,7 @@ public class ScheduleQueryService {
                     spec.getLocation(),
                     formatDateTime(spec.getStartTime()),
                     formatDateTime(spec.getEndTime()),
+                    recurrenceDescription(spec.getRecurrence()),
                     defaultColor(spec.getColor())
                 );
             });
@@ -477,10 +479,11 @@ public class ScheduleQueryService {
 
     private WeekViewResponse toWeekView(List<ScheduleEntry> entries, LocalDate weekStart, LocalDate weekEnd,
         ZoneId zoneId) {
+        var occurrences = expandOccurrences(entries, weekStart, weekEnd, zoneId);
         var days = new ArrayList<DayView>();
         for (int offset = 0; offset < 7; offset++) {
             var date = weekStart.plusDays(offset);
-            var occupied = toOccupiedBlocks(entries, date, zoneId);
+            var occupied = toOccupiedBlocks(occurrences, date);
             var free = toFreeBlocks(occupied);
             days.add(new DayView(
                 date.toString(),
@@ -499,21 +502,64 @@ public class ScheduleQueryService {
         );
     }
 
-    private List<TimeBlock> toOccupiedBlocks(List<ScheduleEntry> entries, LocalDate date, ZoneId zoneId) {
+    private List<ScheduleOccurrence> expandOccurrences(List<ScheduleEntry> entries, LocalDate weekStart,
+        LocalDate weekEnd, ZoneId zoneId) {
+        var rangeStart = weekStart.atStartOfDay();
+        var rangeEnd = weekEnd.plusDays(1).atStartOfDay();
+        return entries.stream()
+            .flatMap(entry -> occurrencesForRange(entry, rangeStart, rangeEnd, zoneId).stream())
+            .sorted(comparing(ScheduleOccurrence::start))
+            .collect(Collectors.toList());
+    }
+
+    private List<ScheduleOccurrence> occurrencesForRange(ScheduleEntry entry, LocalDateTime rangeStart,
+        LocalDateTime rangeEnd, ZoneId zoneId) {
+        var spec = entry.getSpec();
+        var start = spec.getStartTime().atZoneSameInstant(zoneId).toLocalDateTime();
+        var end = spec.getEndTime().atZoneSameInstant(zoneId).toLocalDateTime();
+        if (!end.isAfter(start)) {
+            return List.of();
+        }
+        if (!isRecurring(spec)) {
+            if (end.isAfter(rangeStart) && start.isBefore(rangeEnd)) {
+                return List.of(new ScheduleOccurrence(entry, start, end));
+            }
+            return List.of();
+        }
+
+        var recurrence = spec.getRecurrence();
+        var frequency = recurrence.getFrequency();
+        var interval = normalizeInterval(recurrence.getInterval());
+        var duration = Duration.between(start, end);
+        var cursor = alignOccurrenceStart(start, duration, rangeStart, frequency, interval);
+        var occurrences = new ArrayList<ScheduleOccurrence>();
+        while (cursor.isBefore(rangeEnd)) {
+            if (isAfterUntil(cursor, recurrence)) {
+                break;
+            }
+            var occurrenceEnd = cursor.plus(duration);
+            if (occurrenceEnd.isAfter(rangeStart) && cursor.isBefore(rangeEnd)) {
+                occurrences.add(new ScheduleOccurrence(entry, cursor, occurrenceEnd));
+            }
+            cursor = advanceOccurrence(cursor, frequency, interval);
+        }
+        return occurrences;
+    }
+
+    private List<TimeBlock> toOccupiedBlocks(List<ScheduleOccurrence> occurrences, LocalDate date) {
         var startOfDay = date.atStartOfDay();
         var endOfDay = date.plusDays(1).atStartOfDay();
-        return entries.stream()
-            .map(entry -> toBlock(entry, startOfDay, endOfDay, zoneId))
+        return occurrences.stream()
+            .map(occurrence -> toBlock(occurrence, startOfDay, endOfDay))
             .filter(block -> block != null)
             .sorted(comparing(TimeBlock::start))
             .collect(Collectors.toList());
     }
 
-    private TimeBlock toBlock(ScheduleEntry entry, LocalDateTime startOfDay, LocalDateTime endOfDay,
-        ZoneId zoneId) {
-        var spec = entry.getSpec();
-        var start = spec.getStartTime().atZoneSameInstant(zoneId).toLocalDateTime();
-        var end = spec.getEndTime().atZoneSameInstant(zoneId).toLocalDateTime();
+    private TimeBlock toBlock(ScheduleOccurrence occurrence, LocalDateTime startOfDay, LocalDateTime endOfDay) {
+        var spec = occurrence.entry().getSpec();
+        var start = occurrence.start();
+        var end = occurrence.end();
         if (!end.isAfter(startOfDay) || !start.isBefore(endOfDay)) {
             return null;
         }
@@ -569,6 +615,10 @@ public class ScheduleQueryService {
         if (spec.getLocation() != null && !spec.getLocation().isBlank()) {
             meta.add("地点：" + spec.getLocation());
         }
+        var recurrence = recurrenceDescription(spec.getRecurrence());
+        if (recurrence != null) {
+            meta.add(recurrence);
+        }
         return meta.isEmpty() ? null : String.join(" / ", meta);
     }
 
@@ -593,6 +643,84 @@ public class ScheduleQueryService {
         return value == null ? "" : DATE_TIME_FORMATTER.format(value.atZoneSameInstant(ZoneId.systemDefault()));
     }
 
+    private boolean isRecurring(ScheduleEntry.Spec spec) {
+        return spec != null
+            && spec.getRecurrence() != null
+            && spec.getRecurrence().getFrequency() != null
+            && spec.getRecurrence().getFrequency() != ScheduleEntry.RecurrenceFrequency.NONE;
+    }
+
+    private int normalizeInterval(Integer interval) {
+        return interval == null || interval < 1 ? 1 : interval;
+    }
+
+    private boolean isAfterUntil(LocalDateTime occurrenceStart, ScheduleEntry.Recurrence recurrence) {
+        return recurrence.getUntil() != null && occurrenceStart.toLocalDate().isAfter(recurrence.getUntil());
+    }
+
+    private LocalDateTime alignOccurrenceStart(LocalDateTime baseStart, Duration duration,
+        LocalDateTime rangeStart, ScheduleEntry.RecurrenceFrequency frequency, int interval) {
+        var target = rangeStart.minus(duration);
+        if (!baseStart.isBefore(target)) {
+            return baseStart;
+        }
+
+        var steps = switch (frequency) {
+            case DAILY -> Math.max(0, ChronoUnit.DAYS.between(baseStart.toLocalDate(), target.toLocalDate()) / interval);
+            case WEEKLY -> Math.max(0, ChronoUnit.WEEKS.between(baseStart.toLocalDate(), target.toLocalDate()) / interval);
+            case MONTHLY -> Math.max(0, monthsBetween(baseStart, target) / interval);
+            case YEARLY -> Math.max(0, ChronoUnit.YEARS.between(baseStart.toLocalDate(), target.toLocalDate()) / interval);
+            case NONE -> 0;
+        };
+
+        var cursor = advanceOccurrence(baseStart, frequency, (int) steps * interval);
+        while (cursor.plus(duration).isBefore(rangeStart) || cursor.plus(duration).equals(rangeStart)) {
+            cursor = advanceOccurrence(cursor, frequency, interval);
+        }
+        return cursor;
+    }
+
+    private long monthsBetween(LocalDateTime start, LocalDateTime target) {
+        return (target.getYear() - start.getYear()) * 12L + target.getMonthValue() - start.getMonthValue();
+    }
+
+    private LocalDateTime advanceOccurrence(LocalDateTime source,
+        ScheduleEntry.RecurrenceFrequency frequency, int interval) {
+        if (interval <= 0 || frequency == ScheduleEntry.RecurrenceFrequency.NONE) {
+            return source;
+        }
+        return switch (frequency) {
+            case DAILY -> source.plusDays(interval);
+            case WEEKLY -> source.plusWeeks(interval);
+            case MONTHLY -> source.plusMonths(interval);
+            case YEARLY -> source.plusYears(interval);
+            case NONE -> source;
+        };
+    }
+
+    private String recurrenceDescription(ScheduleEntry.Recurrence recurrence) {
+        if (recurrence == null || recurrence.getFrequency() == null
+            || recurrence.getFrequency() == ScheduleEntry.RecurrenceFrequency.NONE) {
+            return null;
+        }
+
+        var interval = normalizeInterval(recurrence.getInterval());
+        var label = switch (recurrence.getFrequency()) {
+            case DAILY -> interval == 1 ? "重复：每天" : "重复：每" + interval + "天";
+            case WEEKLY -> interval == 1 ? "重复：每周" : "重复：每" + interval + "周";
+            case MONTHLY -> interval == 1 ? "重复：每月" : "重复：每" + interval + "个月";
+            case YEARLY -> interval == 1 ? "重复：每年" : "重复：每" + interval + "年";
+            case NONE -> null;
+        };
+        if (label == null) {
+            return null;
+        }
+        if (recurrence.getUntil() == null) {
+            return label;
+        }
+        return label + "，截止 " + recurrence.getUntil();
+    }
+
     public record WeekViewResponse(String weekStart, String weekEnd, String currentWeekStart,
                                    String previousWeekStart,
                                    String nextWeekStart,
@@ -606,7 +734,11 @@ public class ScheduleQueryService {
                             String color) {
     }
 
+    private record ScheduleOccurrence(ScheduleEntry entry, LocalDateTime start, LocalDateTime end) {
+    }
+
     public record ScheduleCardResponse(String name, String title, String description, String location,
-                                       String startTime, String endTime, String color) {
+                                       String startTime, String endTime, String recurrenceDescription,
+                                       String color) {
     }
 }

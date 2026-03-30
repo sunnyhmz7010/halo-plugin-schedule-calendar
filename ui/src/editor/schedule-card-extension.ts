@@ -4,6 +4,7 @@ import type { Editor, Range } from '@tiptap/core'
 import { markRaw } from 'vue'
 import MdiCalendarClockOutline from '~icons/mdi/calendar-clock-outline'
 import type { ExtensionListResult, ScheduleEntry } from '../types/schedule'
+import { formatEntryScheduleSummary } from '../utils/recurrence'
 
 const ENTRY_API = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
 const CARD_API = '/apis/api.schedule.calendar.sunny.dev/v1alpha1/calendar/entries'
@@ -15,6 +16,7 @@ interface ScheduleCardPayload {
   location?: string
   startTime: string
   endTime: string
+  recurrenceDescription?: string
   color: string
 }
 
@@ -35,10 +37,7 @@ const chooseEntry = async () => {
 
   const options = items
     .map((item, index) => {
-      const start = new Date(item.spec.startTime).toLocaleString('zh-CN', {
-        hour12: false,
-      })
-      return `${index + 1}. ${item.spec.title} (${start})`
+      return `${index + 1}. ${item.spec.title} (${formatEntryScheduleSummary(item)})`
     })
     .join('\n')
 
@@ -101,6 +100,7 @@ export const ScheduleCardExtension = Node.create({
       location: { default: '' },
       startTime: { default: '' },
       endTime: { default: '' },
+      recurrenceDescription: { default: '' },
       color: { default: '#0f766e' },
     }
   },
@@ -129,6 +129,7 @@ export const ScheduleCardExtension = Node.create({
   renderHTML({ HTMLAttributes }) {
     const description = HTMLAttributes.description as string | undefined
     const location = HTMLAttributes.location as string | undefined
+    const recurrenceDescription = HTMLAttributes.recurrenceDescription as string | undefined
     const meta = [description, location ? `地点：${location}` : '']
       .filter(Boolean)
       .join(' / ')
@@ -142,6 +143,14 @@ export const ScheduleCardExtension = Node.create({
         `${String(HTMLAttributes.startTime ?? '')} - ${String(HTMLAttributes.endTime ?? '')}`,
       ],
     ]
+
+    if (recurrenceDescription) {
+      children.push([
+        'div',
+        { style: 'margin-top:8px;font-size:13px;color:#0f766e;font-weight:600;' },
+        recurrenceDescription,
+      ])
+    }
 
     if (meta) {
       children.push(['div', { style: 'margin-top:8px;font-size:13px;color:#6b7280;line-height:1.6;' }, meta])
