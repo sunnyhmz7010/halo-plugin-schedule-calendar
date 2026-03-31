@@ -17,9 +17,12 @@ export interface ScheduleEntrySpec {
 }
 
 export interface ScheduleEntry {
+  apiVersion?: string
+  kind?: string
   metadata: {
     name: string
     creationTimestamp?: string
+    version?: number
   }
   spec: ScheduleEntrySpec
 }

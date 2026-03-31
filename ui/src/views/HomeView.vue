@@ -27,6 +27,7 @@ import type {
   ExtensionListResult,
   ScheduleEntry,
   ScheduleEntryRecurrenceFrequency,
+  ScheduleEntrySpec,
 } from '../types/schedule'
 import {
   expandEntryOccurrences,
@@ -42,11 +43,12 @@ const headerHeight = 64
 
 const loading = ref(false)
 const saving = ref(false)
-const createDialogVisible = ref(false)
+const dialogVisible = ref(false)
 const entries = ref<ScheduleEntry[]>([])
 const pageError = ref('')
 const dialogError = ref('')
 const colorInputRef = ref<HTMLInputElement | null>(null)
+const editingEntryName = ref<string | null>(null)
 
 const form = reactive({
   title: '',
@@ -65,6 +67,7 @@ interface CalendarBlock {
   title: string
   meta?: string
   tooltipMeta?: string
+  isRecurring: boolean
   startLabel: string
   endLabel: string
   duration: string
@@ -85,7 +88,31 @@ interface CalendarOccurrence {
   end: Date
 }
 
+interface EntryOccurrenceSummary {
+  currentWeekCount: number
+  currentWeekPreview: string
+  nextOccurrenceLabel: string
+}
+
 const hourLabels = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`)
+
+const dateTimeInputValue = (value?: string) => {
+  if (!value) {
+    return ''
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
 
 const startOfWeek = (source: Date) => {
   const date = new Date(source)
@@ -145,6 +172,18 @@ const resetForm = () => {
   form.recurrenceUntil = ''
 }
 
+const fillForm = (entry: ScheduleEntry) => {
+  form.title = entry.spec.title
+  form.description = entry.spec.description ?? ''
+  form.location = entry.spec.location ?? ''
+  form.startTimeLocal = dateTimeInputValue(entry.spec.startTime)
+  form.endTimeLocal = dateTimeInputValue(entry.spec.endTime)
+  form.color = entry.spec.color || '#3b82f6'
+  form.recurrenceFrequency = entry.spec.recurrence?.frequency ?? 'NONE'
+  form.recurrenceInterval = entry.spec.recurrence?.interval ?? 1
+  form.recurrenceUntil = entry.spec.recurrence?.until ?? ''
+}
+
 const formatDuration = (start: Date, end: Date) => {
   const minutes = Math.max(Math.round((end.getTime() - start.getTime()) / 60000), 0)
   const hours = Math.floor(minutes / 60)
@@ -167,6 +206,14 @@ const formatClock = (date: Date) =>
     minute: '2-digit',
     hour12: false,
   })
+
+const formatOccurrenceLabel = (occurrence: CalendarOccurrence) => {
+  return `${occurrence.start.toLocaleDateString('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    weekday: 'short',
+  })} ${formatClock(occurrence.start)}-${formatClock(occurrence.end)}`
+}
 
 const weekRangeLabel = computed(() => {
   const end = new Date(currentWeekStart.value)
@@ -227,6 +274,7 @@ const buildDayBlocks = (
         title: entry.spec.title,
         meta: buildBlockMeta(entry),
         tooltipMeta: buildTooltipMeta(entry),
+        isRecurring: isRecurringEntry(entry),
         startLabel: formatClock(clippedStart),
         endLabel: formatClock(clippedEnd),
         duration: formatDuration(clippedStart, clippedEnd),
@@ -360,16 +408,71 @@ const sortedEntries = computed(() => {
   )
 })
 
+const entryOccurrenceSummaryMap = computed(() => {
+  const weekRangeStart = new Date(currentWeekStart.value)
+  const weekRangeEnd = new Date(currentWeekStart.value)
+  weekRangeEnd.setDate(weekRangeEnd.getDate() + 7)
+
+  const upcomingStart = new Date()
+  const upcomingEnd = new Date(upcomingStart)
+  upcomingEnd.setDate(upcomingEnd.getDate() + 90)
+
+  return new Map<string, EntryOccurrenceSummary>(
+    entries.value.map((entry) => {
+      const currentWeekOccurrences = expandEntryOccurrences(entry, weekRangeStart, weekRangeEnd)
+      const upcomingOccurrence = expandEntryOccurrences(entry, upcomingStart, upcomingEnd).find(
+        (occurrence) => occurrence.end > upcomingStart,
+      )
+
+      return [
+        entry.metadata.name,
+        {
+          currentWeekCount: currentWeekOccurrences.length,
+          currentWeekPreview: currentWeekOccurrences
+            .slice(0, 3)
+            .map((occurrence) => formatOccurrenceLabel(occurrence))
+            .join(' · '),
+          nextOccurrenceLabel: upcomingOccurrence ? formatOccurrenceLabel(upcomingOccurrence) : '',
+        },
+      ]
+    }),
+  )
+})
+
+const isEditing = computed(() => editingEntryName.value !== null)
+const dialogTitle = computed(() => (isEditing.value ? '编辑事项' : '新增事项'))
+const dialogSubmitLabel = computed(() => (isEditing.value ? '更新事项' : '保存事项'))
+
 const formatEntryMeta = (entry: ScheduleEntry) => formatEntryScheduleSummary(entry)
 
 const openCreateDialog = () => {
+  editingEntryName.value = null
+  resetForm()
   dialogError.value = ''
-  createDialogVisible.value = true
+  dialogVisible.value = true
 }
 
-const closeCreateDialog = () => {
-  createDialogVisible.value = false
+const openEditDialog = (entry: ScheduleEntry) => {
+  editingEntryName.value = entry.metadata.name
+  fillForm(entry)
   dialogError.value = ''
+  dialogVisible.value = true
+}
+
+const closeDialog = () => {
+  dialogVisible.value = false
+  editingEntryName.value = null
+  dialogError.value = ''
+  resetForm()
+}
+
+const handleDialogVisibleUpdate = (visible: boolean) => {
+  if (!visible) {
+    closeDialog()
+    return
+  }
+
+  dialogVisible.value = true
 }
 
 const openColorPicker = () => {
@@ -396,33 +499,61 @@ const fetchEntries = async () => {
   }
 }
 
-const createEntry = async () => {
+const buildEntrySpec = (startDate: Date, endDate: Date): ScheduleEntrySpec => ({
+  title: form.title,
+  description: form.description || undefined,
+  location: form.location || undefined,
+  startTime: startDate.toISOString(),
+  endTime: endDate.toISOString(),
+  color: form.color,
+  recurrence:
+    form.recurrenceFrequency === 'NONE'
+      ? undefined
+      : {
+          frequency: form.recurrenceFrequency,
+          interval: form.recurrenceInterval,
+          until: form.recurrenceUntil || undefined,
+        },
+})
+
+const validateForm = () => {
   dialogError.value = ''
 
   if (!form.title || !form.startTimeLocal || !form.endTimeLocal) {
     dialogError.value = '标题、开始时间、结束时间是必填项。'
-    return
+    return null
   }
 
   const startDate = new Date(form.startTimeLocal)
   const endDate = new Date(form.endTimeLocal)
   if (endDate <= startDate) {
     dialogError.value = '结束时间必须晚于开始时间。'
-    return
+    return null
   }
 
   if (form.recurrenceFrequency !== 'NONE') {
     if (!Number.isInteger(form.recurrenceInterval) || form.recurrenceInterval < 1) {
       dialogError.value = '循环间隔必须是大于 0 的整数。'
-      return
+      return null
     }
 
     const startDateKey = form.startTimeLocal.slice(0, 10)
     if (form.recurrenceUntil && form.recurrenceUntil < startDateKey) {
       dialogError.value = '循环截止日期不能早于开始日期。'
-      return
+      return null
     }
   }
+
+  return { startDate, endDate }
+}
+
+const createEntry = async () => {
+  const validated = validateForm()
+  if (!validated) {
+    return
+  }
+
+  const { startDate, endDate } = validated
 
   saving.value = true
 
@@ -433,26 +564,10 @@ const createEntry = async () => {
       metadata: {
         name: `schedule-entry-${Date.now()}`,
       },
-      spec: {
-        title: form.title,
-        description: form.description || undefined,
-        location: form.location || undefined,
-        startTime: startDate.toISOString(),
-        endTime: endDate.toISOString(),
-        color: form.color,
-        recurrence:
-          form.recurrenceFrequency === 'NONE'
-            ? undefined
-            : {
-                frequency: form.recurrenceFrequency,
-                interval: form.recurrenceInterval,
-                until: form.recurrenceUntil || undefined,
-              },
-      },
+      spec: buildEntrySpec(startDate, endDate),
     })
 
-    resetForm()
-    closeCreateDialog()
+    closeDialog()
     await fetchEntries()
   } catch (err) {
     dialogError.value = '事项创建失败。'
@@ -461,6 +576,55 @@ const createEntry = async () => {
     saving.value = false
   }
 }
+
+const updateEntry = async () => {
+  const validated = validateForm()
+  if (!validated || !editingEntryName.value) {
+    return
+  }
+
+  const currentEntry = entries.value.find((entry) => entry.metadata.name === editingEntryName.value)
+  if (!currentEntry) {
+    dialogError.value = '未找到要编辑的事项，请刷新后重试。'
+    return
+  }
+
+  const { startDate, endDate } = validated
+  saving.value = true
+
+  try {
+    await axiosInstance.put(`${apiBase}/${encodeURIComponent(currentEntry.metadata.name)}`, {
+      apiVersion: currentEntry.apiVersion ?? 'schedule.calendar.sunny.dev/v1alpha1',
+      kind: currentEntry.kind ?? 'ScheduleEntry',
+      metadata: {
+        ...currentEntry.metadata,
+        name: currentEntry.metadata.name,
+      },
+      spec: buildEntrySpec(startDate, endDate),
+    })
+
+    closeDialog()
+    await fetchEntries()
+    Toast.success('事项已更新')
+  } catch (err) {
+    dialogError.value = '事项更新失败。'
+    console.error(err)
+  } finally {
+    saving.value = false
+  }
+}
+
+const submitEntry = async () => {
+  if (isEditing.value) {
+    await updateEntry()
+    return
+  }
+
+  await createEntry()
+}
+
+const getEntryOccurrenceSummary = (entry: ScheduleEntry) =>
+  entryOccurrenceSummaryMap.value.get(entry.metadata.name)
 
 const removeEntry = async (name: string) => {
   pageError.value = ''
@@ -597,6 +761,12 @@ onMounted(() => {
                   :title="`${block.title} ${block.startLabel} - ${block.endLabel}${block.tooltipMeta ? ` ${block.tooltipMeta}` : ''}`"
                 >
                   <div class="calendar-block__title">{{ block.title }}</div>
+                  <div
+                    v-if="block.density !== 'minimal' && block.isRecurring"
+                    class="calendar-block__meta calendar-block__meta--badge"
+                  >
+                    循环事项
+                  </div>
                   <div v-if="block.density !== 'minimal'" class="calendar-block__time">
                     {{ block.startLabel }} - {{ block.endLabel }}
                   </div>
@@ -641,14 +811,32 @@ onMounted(() => {
               </div>
             </template>
             <template #end>
-              <VButton ghost @click="removeEntry(entry.metadata.name)">
-                <template #icon>
-                  <IconDeleteBin />
-                </template>
-                删除
-              </VButton>
+              <div class="entry-actions">
+                <VButton ghost @click="openEditDialog(entry)">编辑</VButton>
+                <VButton ghost @click="removeEntry(entry.metadata.name)">
+                  <template #icon>
+                    <IconDeleteBin />
+                  </template>
+                  删除
+                </VButton>
+              </div>
             </template>
             <template #footer>
+              <p
+                v-if="isRecurringEntry(entry) && getEntryOccurrenceSummary(entry)?.currentWeekCount"
+                class="entry-description entry-description--muted"
+              >
+                本周展开 {{ getEntryOccurrenceSummary(entry)?.currentWeekCount }} 次
+                <span v-if="getEntryOccurrenceSummary(entry)?.currentWeekPreview">
+                  ：{{ getEntryOccurrenceSummary(entry)?.currentWeekPreview }}
+                </span>
+              </p>
+              <p
+                v-else-if="isRecurringEntry(entry) && getEntryOccurrenceSummary(entry)?.nextOccurrenceLabel"
+                class="entry-description entry-description--muted"
+              >
+                下一次出现：{{ getEntryOccurrenceSummary(entry)?.nextOccurrenceLabel }}
+              </p>
               <p v-if="entry.spec.description" class="entry-description">
                 {{ entry.spec.description }}
               </p>
@@ -665,12 +853,12 @@ onMounted(() => {
     </div>
 
     <VModal
-      :visible="createDialogVisible"
-      title="新增事项"
+      :visible="dialogVisible"
+      :title="dialogTitle"
       :width="720"
       :layer-closable="false"
       :body-class="['schedule-modal-body']"
-      @update:visible="createDialogVisible = $event"
+      @update:visible="handleDialogVisibleUpdate"
     >
       <div class="dialog-form">
         <VAlert
@@ -746,9 +934,9 @@ onMounted(() => {
       </div>
       <template #footer>
         <div class="modal-footer">
-          <VButton @click="closeCreateDialog">取消</VButton>
-          <VButton type="primary" :loading="saving" @click="createEntry">
-            保存事项
+          <VButton @click="closeDialog">取消</VButton>
+          <VButton type="primary" :loading="saving" @click="submitEntry">
+            {{ dialogSubmitLabel }}
           </VButton>
         </div>
       </template>
@@ -934,6 +1122,16 @@ onMounted(() => {
   opacity: 0.95;
 }
 
+.calendar-block__meta--badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-weight: 600;
+}
+
 .entry-start {
   display: flex;
   align-items: flex-start;
@@ -954,12 +1152,22 @@ onMounted(() => {
   font-size: 12px;
 }
 
+.entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .entry-description {
   margin: 0;
   padding: 0 16px 12px 44px;
   color: var(--halo-text-color-secondary, #6b7280);
   font-size: 13px;
   line-height: 1.6;
+}
+
+.entry-description--muted {
+  padding-bottom: 8px;
 }
 
 .card-actions {
