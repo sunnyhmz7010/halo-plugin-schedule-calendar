@@ -64,7 +64,8 @@ class ScheduleQueryServiceTest {
             assertThat(block.title()).isEqualTo("团队同步");
             assertThat(block.start()).isEqualTo("09:00");
             assertThat(block.end()).isEqualTo("10:00");
-            assertThat(block.meta()).contains("重复：每周");
+            assertThat(block.metaLines()).contains("重复：每周");
+            assertThat(block.tooltipMeta()).contains("重复：每周");
         });
     }
 
