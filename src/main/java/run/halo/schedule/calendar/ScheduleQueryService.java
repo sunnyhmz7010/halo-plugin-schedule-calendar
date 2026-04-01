@@ -251,6 +251,7 @@ public class ScheduleQueryService {
                                 font-size: 0.76rem;
                                 line-height: 1.35;
                                 opacity: 0.95;
+                                white-space: pre-line;
                               }
                               @media (max-width: 960px) {
                                 main {
@@ -447,7 +448,7 @@ public class ScheduleQueryService {
                                 assignColumns(day.occupied).forEach((block) => {
                                   const element = document.createElement("article");
                                   element.className = "calendar-block";
-                                  element.title = `${block.title} ${block.start} - ${block.endLabel}${block.meta ? ` ${block.meta}` : ""}`;
+                                  element.title = `${block.title} ${block.start} - ${block.endLabel}${block.tooltipMeta ? ` ${block.tooltipMeta}` : ""}`;
                                   element.style.top = `${block.top}px`;
                                   element.style.left = block.left;
                                   element.style.width = block.width;
@@ -589,6 +590,7 @@ public class ScheduleQueryService {
             TIME_FORMATTER.format(clippedEnd),
             spec.getTitle(),
             buildMeta(spec),
+            buildTooltipMeta(spec),
             formatDuration(clippedStart, clippedEnd),
             defaultColor(spec.getColor())
         );
@@ -621,24 +623,35 @@ public class ScheduleQueryService {
             TIME_FORMATTER.format(end),
             "空闲时间",
             null,
+            null,
             formatDuration(start.atDate(LocalDate.now()), end.atDate(LocalDate.now())),
             "#94a3b8"
         );
     }
 
     private String buildMeta(ScheduleEntry.Spec spec) {
+        var meta = buildMetaLines(spec);
+        return meta.isEmpty() ? null : String.join("\n", meta);
+    }
+
+    private String buildTooltipMeta(ScheduleEntry.Spec spec) {
+        var meta = buildMetaLines(spec);
+        return meta.isEmpty() ? null : String.join(" ", meta);
+    }
+
+    private List<String> buildMetaLines(ScheduleEntry.Spec spec) {
         var meta = new ArrayList<String>();
-        if (spec.getDescription() != null && !spec.getDescription().isBlank()) {
-            meta.add(spec.getDescription());
-        }
         if (spec.getLocation() != null && !spec.getLocation().isBlank()) {
             meta.add("地点：" + spec.getLocation());
+        }
+        if (spec.getDescription() != null && !spec.getDescription().isBlank()) {
+            meta.add("备注：" + spec.getDescription());
         }
         var recurrence = recurrenceDescription(spec.getRecurrence());
         if (recurrence != null) {
             meta.add(recurrence);
         }
-        return meta.isEmpty() ? null : String.join(" / ", meta);
+        return meta;
     }
 
     private String defaultColor(String color) {
@@ -753,8 +766,8 @@ public class ScheduleQueryService {
     public record DayView(String date, String dayLabel, List<TimeBlock> occupied, List<TimeBlock> free) {
     }
 
-    public record TimeBlock(String start, String end, String title, String meta, String durationLabel,
-                            String color) {
+    public record TimeBlock(String start, String end, String title, String meta, String tooltipMeta,
+                            String durationLabel, String color) {
     }
 
     private record ScheduleOccurrence(ScheduleEntry entry, LocalDateTime start, LocalDateTime end) {

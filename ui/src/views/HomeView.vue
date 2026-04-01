@@ -96,6 +96,7 @@ interface EntryOccurrenceSummary {
 interface EntryMetaItem {
   text: string
   wide?: boolean
+  block?: boolean
 }
 
 const hourLabels = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`)
@@ -238,19 +239,28 @@ const goToCurrentWeek = () => {
   syncWeekInput()
 }
 
-const buildBlockMeta = (entry: ScheduleEntry) =>
-  [entry.spec.location, entry.spec.description, formatRecurrenceDescription(entry.spec.recurrence)]
-    .filter(Boolean)
-    .join(' · ')
+const buildBlockMetaLines = (entry: ScheduleEntry) => {
+  const lines: string[] = []
 
-const buildTooltipMeta = (entry: ScheduleEntry) =>
-  [
-    entry.spec.location ? `地点：${entry.spec.location}` : '',
-    entry.spec.description,
-    formatRecurrenceDescription(entry.spec.recurrence),
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  if (entry.spec.location) {
+    lines.push(`地点：${entry.spec.location}`)
+  }
+
+  if (entry.spec.description) {
+    lines.push(`备注：${entry.spec.description}`)
+  }
+
+  const recurrence = formatRecurrenceDescription(entry.spec.recurrence)
+  if (recurrence) {
+    lines.push(recurrence)
+  }
+
+  return lines
+}
+
+const buildBlockMeta = (entry: ScheduleEntry) => buildBlockMetaLines(entry).join('\n')
+
+const buildTooltipMeta = (entry: ScheduleEntry) => buildBlockMetaLines(entry).join(' ')
 
 const buildDayBlocks = (
   occurrences: CalendarOccurrence[],
@@ -459,20 +469,22 @@ const buildEntryMetaItems = (entry: ScheduleEntry): EntryMetaItem[] => {
         ? `本周展开 ${occurrenceSummary.currentWeekCount} 次：${occurrenceSummary.currentWeekPreview}`
         : `本周展开 ${occurrenceSummary.currentWeekCount} 次`,
       wide: true,
+      block: true,
     })
   } else if (occurrenceSummary?.nextOccurrenceLabel) {
     items.push({
       text: `下一次出现：${occurrenceSummary.nextOccurrenceLabel}`,
       wide: true,
+      block: true,
     })
   }
 
   if (entry.spec.location) {
-    items.push({ text: `地点：${entry.spec.location}` })
+    items.push({ text: `地点：${entry.spec.location}`, wide: true, block: true })
   }
 
   if (entry.spec.description) {
-    items.push({ text: entry.spec.description, wide: true })
+    items.push({ text: `备注：${entry.spec.description}`, wide: true, block: true })
   }
 
   return items
@@ -841,7 +853,10 @@ onMounted(() => {
                       v-for="(item, index) in buildEntryMetaItems(entry)"
                       :key="`${entry.metadata.name}-${index}`"
                       class="entry-meta__item"
-                      :class="{ 'entry-meta__item--wide': item.wide }"
+                      :class="{
+                        'entry-meta__item--wide': item.wide,
+                        'entry-meta__item--block': item.block,
+                      }"
                     >
                       {{ item.text }}
                     </span>
@@ -1139,6 +1154,7 @@ onMounted(() => {
   font-size: 12px;
   line-height: 1.35;
   opacity: 0.95;
+  white-space: pre-line;
 }
 
 .calendar-block__meta--badge {
@@ -1210,6 +1226,10 @@ onMounted(() => {
   max-width: 100%;
   border-radius: 12px;
   white-space: normal;
+}
+
+.entry-meta__item--block {
+  flex-basis: 100%;
 }
 
 .entry-actions {
