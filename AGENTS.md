@@ -8,7 +8,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Public route: `/schedule-calendar`
 - Admin capability: create, view, edit, and delete schedule entries in a weekly calendar view.
 - Editor capability: insert a schedule card for a single entry.
-- Current prerelease version: `v1.1.0-beta.6`
+- Current stable version: `v1.1.0`
 
 ## Tech Stack
 
@@ -26,6 +26,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Schedule model: `src/main/java/run/halo/schedule/calendar/ScheduleEntry.java`
 - Week/query logic: `src/main/java/run/halo/schedule/calendar/ScheduleQueryService.java`
 - Editor card extension: `ui/src/editor/schedule-card-extension.ts`
+- README screenshot asset: `docs/images/schedule-calendar-home.png`
 
 ## Schedule Entry Rules
 
@@ -37,7 +38,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
   - `WEEKLY`
   - `MONTHLY`
   - `YEARLY`
-- Recurrence fields currently live under `ScheduleEntry.Spec.recurrence`:
+- Recurrence fields live under `ScheduleEntry.Spec.recurrence`:
   - `frequency`
   - `interval`
   - `until`
@@ -59,18 +60,16 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 ## Release Conventions
 
 - Version tags follow this style:
-  - stable: `v1.0.0`
-  - prerelease: `v1.1.0-beta.6`
+  - stable: `v1.1.0`
+  - prerelease example: `v1.1.1-beta.1`
 - When releasing:
   - update `gradle.properties`
   - prepend release notes to `CHANGELOG.md`
-  - keep `README.md` current if it mentions the current version
-- Before publishing a release, inspect the latest GitHub release body format and align with the established style. Do not assume all historical beta releases used the same template.
-- For this repository, beta release notes should be unified to the heading `## 更新内容`.
+  - keep `README.md` current if screenshots, URLs, or capability descriptions change
+- For this repository, release notes should use the heading `## 更新内容`.
 - GitHub Actions release build is triggered by the `Release published` event.
-- For beta releases, prefer creating a GitHub prerelease and let CI build and upload the jar.
+- For prereleases, prefer creating a GitHub prerelease and let CI build and upload the jar.
 - A local full Gradle build is optional before release if the user does not need local verification.
-- Current release line is `v1.1.0-beta.6`.
 
 ## Rendering Conventions
 
@@ -80,17 +79,13 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Keep admin list summaries consolidated under the title, but location and note can occupy separate full-width lines for readability.
 - Public page and admin page should use the same meta ordering and labeling rules.
 
-## Recent Functional Change
+## Stable Feature Set
 
-- Recurring schedule entries were added in `v1.1.0-beta.1`.
-- Admin entry editing and clearer recurring-entry visibility were added in `v1.1.0-beta.2`.
-- Theme-facing Finder API support was added in `v1.1.0-beta.3`.
-- Admin entry-list summaries were consolidated into one adaptive second line in `v1.1.0-beta.4`.
-- Cross-day recurring schedules are blocked and 24-hour public-calendar rendering was stabilized in `v1.1.0-beta.5`.
-- Admin/public block meta ordering is now unified, hover text uses spaces, and unused frontend assets/deps were cleaned in `v1.1.0-beta.6`.
-- Admin create dialog supports recurrence frequency, interval, and until date.
-- Admin week summary and calendar rendering count expanded occurrences, not only raw stored entries.
-- Public calendar and editor card also show recurrence information.
+- Supports recurring schedule entries with dynamic weekly expansion.
+- Supports admin-side entry editing, deletion, and recurrence configuration.
+- Supports Finder API access for Halo themes.
+- Blocks cross-day recurring entries in the admin form and stabilizes 24-hour public rendering.
+- Uses unified admin/public meta ordering for location, note, and recurrence text.
 
 ## Working Style For Future Sessions
 
