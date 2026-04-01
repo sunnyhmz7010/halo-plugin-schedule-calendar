@@ -61,7 +61,7 @@ Halo 日程日历插件。
 
 ## 当前版本
 
-当前预发布版本：`v1.1.0-beta.4`
+当前预发布版本：`v1.1.0-beta.5`
 
 ## 开发环境
 
@@ -92,3 +92,4 @@ halo:
     fixedPluginPath:
       - "C:/Users/Sunny/halo-plugin-schedule-calendar"
 ```
+

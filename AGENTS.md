@@ -8,7 +8,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Public route: `/schedule-calendar`
 - Admin capability: create, view, and delete schedule entries in a weekly calendar view.
 - Editor capability: insert a schedule card for a single entry.
-- Current prerelease version: `v1.1.0-beta.4`
+- Current prerelease version: `v1.1.0-beta.5`
 
 ## Tech Stack
 
@@ -58,7 +58,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 
 - Version tags follow this style:
   - stable: `v1.0.0`
-  - prerelease: `v1.1.0-beta.4`
+  - prerelease: `v1.1.0-beta.5`
 - When releasing:
   - update `gradle.properties`
   - prepend release notes to `CHANGELOG.md`
@@ -69,14 +69,15 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - GitHub Actions release build is triggered by the `Release published` event.
 - For beta releases, prefer creating a GitHub prerelease and let CI build and upload the jar.
 - A local full Gradle build is optional before release if the user does not need local verification.
-- Current release line after the recurring-schedule feature is `v1.1.0-beta.4`.
+- Current release line after the recurring-schedule feature is `v1.1.0-beta.5`.
 
 ## Recent Functional Change
 
 - Recurring schedule entries were added in `v1.1.0-beta.1`.
 - Admin entry editing and clearer recurring-entry visibility were added in `v1.1.0-beta.2`.
 - Theme-facing Finder API support was added in `v1.1.0-beta.3`.
-- Admin entry-list summaries were consolidated into one adaptive second line in `v1.1.0-beta.4`.
+- Admin entry-list summaries were consolidated into one adaptive second line in 1.1.0-beta.4.
+- Cross-day recurring schedules are blocked and 24-hour public-calendar rendering was stabilized in 1.1.0-beta.5.
 - Admin create dialog now supports recurrence frequency, interval, and until date.
 - Admin week summary and calendar rendering now count expanded occurrences, not only raw stored entries.
 - Public calendar and editor card also show recurrence information.
@@ -88,5 +89,6 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - For searches, prefer `rg`.
 - Use `apply_patch` for manual edits.
 - Do not run destructive git commands unless explicitly requested.
+
 
 
