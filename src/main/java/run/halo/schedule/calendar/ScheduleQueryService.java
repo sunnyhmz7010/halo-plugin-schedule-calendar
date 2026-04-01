@@ -62,18 +62,15 @@ public class ScheduleQueryService {
     Mono<ScheduleCardResponse> getEntryCard(String name) {
         return client.get(ScheduleEntry.class, name)
             .map(entry -> {
-                var spec = entry.getSpec();
-                return new ScheduleCardResponse(
-                    entry.getMetadata().getName(),
-                    spec.getTitle(),
-                    spec.getDescription(),
-                    spec.getLocation(),
-                    formatDateTime(spec.getStartTime()),
-                    formatDateTime(spec.getEndTime()),
-                    recurrenceDescription(spec.getRecurrence()),
-                    defaultColor(spec.getColor())
-                );
+                return toScheduleCardResponse(entry);
             });
+    }
+
+    Mono<List<ScheduleCardResponse>> listEntryCards() {
+        return listEntries()
+            .map(entries -> entries.stream()
+                .map(this::toScheduleCardResponse)
+                .toList());
     }
 
     Mono<String> buildPublicCalendarPage(LocalDate requestedStart) {
@@ -475,6 +472,20 @@ public class ScheduleQueryService {
             .map(entries -> entries.stream()
                 .sorted(comparing(entry -> entry.getSpec().getStartTime()))
                 .collect(Collectors.toList()));
+    }
+
+    private ScheduleCardResponse toScheduleCardResponse(ScheduleEntry entry) {
+        var spec = entry.getSpec();
+        return new ScheduleCardResponse(
+            entry.getMetadata().getName(),
+            spec.getTitle(),
+            spec.getDescription(),
+            spec.getLocation(),
+            formatDateTime(spec.getStartTime()),
+            formatDateTime(spec.getEndTime()),
+            recurrenceDescription(spec.getRecurrence()),
+            defaultColor(spec.getColor())
+        );
     }
 
     private WeekViewResponse toWeekView(List<ScheduleEntry> entries, LocalDate weekStart, LocalDate weekEnd,
