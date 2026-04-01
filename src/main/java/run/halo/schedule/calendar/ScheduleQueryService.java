@@ -351,6 +351,15 @@ public class ScheduleQueryService {
                                   startMinutes: toMinutes(block.start),
                                   endMinutes: toMinutes(block.end),
                                 }));
+                                const buildVisibleMetaLines = (block) => {
+                                  if (block.density !== "full" || !Array.isArray(block.metaLines) || !block.metaLines.length) {
+                                    return [];
+                                  }
+                                  const estimatedLineCapacity = Math.max(0, Math.floor((block.height - 12) / 18));
+                                  const reservedLines = 3 + (block.isRecurring ? 1 : 0);
+                                  const maxMetaLines = Math.max(0, estimatedLineCapacity - reservedLines);
+                                  return block.metaLines.slice(0, maxMetaLines);
+                                };
                                 prepared.forEach((block) => {
                                   if (block.endMinutes <= block.startMinutes) {
                                     block.endMinutes = 24 * 60;
@@ -408,6 +417,11 @@ public class ScheduleQueryService {
                                       height,
                                       top: (block.startMinutes / 60) * hourHeight,
                                       density,
+                                      visibleMetaLines: buildVisibleMetaLines({
+                                        ...block,
+                                        density,
+                                        height,
+                                      }),
                                     };
                                   });
                                 });
@@ -454,11 +468,17 @@ public class ScheduleQueryService {
                                   element.style.width = block.width;
                                   element.style.height = `${block.height}px`;
                                   element.style.background = block.color;
+                                  const metaHtml =
+                                    Array.isArray(block.visibleMetaLines)
+                                      ? block.visibleMetaLines
+                                          .map((line) => `<div class="calendar-block__meta">${line}</div>`)
+                                      .join("")
+                                      : "";
                                   element.innerHTML = `
                                     <div class="calendar-block__title">${block.title}</div>
                                     ${block.density !== "minimal" ? `<div class="calendar-block__time">${block.start} - ${block.endLabel}</div>` : ""}
                                     ${block.density === "full" ? `<div class="calendar-block__meta">${block.durationLabel}</div>` : ""}
-                                    ${block.density === "full" && block.meta ? `<div class="calendar-block__meta">${block.meta}</div>` : ""}
+                                    ${metaHtml}
                                   `;
                                   body.appendChild(element);
                                 });
@@ -589,7 +609,7 @@ public class ScheduleQueryService {
             TIME_FORMATTER.format(clippedStart),
             TIME_FORMATTER.format(clippedEnd),
             spec.getTitle(),
-            buildMeta(spec),
+            buildMetaLines(spec),
             buildTooltipMeta(spec),
             formatDuration(clippedStart, clippedEnd),
             defaultColor(spec.getColor())
@@ -627,11 +647,6 @@ public class ScheduleQueryService {
             formatDuration(start.atDate(LocalDate.now()), end.atDate(LocalDate.now())),
             "#94a3b8"
         );
-    }
-
-    private String buildMeta(ScheduleEntry.Spec spec) {
-        var meta = buildMetaLines(spec);
-        return meta.isEmpty() ? null : String.join("\n", meta);
     }
 
     private String buildTooltipMeta(ScheduleEntry.Spec spec) {
@@ -766,7 +781,7 @@ public class ScheduleQueryService {
     public record DayView(String date, String dayLabel, List<TimeBlock> occupied, List<TimeBlock> free) {
     }
 
-    public record TimeBlock(String start, String end, String title, String meta, String tooltipMeta,
+    public record TimeBlock(String start, String end, String title, List<String> metaLines, String tooltipMeta,
                             String durationLabel, String color) {
     }
 

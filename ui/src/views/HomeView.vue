@@ -64,7 +64,8 @@ const form = reactive({
 interface CalendarBlock {
   id: string
   title: string
-  meta?: string
+  metaLines?: string[]
+  visibleMetaLines?: string[]
   tooltipMeta?: string
   isRecurring: boolean
   startLabel: string
@@ -258,9 +259,23 @@ const buildBlockMetaLines = (entry: ScheduleEntry) => {
   return lines
 }
 
-const buildBlockMeta = (entry: ScheduleEntry) => buildBlockMetaLines(entry).join('\n')
-
 const buildTooltipMeta = (entry: ScheduleEntry) => buildBlockMetaLines(entry).join(' ')
+
+const buildVisibleMetaLines = (block: {
+  density: CalendarBlock['density']
+  height: number
+  isRecurring: boolean
+  metaLines?: string[]
+}) => {
+  if (block.density !== 'full' || !block.metaLines?.length) {
+    return []
+  }
+
+  const estimatedLineCapacity = Math.max(0, Math.floor((block.height - 12) / 18))
+  const reservedLines = 3 + (block.isRecurring ? 1 : 0)
+  const maxMetaLines = Math.max(0, estimatedLineCapacity - reservedLines)
+  return block.metaLines.slice(0, maxMetaLines)
+}
 
 const buildDayBlocks = (
   occurrences: CalendarOccurrence[],
@@ -288,7 +303,7 @@ const buildDayBlocks = (
       return {
         id: `${occurrence.id}-${dayIndex}`,
         title: entry.spec.title,
-        meta: buildBlockMeta(entry),
+        metaLines: buildBlockMetaLines(entry),
         tooltipMeta: buildTooltipMeta(entry),
         isRecurring: isRecurringEntry(entry),
         startLabel: formatClock(clippedStart),
@@ -353,12 +368,19 @@ const buildDayBlocks = (
     return placements.map(({ block, columnIndex }) => {
       const left = `calc(${gap}px + (${width} + ${gap}px) * ${columnIndex})`
       const density = block.height < 42 ? 'minimal' : block.height < 76 ? 'compact' : 'full'
+      const visibleMetaLines = buildVisibleMetaLines({
+        density,
+        height: block.height,
+        isRecurring: block.isRecurring,
+        metaLines: block.metaLines,
+      })
 
       return {
         ...block,
         left,
         width,
         density,
+        visibleMetaLines,
       } satisfies CalendarBlock
     })
   })
@@ -818,8 +840,12 @@ onMounted(() => {
                     {{ block.startLabel }} - {{ block.endLabel }}
                   </div>
                   <div v-if="block.density === 'full'" class="calendar-block__meta">{{ block.duration }}</div>
-                  <div v-if="block.density === 'full' && block.meta" class="calendar-block__meta">
-                    {{ block.meta }}
+                  <div
+                    v-for="(metaLine, metaIndex) in block.visibleMetaLines ?? []"
+                    :key="`${block.id}-meta-${metaIndex}`"
+                    class="calendar-block__meta"
+                  >
+                    {{ metaLine }}
                   </div>
                 </article>
                 </div>
