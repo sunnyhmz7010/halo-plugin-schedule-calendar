@@ -44,6 +44,8 @@ const toDateKey = (value: Date) => {
   return `${year}-${month}-${day}`
 }
 
+const spansMultipleDates = (start: Date, end: Date) => toDateKey(start) !== toDateKey(end)
+
 const normalizeInterval = (interval?: number) => {
   if (!interval || Number.isNaN(interval) || interval < 1) {
     return 1
@@ -199,7 +201,7 @@ export const expandEntryOccurrences = (
   }
 
   const recurrence = resolveRecurrence(entry.spec.recurrence)
-  if (!recurrence) {
+  if (!recurrence || spansMultipleDates(baseStart, baseEnd)) {
     if (baseEnd <= rangeStart || baseStart >= rangeEnd) {
       return [] as ScheduleOccurrence[]
     }

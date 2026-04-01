@@ -134,6 +134,8 @@ const formatDateInput = (date: Date) => {
   return `${year}-${month}-${day}`
 }
 
+const spansMultipleDates = (start: Date, end: Date) => formatDateInput(start) !== formatDateInput(end)
+
 const currentWeekStart = ref(startOfWeek(new Date()))
 const weekInput = ref(formatDateInput(currentWeekStart.value))
 
@@ -563,6 +565,11 @@ const validateForm = () => {
   }
 
   if (form.recurrenceFrequency !== 'NONE') {
+    if (spansMultipleDates(startDate, endDate)) {
+      dialogError.value = '跨天事项暂不支持循环，请拆分为单次事项或取消循环。'
+      return null
+    }
+
     if (!Number.isInteger(form.recurrenceInterval) || form.recurrenceInterval < 1) {
       dialogError.value = '循环间隔必须是大于 0 的整数。'
       return null

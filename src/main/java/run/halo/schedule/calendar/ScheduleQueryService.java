@@ -350,6 +350,14 @@ public class ScheduleQueryService {
                                   startMinutes: toMinutes(block.start),
                                   endMinutes: toMinutes(block.end),
                                 }));
+                                prepared.forEach((block) => {
+                                  if (block.endMinutes <= block.startMinutes) {
+                                    block.endMinutes = 24 * 60;
+                                    block.endLabel = block.end === "00:00" ? "24:00" : block.end;
+                                  } else {
+                                    block.endLabel = block.end;
+                                  }
+                                });
                                 const groups = [];
                                 let currentGroup = [];
                                 let currentGroupEnd = -1;
@@ -439,7 +447,7 @@ public class ScheduleQueryService {
                                 assignColumns(day.occupied).forEach((block) => {
                                   const element = document.createElement("article");
                                   element.className = "calendar-block";
-                                  element.title = `${block.title} ${block.start} - ${block.end}${block.meta ? ` ${block.meta}` : ""}`;
+                                  element.title = `${block.title} ${block.start} - ${block.endLabel}${block.meta ? ` ${block.meta}` : ""}`;
                                   element.style.top = `${block.top}px`;
                                   element.style.left = block.left;
                                   element.style.width = block.width;
@@ -447,7 +455,7 @@ public class ScheduleQueryService {
                                   element.style.background = block.color;
                                   element.innerHTML = `
                                     <div class="calendar-block__title">${block.title}</div>
-                                    ${block.density !== "minimal" ? `<div class="calendar-block__time">${block.start} - ${block.end}</div>` : ""}
+                                    ${block.density !== "minimal" ? `<div class="calendar-block__time">${block.start} - ${block.endLabel}</div>` : ""}
                                     ${block.density === "full" ? `<div class="calendar-block__meta">${block.durationLabel}</div>` : ""}
                                     ${block.density === "full" && block.meta ? `<div class="calendar-block__meta">${block.meta}</div>` : ""}
                                   `;
@@ -531,7 +539,7 @@ public class ScheduleQueryService {
         if (!end.isAfter(start)) {
             return List.of();
         }
-        if (!isRecurring(spec)) {
+        if (!isRecurring(spec) || spansMultipleDates(start, end)) {
             if (end.isAfter(rangeStart) && start.isBefore(rangeEnd)) {
                 return List.of(new ScheduleOccurrence(entry, start, end));
             }
@@ -667,6 +675,10 @@ public class ScheduleQueryService {
 
     private boolean isAfterUntil(LocalDateTime occurrenceStart, ScheduleEntry.Recurrence recurrence) {
         return recurrence.getUntil() != null && occurrenceStart.toLocalDate().isAfter(recurrence.getUntil());
+    }
+
+    private boolean spansMultipleDates(LocalDateTime start, LocalDateTime end) {
+        return !start.toLocalDate().equals(end.toLocalDate());
     }
 
     private LocalDateTime alignOccurrenceStart(LocalDateTime baseStart, Duration duration,
