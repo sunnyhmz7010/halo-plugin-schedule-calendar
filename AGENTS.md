@@ -64,8 +64,8 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
   - prepend release notes to `CHANGELOG.md`
   - keep `README.md` current if it mentions the current version
 - Keep `README.md` user-facing. AI/collaboration rules and release-process conventions belong in `AGENTS.md`, not `README.md`.
-- Before publishing a release, inspect the latest GitHub release body format and align with the established style.
-- For this repository, beta release notes should use the heading `## 更新内容`.
+- Before publishing a release, inspect the latest GitHub release body format and align with the established style. Do not assume all historical beta releases used the same template.
+- For this repository, beta release notes should be unified to the heading `## 更新内容`. If older releases are found to be inconsistent, backfill them to the same format when updating release housekeeping.
 - GitHub Actions release build is triggered by the `Release published` event.
 - For beta releases, prefer creating a GitHub prerelease and let CI build and upload the jar.
 - A local full Gradle build is optional before release if the user does not need local verification.
@@ -87,3 +87,5 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - For searches, prefer `rg`.
 - Use `apply_patch` for manual edits.
 - Do not run destructive git commands unless explicitly requested.
+
+
