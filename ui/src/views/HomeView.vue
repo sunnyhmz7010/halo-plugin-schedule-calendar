@@ -15,7 +15,6 @@ import {
   VEmpty,
   VEntity,
   VEntityContainer,
-  VEntityField,
   VLoading,
   VModal,
   VPageHeader,
@@ -92,6 +91,11 @@ interface EntryOccurrenceSummary {
   currentWeekCount: number
   currentWeekPreview: string
   nextOccurrenceLabel: string
+}
+
+interface EntryMetaItem {
+  text: string
+  wide?: boolean
 }
 
 const hourLabels = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`)
@@ -443,7 +447,34 @@ const isEditing = computed(() => editingEntryName.value !== null)
 const dialogTitle = computed(() => (isEditing.value ? '编辑事项' : '新增事项'))
 const dialogSubmitLabel = computed(() => (isEditing.value ? '更新事项' : '保存事项'))
 
-const formatEntryMeta = (entry: ScheduleEntry) => formatEntryScheduleSummary(entry)
+const buildEntryMetaItems = (entry: ScheduleEntry): EntryMetaItem[] => {
+  const items: EntryMetaItem[] = [{ text: formatEntryScheduleSummary(entry) }]
+  const occurrenceSummary = entryOccurrenceSummaryMap.value.get(entry.metadata.name)
+
+  if (occurrenceSummary?.currentWeekCount) {
+    items.push({
+      text: occurrenceSummary.currentWeekPreview
+        ? `本周展开 ${occurrenceSummary.currentWeekCount} 次：${occurrenceSummary.currentWeekPreview}`
+        : `本周展开 ${occurrenceSummary.currentWeekCount} 次`,
+      wide: true,
+    })
+  } else if (occurrenceSummary?.nextOccurrenceLabel) {
+    items.push({
+      text: `下一次出现：${occurrenceSummary.nextOccurrenceLabel}`,
+      wide: true,
+    })
+  }
+
+  if (entry.spec.location) {
+    items.push({ text: `地点：${entry.spec.location}` })
+  }
+
+  if (entry.spec.description) {
+    items.push({ text: entry.spec.description, wide: true })
+  }
+
+  return items
+}
 
 const openCreateDialog = () => {
   editingEntryName.value = null
@@ -623,9 +654,6 @@ const submitEntry = async () => {
   await createEntry()
 }
 
-const getEntryOccurrenceSummary = (entry: ScheduleEntry) =>
-  entryOccurrenceSummaryMap.value.get(entry.metadata.name)
-
 const removeEntry = async (name: string) => {
   pageError.value = ''
   const previousEntries = [...entries.value]
@@ -799,15 +827,19 @@ onMounted(() => {
             <template #start>
               <div class="entry-start">
                 <span class="entry-dot" :style="{ background: entry.spec.color || '#3b82f6' }"></span>
-                <VEntityField
-                  :title="entry.spec.title"
-                  :description="formatEntryMeta(entry)"
-                >
-                  <template #extra>
-                    <span v-if="entry.spec.location" class="entry-extra">{{ entry.spec.location }}</span>
-                    <VTag v-if="isRecurringEntry(entry)" theme="default">{{ formatRecurrenceDescription(entry.spec.recurrence) }}</VTag>
-                  </template>
-                </VEntityField>
+                <div class="entry-main">
+                  <div class="entry-title">{{ entry.spec.title }}</div>
+                  <div class="entry-meta">
+                    <span
+                      v-for="(item, index) in buildEntryMetaItems(entry)"
+                      :key="`${entry.metadata.name}-${index}`"
+                      class="entry-meta__item"
+                      :class="{ 'entry-meta__item--wide': item.wide }"
+                    >
+                      {{ item.text }}
+                    </span>
+                  </div>
+                </div>
               </div>
             </template>
             <template #end>
@@ -820,26 +852,6 @@ onMounted(() => {
                   删除
                 </VButton>
               </div>
-            </template>
-            <template #footer>
-              <p
-                v-if="isRecurringEntry(entry) && getEntryOccurrenceSummary(entry)?.currentWeekCount"
-                class="entry-description entry-description--muted"
-              >
-                本周展开 {{ getEntryOccurrenceSummary(entry)?.currentWeekCount }} 次
-                <span v-if="getEntryOccurrenceSummary(entry)?.currentWeekPreview">
-                  ：{{ getEntryOccurrenceSummary(entry)?.currentWeekPreview }}
-                </span>
-              </p>
-              <p
-                v-else-if="isRecurringEntry(entry) && getEntryOccurrenceSummary(entry)?.nextOccurrenceLabel"
-                class="entry-description entry-description--muted"
-              >
-                下一次出现：{{ getEntryOccurrenceSummary(entry)?.nextOccurrenceLabel }}
-              </p>
-              <p v-if="entry.spec.description" class="entry-description">
-                {{ entry.spec.description }}
-              </p>
             </template>
           </VEntity>
         </VEntityContainer>
@@ -1136,6 +1148,7 @@ onMounted(() => {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  min-width: 0;
 }
 
 .entry-dot {
@@ -1146,28 +1159,56 @@ onMounted(() => {
   flex: none;
 }
 
-.entry-extra {
-  margin-left: 8px;
+.entry-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.entry-title {
+  min-width: 0;
+  color: var(--halo-text-color, #111827);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.entry-meta__item {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  max-width: 100%;
+  min-width: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--halo-bg-color-secondary, #f8fafc);
   color: var(--halo-text-color-secondary, #6b7280);
   font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.entry-meta__item--wide {
+  flex: 1 1 320px;
+  max-width: 100%;
+  border-radius: 12px;
+  white-space: normal;
 }
 
 .entry-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.entry-description {
-  margin: 0;
-  padding: 0 16px 12px 44px;
-  color: var(--halo-text-color-secondary, #6b7280);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.entry-description--muted {
-  padding-bottom: 8px;
 }
 
 .card-actions {
@@ -1330,10 +1371,6 @@ onMounted(() => {
     margin-top: 2px;
     font-size: 10px;
     line-height: 1.25;
-  }
-
-  .entry-description {
-    padding-left: 22px;
   }
 
   .field-row {
