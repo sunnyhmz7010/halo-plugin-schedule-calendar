@@ -1,5 +1,11 @@
 # 更新日志
 
+## v1.1.0-beta.3
+
+- 新增 Halo 主题可直接调用的 Finder API：`scheduleCalendarFinder`。
+- Finder 现支持 `week(start)`、`get(name)`、`listAll()` 三个方法，便于主题侧读取周视图和事项卡片数据。
+- README 补充对外接口说明、Finder 用法和主题模板示例。
+
 ## v1.1.0-beta.2
 
 - 修复控制台循环事项的可见性，周历色块增加循环标识，事项列表补充本周展开次数和下一次出现时间。

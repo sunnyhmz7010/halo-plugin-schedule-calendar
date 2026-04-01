@@ -8,7 +8,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Public route: `/schedule-calendar`
 - Admin capability: create, view, and delete schedule entries in a weekly calendar view.
 - Editor capability: insert a schedule card for a single entry.
-- Current prerelease version: `v1.1.0-beta.2`
+- Current prerelease version: `v1.1.0-beta.3`
 
 ## Tech Stack
 
@@ -58,20 +58,24 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 
 - Version tags follow this style:
   - stable: `v1.0.0`
-  - prerelease: `v1.1.0-beta.2`
+  - prerelease: `v1.1.0-beta.3`
 - When releasing:
   - update `gradle.properties`
   - prepend release notes to `CHANGELOG.md`
   - keep `README.md` current if it mentions the current version
+- Keep `README.md` user-facing. AI/collaboration rules and release-process conventions belong in `AGENTS.md`, not `README.md`.
+- Before publishing a release, inspect the latest GitHub release body format and align with the established style.
+- For this repository, beta release notes should use the heading `## 更新内容`.
 - GitHub Actions release build is triggered by the `Release published` event.
 - For beta releases, prefer creating a GitHub prerelease and let CI build and upload the jar.
 - A local full Gradle build is optional before release if the user does not need local verification.
-- Current release line after the recurring-schedule feature is `v1.1.0-beta.2`.
+- Current release line after the recurring-schedule feature is `v1.1.0-beta.3`.
 
 ## Recent Functional Change
 
 - Recurring schedule entries were added in `v1.1.0-beta.1`.
 - Admin entry editing and clearer recurring-entry visibility were added in `v1.1.0-beta.2`.
+- Theme-facing Finder API support was added in `v1.1.0-beta.3`.
 - Admin create dialog now supports recurrence frequency, interval, and until date.
 - Admin week summary and calendar rendering now count expanded occurrences, not only raw stored entries.
 - Public calendar and editor card also show recurrence information.
