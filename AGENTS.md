@@ -21,6 +21,8 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 
 - Version: `gradle.properties`
 - Plugin metadata: `src/main/resources/plugin.yaml`
+- Repo rules: `AGENTS.md`
+- User docs: `README.md`
 - Main admin page: `ui/src/views/HomeView.vue`
 - Schedule model: `src/main/java/run/halo/schedule/calendar/ScheduleEntry.java`
 - Week/query logic: `src/main/java/run/halo/schedule/calendar/ScheduleQueryService.java`
@@ -55,6 +57,9 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
   - if the machine only has Java 8 or Java 25, Gradle verification may fail before tests run
 - In this repo, it is acceptable to skip Gradle verification if the environment does not have JDK 21 and the user does not want Gradle-based validation.
 - README must stay user-facing. AI/collaboration rules and release-process conventions belong in `AGENTS.md`, not `README.md`.
+- Do not keep local-only Gradle workarounds in `ui/build.gradle` after troubleshooting; restore the committed repo version unless the user explicitly wants the workaround merged.
+- Keep the working tree clean before handoff: do not leave local build outputs, dependency caches, screenshots for debugging, or temporary troubleshooting files committed or untracked.
+- `gradle/wrapper/` is normal committed project infrastructure for this repo; do not treat it as garbage when cleaning the repository.
 
 ## Release Conventions
 
@@ -64,10 +69,13 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - When releasing:
   - update `gradle.properties`
   - keep `README.md` current if screenshots, URLs, or capability descriptions change
+- This repo no longer keeps a committed `CHANGELOG.md`; release history is maintained in GitHub Releases instead.
 - For this repository, release notes should use the heading `## 更新内容`.
+- Release notes should describe concrete 新增功能、修复内容、优化点, and should avoid vague wording such as "收敛".
 - GitHub Actions release build is triggered by the `Release published` event.
 - For prereleases, prefer creating a GitHub prerelease and let CI build and upload the jar.
 - A local full Gradle build is optional before release if the user does not need local verification.
+- If the user asks to "覆盖" an existing release version, it is acceptable to delete and recreate the GitHub Release/tag at the latest commit, then rerun the release workflow if needed.
 
 ## Rendering Conventions
 
@@ -76,6 +84,8 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Hover tooltip meta uses space-separated text instead of multiline separators.
 - Keep admin list summaries consolidated under the title, but location and note can occupy separate full-width lines for readability.
 - Public page and admin page should use the same meta ordering and labeling rules.
+- Calendar blocks should prefer top-aligned content instead of vertical centering when text may overflow.
+- For short calendar blocks, use conservative visible-line calculation: keep title, time, and duration readable first; hide extra meta lines rather than showing half-clipped text.
 
 ## Stable Feature Set
 
@@ -84,6 +94,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Supports Finder API access for Halo themes.
 - Blocks cross-day recurring entries in the admin form and stabilizes 24-hour public rendering.
 - Uses unified admin/public meta ordering for location, note, and recurrence text.
+- Uses adaptive calendar-block text rendering to reduce clipping in short blocks.
 
 ## Working Style For Future Sessions
 
@@ -92,3 +103,5 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - For searches, prefer `rg`.
 - Use `apply_patch` for manual edits when the environment is stable.
 - Do not run destructive git commands unless explicitly requested.
+- The current preferred README summary sentence is: `提供前台日历页面、控制台事项管理和编辑器日程卡片的 Halo 插件。`
+- Keep the README product description concise and user-facing; do not add AI collaboration notes or extra marketing filler unless the user asks for it.
