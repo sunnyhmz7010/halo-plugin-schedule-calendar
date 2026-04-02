@@ -20,7 +20,6 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 ## Important Files
 
 - Version: `gradle.properties`
-- Changelog: `CHANGELOG.md`
 - Plugin metadata: `src/main/resources/plugin.yaml`
 - Main admin page: `ui/src/views/HomeView.vue`
 - Schedule model: `src/main/java/run/halo/schedule/calendar/ScheduleEntry.java`
@@ -64,7 +63,6 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
   - prerelease example: `v1.1.1-beta.1`
 - When releasing:
   - update `gradle.properties`
-  - prepend release notes to `CHANGELOG.md`
   - keep `README.md` current if screenshots, URLs, or capability descriptions change
 - For this repository, release notes should use the heading `## 更新内容`.
 - GitHub Actions release build is triggered by the `Release published` event.
