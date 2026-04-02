@@ -232,10 +232,10 @@ public class ScheduleQueryService {
                                 z-index: 1;
                                 display: flex;
                                 flex-direction: column;
-                                justify-content: center;
+                                justify-content: flex-start;
                                 align-items: center;
                                 border-radius: 12px;
-                                padding: 8px 10px;
+                                padding: 6px 10px;
                                 color: #fff;
                                 box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
                                 overflow: hidden;
@@ -355,9 +355,14 @@ public class ScheduleQueryService {
                                   if (block.density !== "full" || !Array.isArray(block.metaLines) || !block.metaLines.length) {
                                     return [];
                                   }
-                                  const estimatedLineCapacity = Math.max(0, Math.floor((block.height - 12) / 18));
-                                  const reservedLines = 3 + (block.isRecurring ? 1 : 0);
-                                  const maxMetaLines = Math.max(0, estimatedLineCapacity - reservedLines);
+                                  const titleLines = block.title.length > 10 ? 2 : 1;
+                                  const contentBudget = Math.max(0, block.height - 12);
+                                  const reservedHeight =
+                                    titleLines * 18 +
+                                    18 +
+                                    18 +
+                                    (block.isRecurring ? 22 : 0);
+                                  const maxMetaLines = Math.max(0, Math.floor((contentBudget - reservedHeight) / 18));
                                   return block.metaLines.slice(0, maxMetaLines);
                                 };
                                 prepared.forEach((block) => {

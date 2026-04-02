@@ -265,15 +265,21 @@ const buildVisibleMetaLines = (block: {
   density: CalendarBlock['density']
   height: number
   isRecurring: boolean
+  title: string
   metaLines?: string[]
 }) => {
   if (block.density !== 'full' || !block.metaLines?.length) {
     return []
   }
 
-  const estimatedLineCapacity = Math.max(0, Math.floor((block.height - 12) / 18))
-  const reservedLines = 3 + (block.isRecurring ? 1 : 0)
-  const maxMetaLines = Math.max(0, estimatedLineCapacity - reservedLines)
+  const titleLines = block.title.length > 10 ? 2 : 1
+  const contentBudget = Math.max(0, block.height - 12)
+  const reservedHeight =
+    titleLines * 18 +
+    18 +
+    18 +
+    (block.isRecurring ? 22 : 0)
+  const maxMetaLines = Math.max(0, Math.floor((contentBudget - reservedHeight) / 18))
   return block.metaLines.slice(0, maxMetaLines)
 }
 
@@ -372,6 +378,7 @@ const buildDayBlocks = (
         density,
         height: block.height,
         isRecurring: block.isRecurring,
+        title: block.title,
         metaLines: block.metaLines,
       })
 
@@ -1160,9 +1167,9 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   border-radius: 10px;
-  padding: 8px 10px;
+  padding: 6px 10px;
   color: #fff;
   box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
   overflow: hidden;
