@@ -90,6 +90,31 @@ class ScheduleQueryServiceTest {
         assertThat(view.days().get(3).occupied()).isEmpty();
     }
 
+    @Test
+    void listsScheduleCardsForEditorInsertion() {
+        var entry = scheduleEntry(
+            "release-review",
+            "版本复盘",
+            OffsetDateTime.parse("2026-04-03T14:00:00+08:00"),
+            OffsetDateTime.parse("2026-04-03T15:30:00+08:00"),
+            recurrence(ScheduleEntry.RecurrenceFrequency.MONTHLY, 1, null)
+        );
+        entry.getSpec().setLocation("会议室 A");
+        entry.getSpec().setDescription("同步版本计划");
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.just(entry));
+
+        var cards = service.listEntryCards().block();
+
+        assertThat(cards).singleElement().satisfies(card -> {
+            assertThat(card.name()).isEqualTo("release-review");
+            assertThat(card.title()).isEqualTo("版本复盘");
+            assertThat(card.location()).isEqualTo("会议室 A");
+            assertThat(card.description()).isEqualTo("同步版本计划");
+            assertThat(card.recurrenceDescription()).isEqualTo("重复：每月");
+        });
+    }
+
     private ScheduleEntry scheduleEntry(String name, String title, OffsetDateTime startTime,
         OffsetDateTime endTime, ScheduleEntry.Recurrence recurrence) {
         var entry = new ScheduleEntry();

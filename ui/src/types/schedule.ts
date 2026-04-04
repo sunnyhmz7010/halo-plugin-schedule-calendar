@@ -30,3 +30,14 @@ export interface ScheduleEntry {
 export interface ExtensionListResult<T> {
   items: T[]
 }
+
+export interface ScheduleCard {
+  name: string
+  title: string
+  description?: string
+  location?: string
+  startTime: string
+  endTime: string
+  recurrenceDescription?: string
+  color: string
+}

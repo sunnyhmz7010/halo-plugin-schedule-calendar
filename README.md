@@ -25,6 +25,7 @@
 - 前台公开页面：`/schedule-calendar`
 - 插件 REST API：
   - `GET /apis/api.schedule.calendar.sunny.dev/v1alpha1/calendar/week`
+  - `GET /apis/api.schedule.calendar.sunny.dev/v1alpha1/calendar/entries`
   - `GET /apis/api.schedule.calendar.sunny.dev/v1alpha1/calendar/entries/{name}`
 - 自定义模型 CRUD：
   - `ScheduleEntry` 作为 Halo 自定义模型，可通过 Halo Extension API 访问

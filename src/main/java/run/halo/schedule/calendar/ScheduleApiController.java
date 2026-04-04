@@ -1,6 +1,7 @@
 package run.halo.schedule.calendar;
 
 import java.time.LocalDate;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,6 +21,11 @@ public class ScheduleApiController {
         @RequestParam(name = "start", required = false) LocalDate start
     ) {
         return scheduleQueryService.getWeekView(start);
+    }
+
+    @GetMapping("/entries")
+    public Mono<List<ScheduleQueryService.ScheduleCardResponse>> entries() {
+        return scheduleQueryService.listEntryCards();
     }
 
     @GetMapping("/entries/{name}")
