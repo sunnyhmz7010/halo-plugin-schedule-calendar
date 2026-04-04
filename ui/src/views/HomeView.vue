@@ -638,6 +638,26 @@ const buildEntrySpec = (startDate: Date, endDate: Date): ScheduleEntrySpec => ({
         },
 })
 
+const normalizeEntrySpec = (spec: ScheduleEntrySpec): ScheduleEntrySpec => ({
+  title: spec.title,
+  description: spec.description || undefined,
+  location: spec.location || undefined,
+  startTime: new Date(spec.startTime).toISOString(),
+  endTime: new Date(spec.endTime).toISOString(),
+  color: spec.color || '#3b82f6',
+  recurrence:
+    spec.recurrence?.frequency && spec.recurrence.frequency !== 'NONE'
+      ? {
+          frequency: spec.recurrence.frequency,
+          interval: spec.recurrence.interval ?? 1,
+          until: spec.recurrence.until || undefined,
+        }
+      : undefined,
+})
+
+const hasEntryChanged = (currentSpec: ScheduleEntrySpec, nextSpec: ScheduleEntrySpec) =>
+  JSON.stringify(normalizeEntrySpec(currentSpec)) !== JSON.stringify(normalizeEntrySpec(nextSpec))
+
 const validateForm = () => {
   dialogError.value = ''
 
@@ -720,6 +740,13 @@ const updateEntry = async () => {
   }
 
   const { startDate, endDate } = validated
+  const nextSpec = buildEntrySpec(startDate, endDate)
+
+  if (!hasEntryChanged(currentEntry.spec, nextSpec)) {
+    Toast.success('没有变化')
+    return
+  }
+
   const scrollTop = window.scrollY
   saving.value = true
 
@@ -731,7 +758,7 @@ const updateEntry = async () => {
         ...currentEntry.metadata,
         name: currentEntry.metadata.name,
       },
-      spec: buildEntrySpec(startDate, endDate),
+      spec: nextSpec,
     })
 
     closeDialog()
