@@ -4,11 +4,10 @@ import type { NodeViewProps } from '@halo-dev/richtext-editor'
 import { NodeViewWrapper } from '@halo-dev/richtext-editor'
 import { VButton, Toast } from '@halo-dev/components'
 import MdiCalendarClockOutline from '~icons/mdi/calendar-clock-outline'
-import type { ScheduleCard } from '../types/schedule'
+import type { ExtensionListResult, ScheduleCard, ScheduleEntry } from '../types/schedule'
 import ScheduleCardPickerModal from './ScheduleCardPickerModal.vue'
 import ScheduleEntryCreateModal from './ScheduleEntryCreateModal.vue'
-
-const CARD_API = '/apis/api.schedule.calendar.sunny.dev/v1alpha1/calendar/entries'
+import { ENTRY_API, toScheduleCards } from './schedule-card-data'
 
 const props = defineProps<NodeViewProps>()
 
@@ -22,17 +21,25 @@ const hasSelectedEntry = computed(() => Boolean(attrs.value.name))
 const fetchCards = async () => {
   try {
     const { axiosInstance } = await import('@halo-dev/api-client')
-    const { data } = await axiosInstance.get<ScheduleCard[]>(CARD_API)
-    pickerItems.value = data ?? []
+    const { data } = await axiosInstance.get<ExtensionListResult<ScheduleEntry>>(ENTRY_API, {
+      params: {
+        page: 1,
+        size: 200,
+      },
+    })
+    pickerItems.value = toScheduleCards(data)
+    return true
   } catch (error) {
     console.error(error)
     Toast.error('读取事项列表失败，请稍后重试。')
+    return false
   }
 }
 
 const openPicker = async () => {
-  await fetchCards()
-  pickerVisible.value = true
+  if (await fetchCards()) {
+    pickerVisible.value = true
+  }
 }
 
 const openCreateModal = () => {
@@ -118,7 +125,7 @@ const summaryText = computed(() => {
     </div>
 
     <ScheduleCardPickerModal
-      v-if="pickerVisible"
+      :visible="pickerVisible"
       :items="pickerItems"
       @close="pickerVisible = false"
       @select="handleCardSelected"
@@ -126,7 +133,7 @@ const summaryText = computed(() => {
     />
 
     <ScheduleEntryCreateModal
-      v-if="createVisible"
+      :visible="createVisible"
       @close="createVisible = false"
       @created="handleCreated"
     />

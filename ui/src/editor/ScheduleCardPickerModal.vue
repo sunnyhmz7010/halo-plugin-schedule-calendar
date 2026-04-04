@@ -4,6 +4,7 @@ import { VButton, VEmpty, VEntity, VEntityContainer, VModal } from '@halo-dev/co
 import type { ScheduleCard } from '../types/schedule'
 
 const props = defineProps<{
+  visible: boolean
   items: ScheduleCard[]
 }>()
 
@@ -91,8 +92,8 @@ onMounted(() => {
 
 <template>
   <VModal
-    :visible="true"
-    title="插入日程卡片"
+    :visible="visible"
+    title="选择日程卡片"
     :width="760"
     :body-class="['schedule-card-picker-modal__body']"
     @update:visible="handleVisibleUpdate"

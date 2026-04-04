@@ -2,10 +2,12 @@
 import { axiosInstance } from '@halo-dev/api-client'
 import { Toast, VAlert, VButton, VModal } from '@halo-dev/components'
 import { reactive, ref } from 'vue'
-import type { ScheduleCard, ScheduleEntryRecurrenceFrequency, ScheduleEntrySpec } from '../types/schedule'
+import type { ScheduleCard, ScheduleEntry, ScheduleEntryRecurrenceFrequency, ScheduleEntrySpec } from '../types/schedule'
+import { ENTRY_API, toScheduleCard } from './schedule-card-data'
 
-const CARD_API = '/apis/api.schedule.calendar.sunny.dev/v1alpha1/calendar/entries'
-const ENTRY_API = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
+defineProps<{
+  visible: boolean
+}>()
 
 const emit = defineEmits<{
   close: []
@@ -137,10 +139,10 @@ const submit = async () => {
       spec: buildEntrySpec(startDate, endDate),
     })
 
-    const { data } = await axiosInstance.get<ScheduleCard>(`${CARD_API}/${encodeURIComponent(name)}`)
+    const { data } = await axiosInstance.get<ScheduleEntry>(`${ENTRY_API}/${encodeURIComponent(name)}`)
     Toast.success('事项已添加')
     resetForm()
-    emit('created', data)
+    emit('created', toScheduleCard(data))
   } catch (error) {
     console.error(error)
     errorMessage.value = '事项创建失败。'
@@ -152,7 +154,7 @@ const submit = async () => {
 
 <template>
   <VModal
-    :visible="true"
+    :visible="visible"
     title="添加事项"
     :width="720"
     :layer-closable="false"

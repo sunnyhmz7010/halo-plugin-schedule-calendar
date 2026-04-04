@@ -303,7 +303,9 @@ const buildDayBlocks = (
       const clippedStart = start < startOfDay ? startOfDay : start
       const clippedEnd = end > endOfDay ? endOfDay : end
       const startMinutes = clippedStart.getHours() * 60 + clippedStart.getMinutes()
-      const endMinutes = clippedEnd.getHours() * 60 + clippedEnd.getMinutes()
+      const rawEndMinutes = clippedEnd.getHours() * 60 + clippedEnd.getMinutes()
+      const crossesDayBoundary = clippedEnd.getTime() > clippedStart.getTime() && rawEndMinutes <= startMinutes
+      const endMinutes = crossesDayBoundary ? 24 * 60 : rawEndMinutes
       const durationMinutes = Math.max(Math.round((clippedEnd.getTime() - clippedStart.getTime()) / 60000), 30)
       const height = Math.max((durationMinutes / 60) * hourHeight - 6, 26)
 
@@ -314,7 +316,7 @@ const buildDayBlocks = (
         tooltipMeta: buildTooltipMeta(entry),
         isRecurring: isRecurringEntry(entry),
         startLabel: formatClock(clippedStart),
-        endLabel: formatClock(clippedEnd),
+        endLabel: crossesDayBoundary ? '24:00' : formatClock(clippedEnd),
         duration: formatDuration(clippedStart, clippedEnd),
         color: entry.spec.color || '#3b82f6',
         startMinutes,
@@ -325,7 +327,7 @@ const buildDayBlocks = (
     })
     .filter(Boolean)
     .sort((left, right) => left!.startMinutes - right!.startMinutes) as Array<
-    Omit<CalendarBlock, 'left' | 'width' | 'density'>
+    Omit<CalendarBlock, 'left' | 'width' | 'density' | 'isSplit'>
   >
 
   const groups: typeof rawBlocks[] = []
