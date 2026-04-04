@@ -215,6 +215,7 @@ public class ScheduleQueryService {
                                 position: relative;
                                 height: 1344px;
                                 background: #fff;
+                                overflow: hidden;
                               }
                               .day-column__lines {
                                 position: absolute;
@@ -234,6 +235,8 @@ public class ScheduleQueryService {
                                 flex-direction: column;
                                 justify-content: flex-start;
                                 align-items: center;
+                                box-sizing: border-box;
+                                min-width: 0;
                                 border-radius: 12px;
                                 padding: 6px 10px;
                                 color: #fff;
@@ -244,6 +247,8 @@ public class ScheduleQueryService {
                               .calendar-block__title {
                                 font-weight: 700;
                                 line-height: 1.2;
+                                width: 100%;
+                                overflow-wrap: anywhere;
                               }
                               .calendar-block__time,
                               .calendar-block__meta {
@@ -252,6 +257,8 @@ public class ScheduleQueryService {
                                 line-height: 1.35;
                                 opacity: 0.95;
                                 white-space: pre-line;
+                                width: 100%;
+                                overflow-wrap: anywhere;
                               }
                               @media (max-width: 960px) {
                                 main {

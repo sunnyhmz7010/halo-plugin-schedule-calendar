@@ -1160,6 +1160,7 @@ onMounted(() => {
 
 .day-column__body {
   position: relative;
+  overflow: hidden;
 }
 
 .day-column__lines {
@@ -1181,6 +1182,8 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
+  box-sizing: border-box;
+  min-width: 0;
   border-radius: 10px;
   padding: 6px 10px;
   color: #fff;
@@ -1192,6 +1195,8 @@ onMounted(() => {
 .calendar-block__title {
   font-weight: 700;
   line-height: 1.2;
+  width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .calendar-block__time,
@@ -1201,6 +1206,8 @@ onMounted(() => {
   line-height: 1.35;
   opacity: 0.95;
   white-space: pre-line;
+  width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .calendar-block__meta--badge {
