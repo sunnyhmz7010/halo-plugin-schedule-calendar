@@ -21,6 +21,12 @@ const createEmptyCard = (): ScheduleCard => ({
   color: '#0f766e',
 })
 
+const calendarIconMarkup = `
+  <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor" aria-hidden="true">
+    <path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 15H5V10h14zm-2-5h-3v3h-2v-3H9v-2h3V9h2v3h3z"/>
+  </svg>
+`
+
 const resolveSchedulePageUrl = () => `${window.location.origin}/console/tools/schedule-calendar`
 
 const openSchedulePage = () => {
@@ -112,8 +118,7 @@ export const ScheduleCardExtension = Node.create({
             props: {
               editor,
               icon: markRaw(MdiCalendarClockOutline),
-              title: '插入日程卡片',
-              description: '选择一个事项并插入为卡片',
+              title: '日程卡片',
               action: () => {
                 void insertCard(editor)
               },
@@ -125,7 +130,7 @@ export const ScheduleCardExtension = Node.create({
         return {
           priority: 140,
           icon: markRaw(MdiCalendarClockOutline),
-          title: '插入日程卡片',
+          title: '日程卡片',
           keywords: ['schedule', 'calendar', 'rili', '日程', '日历'],
           command: ({ editor, range }: { editor: Editor; range: Range }) => {
             void insertCard(editor, range)
@@ -167,56 +172,10 @@ export const ScheduleCardExtension = Node.create({
 
         dom.innerHTML = ''
         dom.setAttribute('data-type', 'schedule-card')
-        dom.style.cssText = [
-          'padding:18px',
-          'border-radius:18px',
-          `border-left:6px solid ${attrs.color || '#0f766e'}`,
-          'background:linear-gradient(135deg, rgba(15,118,110,0.12), rgba(255,255,255,0.98))',
-          'box-shadow:0 1px 2px rgba(15,23,42,0.05)',
-        ].join(';')
-
-        const badge = document.createElement('div')
-        badge.textContent = '日程卡片'
-        badge.style.cssText =
-          'font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;'
-
-        const title = document.createElement('div')
-        title.textContent = hasSelectedEntry ? attrs.title : '未选择日程'
-        title.style.cssText = 'margin-top:6px;font-size:18px;font-weight:700;color:#111827;'
-
-        const summary = document.createElement('div')
-        summary.textContent = hasSelectedEntry
-          ? `${attrs.startTime || ''} - ${attrs.endTime || ''}`.trim()
-          : '先插入占位卡片，再从卡片内部选择已有事项，或前往添加新事项。'
-        summary.style.cssText = 'margin-top:8px;font-size:13px;line-height:1.6;color:#374151;'
-
-        const extras = document.createElement('div')
-        extras.style.cssText =
-          'display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:13px;line-height:1.6;color:#6b7280;'
-
-        if (hasSelectedEntry && attrs.recurrenceDescription) {
-          const recurrence = document.createElement('div')
-          recurrence.textContent = attrs.recurrenceDescription
-          recurrence.style.cssText = 'color:#0f766e;font-weight:600;'
-          extras.appendChild(recurrence)
-        }
-
-        if (hasSelectedEntry && attrs.location) {
-          const location = document.createElement('div')
-          location.textContent = `地点：${attrs.location}`
-          extras.appendChild(location)
-        }
-
-        if (hasSelectedEntry && attrs.description) {
-          const description = document.createElement('div')
-          description.textContent = `备注：${attrs.description}`
-          extras.appendChild(description)
-        }
-
         const actions = document.createElement('div')
-        actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;'
+        actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;justify-content:center;'
 
-        const selectButton = createButton(hasSelectedEntry ? '更换日程' : '选择日程', true)
+        const selectButton = createButton(hasSelectedEntry ? '选择日程' : '选择日程', true)
         selectButton.addEventListener('click', () => {
           const position = typeof getPos === 'function' ? getPos() : null
           if (typeof position !== 'number') {
@@ -232,6 +191,90 @@ export const ScheduleCardExtension = Node.create({
         })
 
         actions.append(selectButton, createEntryButton)
+
+        if (!hasSelectedEntry) {
+          dom.style.cssText = [
+            'display:flex',
+            'flex-direction:column',
+            'align-items:center',
+            'justify-content:center',
+            'min-height:300px',
+            'padding:32px 24px',
+            'border:2px dashed rgba(203,213,225,0.95)',
+            'border-radius:16px',
+            'background:#fbfdff',
+            'text-align:center',
+          ].join(';')
+
+          const iconShell = document.createElement('div')
+          iconShell.innerHTML = calendarIconMarkup
+          iconShell.style.cssText = [
+            'display:flex',
+            'align-items:center',
+            'justify-content:center',
+            'width:84px',
+            'height:84px',
+            'border-radius:999px',
+            'background:rgba(76,203,160,0.16)',
+            'color:#67b99a',
+          ].join(';')
+
+          const title = document.createElement('div')
+          title.textContent = '日程卡片'
+          title.style.cssText = 'margin-top:18px;font-size:18px;font-weight:700;color:#111827;'
+
+          const summary = document.createElement('div')
+          summary.textContent = '选择已有事项，或先去添加一个新的事项。'
+          summary.style.cssText =
+            'margin-top:8px;font-size:13px;line-height:1.6;color:#6b7280;max-width:420px;'
+
+          dom.append(iconShell, title, summary, actions)
+          return
+        }
+
+        dom.style.cssText = [
+          'padding:18px',
+          'border-radius:18px',
+          `border-left:6px solid ${attrs.color || '#0f766e'}`,
+          'background:linear-gradient(135deg, rgba(15,118,110,0.12), rgba(255,255,255,0.98))',
+          'box-shadow:0 1px 2px rgba(15,23,42,0.05)',
+        ].join(';')
+
+        const badge = document.createElement('div')
+        badge.textContent = '日程卡片'
+        badge.style.cssText =
+          'font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;'
+
+        const title = document.createElement('div')
+        title.textContent = attrs.title
+        title.style.cssText = 'margin-top:6px;font-size:18px;font-weight:700;color:#111827;'
+
+        const summary = document.createElement('div')
+        summary.textContent = `${attrs.startTime || ''} - ${attrs.endTime || ''}`.trim()
+        summary.style.cssText = 'margin-top:8px;font-size:13px;line-height:1.6;color:#374151;'
+
+        const extras = document.createElement('div')
+        extras.style.cssText =
+          'display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:13px;line-height:1.6;color:#6b7280;'
+
+        if (attrs.recurrenceDescription) {
+          const recurrence = document.createElement('div')
+          recurrence.textContent = attrs.recurrenceDescription
+          recurrence.style.cssText = 'color:#0f766e;font-weight:600;'
+          extras.appendChild(recurrence)
+        }
+
+        if (attrs.location) {
+          const location = document.createElement('div')
+          location.textContent = `地点：${attrs.location}`
+          extras.appendChild(location)
+        }
+
+        if (attrs.description) {
+          const description = document.createElement('div')
+          description.textContent = `备注：${attrs.description}`
+          extras.appendChild(description)
+        }
 
         dom.append(badge, title, summary)
         if (extras.childNodes.length > 0) {
@@ -277,7 +320,7 @@ export const ScheduleCardExtension = Node.create({
         { style: 'margin-top:8px;font-size:13px;color:#374151;line-height:1.6;' },
         hasSelectedEntry
           ? `${String(HTMLAttributes.startTime ?? '')} - ${String(HTMLAttributes.endTime ?? '')}`
-          : '先插入占位卡片，再从卡片内部选择已有事项，或前往添加新事项。',
+          : '选择已有事项，或先去添加一个新的事项。',
       ],
     ]
 
