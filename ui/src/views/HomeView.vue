@@ -883,12 +883,6 @@ onMounted(() => {
                     :title="`${block.title} ${block.startLabel} - ${block.endLabel}${block.tooltipMeta ? ` ${block.tooltipMeta}` : ''}`"
                   >
                     <div class="calendar-block__title">{{ block.title }}</div>
-                    <div
-                      v-if="block.density !== 'minimal' && block.isRecurring && !block.isSplit"
-                      class="calendar-block__meta calendar-block__meta--badge"
-                    >
-                      循环事项
-                    </div>
                     <div v-if="block.density !== 'minimal'" class="calendar-block__time">
                       {{ block.startLabel }} - {{ block.endLabel }}
                     </div>
@@ -911,6 +905,12 @@ onMounted(() => {
       <VCard title="事项" class="section-card">
         <template #actions>
           <div class="card-actions">
+            <div v-if="entries.length" class="entry-search">
+              <SearchInput
+                v-model="entryKeyword"
+                placeholder="搜索标题、地点、备注、时间或展开信息"
+              />
+            </div>
             <VButton type="secondary" @click="openCreateDialog">
               <template #icon>
                 <IconAddCircle />
@@ -919,13 +919,6 @@ onMounted(() => {
             </VButton>
           </div>
         </template>
-
-        <div v-if="entries.length" class="entry-search">
-          <SearchInput
-            v-model="entryKeyword"
-            placeholder="搜索标题、地点、备注、时间或展开信息"
-          />
-        </div>
 
         <VEntityContainer v-if="filteredSortedEntries.length">
           <VEntity v-for="entry in filteredSortedEntries" :key="entry.metadata.name">
@@ -1255,16 +1248,6 @@ onMounted(() => {
   overflow-wrap: anywhere;
 }
 
-.calendar-block__meta--badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
-  font-weight: 600;
-}
-
 .entry-start {
   display: flex;
   align-items: flex-start;
@@ -1337,15 +1320,21 @@ onMounted(() => {
 }
 
 .card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
   padding-right: 8px;
 }
 
 .entry-search {
-  margin-bottom: 12px;
+  flex: 1 1 320px;
+  min-width: min(100%, 240px);
 }
 
 .entry-search :deep(.search-input) {
-  width: 100%;
+  width: min(100%, 320px);
 }
 
 .dialog-form {
