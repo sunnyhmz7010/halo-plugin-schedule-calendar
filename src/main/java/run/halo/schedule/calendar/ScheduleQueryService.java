@@ -520,14 +520,11 @@ public class ScheduleQueryService {
                 var summary = card.recurrenceDescription() == null || card.recurrenceDescription().isBlank()
                     ? escapeHtml(card.startTime() + " - " + card.endTime())
                     : escapeHtml(card.recurrenceDescription() + " · 首次 " + card.startTime() + " - " + card.endTime());
-                var location = card.location() == null || card.location().isBlank() ? "" : """
-                    <span class="entry-meta__item entry-meta__item--wide entry-meta__item--block">地点：%s</span>
-                    """.formatted(escapeHtml(card.location()));
-                var description = card.description() == null || card.description().isBlank() ? "" : """
-                    <span class="entry-meta__item entry-meta__item--wide entry-meta__item--block">备注：%s</span>
-                    """.formatted(escapeHtml(card.description()));
-
-                return """
+                var summaryClass = card.recurrenceDescription() == null || card.recurrenceDescription().isBlank()
+                    ? "entry-meta__item"
+                    : "entry-meta__item entry-meta__item--wide entry-meta__item--block";
+                var html = new StringBuilder();
+                html.append("""
                     <!DOCTYPE html>
                     <html lang="zh-CN">
                       <head>
@@ -542,19 +539,19 @@ public class ScheduleQueryService {
                             font-family: "Segoe UI", "PingFang SC", sans-serif;
                           }
                           .schedule-card {
-                             border: 1px solid #e5e7eb;
-                             border-radius: 12px;
-                             background: #ffffff;
-                             overflow: hidden;
-                           }
+                            border: 1px solid #e5e7eb;
+                            border-radius: 12px;
+                            background: #ffffff;
+                            overflow: hidden;
+                          }
                           .schedule-card__inner {
                             display: grid;
                             gap: 12px;
                             padding: 18px;
                           }
-                           .entry-start {
-                             display: flex;
-                             align-items: flex-start;
+                          .entry-start {
+                            display: flex;
+                            align-items: flex-start;
                             gap: 12px;
                             min-width: 0;
                           }
@@ -590,7 +587,7 @@ public class ScheduleQueryService {
                             display: inline-flex;
                             align-items: center;
                             flex: 0 1 auto;
-                            max-width: 100%%;
+                            max-width: 100%;
                             min-width: 0;
                             padding: 4px 10px;
                             border-radius: 999px;
@@ -602,12 +599,12 @@ public class ScheduleQueryService {
                           }
                           .entry-meta__item--wide {
                             flex: 1 1 320px;
-                            max-width: 100%%;
+                            max-width: 100%;
                             border-radius: 12px;
                             white-space: normal;
                           }
                           .entry-meta__item--block {
-                            flex-basis: 100%%;
+                            flex-basis: 100%;
                           }
                         </style>
                       </head>
@@ -615,13 +612,23 @@ public class ScheduleQueryService {
                         <div class="schedule-card">
                           <div class="schedule-card__inner">
                             <div class="entry-start">
-                              <span class="entry-dot" style="background:%s;"></span>
-                                <div class="entry-main">
-                                  <div class="entry-title">%s</div>
-                                  <div class="entry-meta">
-                                  <span class="entry-meta__item%s">%s</span>
-                                  %s
-                                  %s
+                    """);
+                html.append("                              <span class=\"entry-dot\" style=\"background:");
+                html.append(escapeHtml(defaultColor(card.color())));
+                html.append("\"></span>\n"
+                    + "                              <div class=\"entry-main\">\n"
+                    + "                                <div class=\"entry-title\">");
+                html.append(title);
+                html.append("</div>\n"
+                    + "                                <div class=\"entry-meta\">\n"
+                    + "                                  <span class=\"");
+                html.append(summaryClass);
+                html.append("\">");
+                html.append(summary);
+                html.append("</span>");
+                appendCardMetaItem(html, "地点：", card.location());
+                appendCardMetaItem(html, "备注：", card.description());
+                html.append("""
                                 </div>
                               </div>
                             </div>
@@ -629,17 +636,19 @@ public class ScheduleQueryService {
                         </div>
                       </body>
                     </html>
-                    """.formatted(
-                    escapeHtml(card.color()),
-                    title,
-                    card.recurrenceDescription() == null || card.recurrenceDescription().isBlank()
-                        ? ""
-                        : " entry-meta__item--wide entry-meta__item--block",
-                    summary,
-                    location,
-                    description
-                );
+                    """);
+                return html.toString();
             });
+    }
+
+    private void appendCardMetaItem(StringBuilder html, String prefix, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        html.append("<span class=\"entry-meta__item entry-meta__item--wide entry-meta__item--block\">")
+            .append(prefix)
+            .append(escapeHtml(value))
+            .append("</span>");
     }
 
     private Mono<List<ScheduleEntry>> listEntries() {
