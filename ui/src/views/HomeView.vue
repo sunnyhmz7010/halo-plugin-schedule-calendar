@@ -920,14 +920,12 @@ onMounted(() => {
           </div>
         </template>
 
-        <label v-if="entries.length" class="entry-search">
-          <span>搜索事项</span>
-          <input
+        <div v-if="entries.length" class="entry-search">
+          <SearchInput
             v-model="entryKeyword"
-            type="search"
             placeholder="搜索标题、地点、备注、时间或展开信息"
           />
-        </label>
+        </div>
 
         <VEntityContainer v-if="filteredSortedEntries.length">
           <VEntity v-for="entry in filteredSortedEntries" :key="entry.metadata.name">
@@ -1340,6 +1338,14 @@ onMounted(() => {
 
 .card-actions {
   padding-right: 8px;
+}
+
+.entry-search {
+  margin-bottom: 12px;
+}
+
+.entry-search :deep(.search-input) {
+  width: 100%;
 }
 
 .dialog-form {

@@ -4,6 +4,12 @@ import { IconCalendar } from '@halo-dev/components'
 import { markRaw } from 'vue'
 import { ScheduleCardExtension } from './editor/schedule-card-extension'
 
+const managePermissions = ['plugin:schedule-calendar:manage']
+
+const openScheduleCalendarConsole = () => {
+  window.location.assign(new URL('/console/schedule-calendar', window.location.origin).toString())
+}
+
 export default definePlugin({
   components: {},
   routes: [
@@ -16,6 +22,7 @@ export default definePlugin({
         meta: {
           title: '日程日历',
           searchable: true,
+          permissions: managePermissions,
           menu: {
             name: '日程日历',
             icon: markRaw(IconCalendar),
@@ -27,5 +34,14 @@ export default definePlugin({
   ],
   extensionPoints: {
     'default:editor:extension:create': () => [ScheduleCardExtension],
+    'console:dashboard:widgets:internal:quick-action:item:create': () => [
+      {
+        id: 'schedule-calendar-quick-action',
+        icon: markRaw(IconCalendar),
+        title: '日程日历',
+        action: openScheduleCalendarConsole,
+        permissions: managePermissions,
+      },
+    ],
   },
 })

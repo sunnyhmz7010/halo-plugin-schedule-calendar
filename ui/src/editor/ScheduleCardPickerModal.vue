@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, type ComponentPublicInstance } from 'vue'
 import { VButton, VEmpty, VEntity, VEntityContainer, VModal } from '@halo-dev/components'
 import type { ScheduleCard } from '../types/schedule'
 
@@ -15,7 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const keyword = ref('')
-const keywordInputRef = ref<HTMLInputElement | null>(null)
+const keywordInputRef = ref<ComponentPublicInstance | null>(null)
 
 interface PickerMetaItem {
   text: string
@@ -72,7 +72,10 @@ const filteredItems = computed(() => {
 })
 
 const focusKeywordInput = () => {
-  void nextTick(() => keywordInputRef.value?.focus())
+  void nextTick(() => {
+    const host = keywordInputRef.value?.$el as HTMLElement | undefined
+    host?.querySelector('input')?.focus()
+  })
 }
 
 const handleClose = () => {
@@ -93,19 +96,6 @@ const handleCreate = () => {
   emit('create')
 }
 
-const handleKeywordKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    handleClose()
-    return
-  }
-
-  if (event.key === 'Enter' && filteredItems.value.length === 1) {
-    event.preventDefault()
-    handleSelect(filteredItems.value[0])
-  }
-}
-
 onMounted(() => {
   focusKeywordInput()
 })
@@ -120,16 +110,13 @@ onMounted(() => {
     @update:visible="handleVisibleUpdate"
   >
     <div class="schedule-card-picker-modal">
-      <label class="schedule-card-picker-modal__search">
-        <span>搜索事项</span>
-        <input
+      <div class="schedule-card-picker-modal__search">
+        <SearchInput
           ref="keywordInputRef"
           v-model="keyword"
-          type="search"
           placeholder="搜索标题、名称、地点、备注或循环规则"
-          @keydown="handleKeywordKeydown"
         />
-      </label>
+      </div>
 
       <div class="schedule-card-picker-modal__count">共 {{ filteredItems.length }} 个可选事项</div>
 
@@ -201,29 +188,11 @@ onMounted(() => {
 }
 
 .schedule-card-picker-modal__search {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  width: 100%;
+}
 
-  span {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--halo-text-color-secondary, #6b7280);
-  }
-
-  input {
-    width: 100%;
-    border: 1px solid var(--halo-border-color, #d1d5db);
-    border-radius: 8px;
-    padding: 10px 12px;
-    font: inherit;
-    color: var(--halo-text-color, #111827);
-    background: var(--halo-bg-color, #fff);
-  }
-
-  input:focus {
-    outline: none;
-  }
+.schedule-card-picker-modal__search :deep(.search-input) {
+  width: 100%;
 }
 
 .schedule-card-picker-modal__count {

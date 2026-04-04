@@ -1,0 +1,35 @@
+apiVersion: v1alpha1
+kind: Role
+metadata:
+  name: role-template-schedule-calendar-view
+  labels:
+    halo.run/role-template: "true"
+  annotations:
+    rbac.authorization.halo.run/module: "日程日历"
+    rbac.authorization.halo.run/display-name: "日程日历查看"
+    rbac.authorization.halo.run/ui-permissions: |
+      ["plugin:schedule-calendar:view"]
+rules:
+  - apiGroups: ["schedule.calendar.sunny.dev"]
+    resources: ["scheduleentries"]
+    verbs: ["get", "list"]
+
+---
+
+apiVersion: v1alpha1
+kind: Role
+metadata:
+  name: role-template-schedule-calendar-manage
+  labels:
+    halo.run/role-template: "true"
+  annotations:
+    rbac.authorization.halo.run/module: "日程日历"
+    rbac.authorization.halo.run/display-name: "日程日历管理"
+    rbac.authorization.halo.run/ui-permissions: |
+      ["plugin:schedule-calendar:manage"]
+    rbac.authorization.halo.run/dependencies: |
+      ["role-template-schedule-calendar-view"]
+rules:
+  - apiGroups: ["schedule.calendar.sunny.dev"]
+    resources: ["scheduleentries"]
+    verbs: ["create", "patch", "update", "delete", "deletecollection"]
