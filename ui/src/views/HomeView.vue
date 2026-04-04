@@ -7,6 +7,7 @@ import {
   IconArrowRight,
   IconCalendar,
   IconDeleteBin,
+  IconRiPencilFill,
   IconSearch,
   VAlert,
   VButton,
@@ -966,7 +967,12 @@ onMounted(() => {
             </template>
             <template #end>
               <div class="entry-actions">
-                <VButton ghost @click="openEditDialog(entry)">编辑</VButton>
+                <VButton ghost @click="openEditDialog(entry)">
+                  <template #icon>
+                    <IconRiPencilFill />
+                  </template>
+                  编辑
+                </VButton>
                 <VButton ghost @click="removeEntry(entry.metadata.name)">
                   <template #icon>
                     <IconDeleteBin />
@@ -1346,6 +1352,7 @@ onMounted(() => {
   align-items: center;
   gap: 16px;
   width: 100%;
+  padding: 16px 20px;
 }
 
 .entry-card-header__title {
@@ -1585,6 +1592,7 @@ onMounted(() => {
 @media (max-width: 640px) {
   .entry-card-header {
     grid-template-columns: minmax(0, 1fr);
+    padding: 14px 16px;
   }
 
   .entry-search {

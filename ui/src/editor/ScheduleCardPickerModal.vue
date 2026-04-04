@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { IconSearch, VButton, VEmpty, VEntity, VEntityContainer, VEntityField, VModal } from '@halo-dev/components'
+import { IconSearch, VButton, VEmpty, VEntityField, VModal } from '@halo-dev/components'
 import type { ScheduleCard } from '../types/schedule'
 
 const props = defineProps<{
@@ -123,39 +123,38 @@ watch(
 
       <div class="schedule-card-picker-modal__count">共 {{ filteredItems.length }} 个可选事项</div>
 
-      <VEntityContainer v-if="filteredItems.length">
-        <VEntity
+      <div v-if="filteredItems.length" class="schedule-card-picker-modal__list">
+        <div
           v-for="item in filteredItems"
           :key="item.name"
-          class="schedule-card-picker-modal__entity"
+          class="schedule-card-picker-modal__item"
         >
-          <template #start>
-            <div class="schedule-card-picker-modal__entity-start">
-              <span class="entry-dot" :style="{ background: item.color || '#3b82f6' }"></span>
-              <VEntityField
-                :title="item.title"
-                @click="handleSelect(item)"
-              >
-                <template #description>
-                  <div class="entry-details">
-                    <div
-                      v-for="(detailLine, index) in buildDetailLines(item)"
-                      :key="`${item.name}-${index}`"
-                      class="entry-detail"
-                    >
-                      {{ detailLine }}
-                    </div>
+          <button
+            type="button"
+            class="schedule-card-picker-modal__item-main"
+            @click="handleSelect(item)"
+          >
+            <span class="entry-dot" :style="{ background: item.color || '#3b82f6' }"></span>
+            <VEntityField :title="item.title">
+              <template #description>
+                <div class="entry-details">
+                  <div
+                    v-for="(detailLine, index) in buildDetailLines(item)"
+                    :key="`${item.name}-${index}`"
+                    class="entry-detail"
+                  >
+                    {{ detailLine }}
                   </div>
-                </template>
-              </VEntityField>
-            </div>
-          </template>
+                </div>
+              </template>
+            </VEntityField>
+          </button>
 
-          <template #end>
+          <div class="schedule-card-picker-modal__item-actions">
             <VButton size="sm" type="secondary" @click="handleSelect(item)">选择</VButton>
-          </template>
-        </VEntity>
-      </VEntityContainer>
+          </div>
+        </div>
+      </div>
 
       <VEmpty
         v-else
@@ -235,33 +234,59 @@ watch(
   color: var(--halo-text-color-secondary, #6b7280);
 }
 
-.schedule-card-picker-modal__entity-start {
+.schedule-card-picker-modal__list {
+  display: grid;
+  gap: 12px;
+}
+
+.schedule-card-picker-modal__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--halo-border-color, #e5e7eb);
+  border-radius: 12px;
+  background: var(--halo-bg-color, #fff);
+}
+
+.schedule-card-picker-modal__item-main {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   width: 100%;
   min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.schedule-card-picker-modal__item-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .entry-dot {
   width: 10px;
   height: 10px;
   flex: none;
-  margin-top: 6px;
+  margin-top: 7px;
   border-radius: 999px;
 }
 
-.schedule-card-picker-modal__entity :deep(.entity-field-wrapper) {
+.schedule-card-picker-modal__item :deep(.entity-field-wrapper) {
   width: 100%;
   max-width: none;
 }
 
-.schedule-card-picker-modal__entity :deep(.entity-field-title) {
+.schedule-card-picker-modal__item :deep(.entity-field-title) {
   font-size: 14px;
   font-weight: 600;
 }
 
-.schedule-card-picker-modal__entity :deep(.entity-field-description-body) {
+.schedule-card-picker-modal__item :deep(.entity-field-description-body) {
   margin-top: 6px;
 }
 
@@ -282,5 +307,15 @@ watch(
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .schedule-card-picker-modal__item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .schedule-card-picker-modal__item-actions {
+    justify-content: flex-start;
+  }
 }
 </style>
