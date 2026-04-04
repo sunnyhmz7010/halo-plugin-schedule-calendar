@@ -1,4 +1,5 @@
 import { axiosInstance } from '@halo-dev/api-client'
+import { ToolboxItem } from '@halo-dev/richtext-editor'
 import { mergeAttributes, Node } from '@tiptap/core'
 import type { Editor, Range } from '@tiptap/core'
 import { markRaw } from 'vue'
@@ -236,17 +237,22 @@ const chooseEntry = async () => {
   return showEntryChooser(items)
 }
 
-const insertCard = async (editor: Editor, range: Range) => {
+const insertCard = async (editor: Editor, range?: Range) => {
   try {
     const card = await chooseEntry()
     if (!card) {
       return
     }
 
+    const insertRange = range ?? {
+      from: editor.state.selection.from,
+      to: editor.state.selection.to,
+    }
+
     editor
       .chain()
       .focus()
-      .deleteRange(range)
+      .deleteRange(insertRange)
       .insertContent({
         type: 'scheduleCard',
         attrs: card,
@@ -281,6 +287,21 @@ export const ScheduleCardExtension = Node.create({
   addOptions() {
     return {
       ...this.parent?.(),
+      getToolboxItems({ editor }: { editor: Editor }) {
+        return {
+          priority: 35,
+          component: markRaw(ToolboxItem),
+          props: {
+            editor,
+            icon: markRaw(MdiCalendarClockOutline),
+            title: '插入日程卡片',
+            description: '选择一个事项并插入为卡片',
+            action: () => {
+              void insertCard(editor)
+            },
+          },
+        }
+      },
       getCommandMenuItems() {
         return {
           priority: 140,
