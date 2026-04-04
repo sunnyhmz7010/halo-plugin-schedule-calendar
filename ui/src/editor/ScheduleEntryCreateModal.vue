@@ -16,6 +16,7 @@ const emit = defineEmits<{
 
 const saving = ref(false)
 const errorMessage = ref('')
+const colorInputRef = ref<HTMLInputElement | null>(null)
 
 const form = reactive({
   title: '',
@@ -107,6 +108,10 @@ const resetForm = () => {
   errorMessage.value = ''
 }
 
+const openColorPicker = () => {
+  colorInputRef.value?.click()
+}
+
 const handleClose = () => {
   resetForm()
   emit('close')
@@ -161,7 +166,7 @@ const submit = async () => {
     :body-class="['schedule-entry-create-modal__body']"
     @update:visible="handleVisibleUpdate"
   >
-    <div class="schedule-entry-create-modal">
+    <div class="dialog-form">
       <VAlert
         v-if="errorMessage"
         type="error"
@@ -226,21 +231,25 @@ const submit = async () => {
 
       <label class="field field--compact">
         <span>颜色</span>
-        <input v-model="form.color" type="color" class="field__color" />
+        <button type="button" class="color-picker" @mousedown.stop.prevent @click.stop.prevent="openColorPicker">
+          <span class="color-picker__preview" :style="{ background: form.color }"></span>
+          <span class="color-picker__value">{{ form.color }}</span>
+        </button>
+        <input ref="colorInputRef" v-model="form.color" type="color" class="field__color" />
       </label>
     </div>
 
     <template #footer>
       <div class="modal-footer">
-        <VButton @click="handleClose">取消</VButton>
-        <VButton type="primary" :loading="saving" @click="submit">添加并选中</VButton>
+        <VButton @mousedown.stop.prevent @click.stop.prevent="handleClose">取消</VButton>
+        <VButton type="primary" :loading="saving" @mousedown.stop.prevent @click.stop.prevent="submit">添加并选中</VButton>
       </div>
     </template>
   </VModal>
 </template>
 
 <style scoped lang="scss">
-.schedule-entry-create-modal {
+.dialog-form {
   display: grid;
   gap: 16px;
   padding: 4px 0;
@@ -273,26 +282,57 @@ const submit = async () => {
 .field textarea {
   width: 100%;
   border: 1px solid var(--halo-border-color, #d1d5db);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 10px 12px;
   font: inherit;
   color: var(--halo-text-color, #111827);
   background: var(--halo-bg-color, #fff);
-  box-sizing: border-box;
 }
 
 .field textarea {
   resize: vertical;
-  min-height: 104px;
 }
 
 .field--compact {
-  max-width: 160px;
+  width: fit-content;
+}
+
+.color-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: auto;
+  min-width: 136px;
+  height: 40px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--halo-border-color, #d1d5db);
+  border-radius: 10px;
+  background: var(--halo-bg-color, #fff);
+  cursor: pointer;
+  font: inherit;
+}
+
+.color-picker__preview {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  flex: none;
+}
+
+.color-picker__value {
+  color: var(--halo-text-color, #111827);
+  font-size: 12px;
+  letter-spacing: 0.02em;
 }
 
 .field__color {
-  padding: 4px;
-  min-height: 44px;
+  position: absolute;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .modal-footer {

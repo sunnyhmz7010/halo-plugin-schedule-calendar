@@ -17,14 +17,31 @@ const emit = defineEmits<{
 const keyword = ref('')
 const keywordInputRef = ref<HTMLInputElement | null>(null)
 
+interface PickerMetaItem {
+  text: string
+  wide?: boolean
+  block?: boolean
+}
+
 const buildCardSummary = (card: ScheduleCard) => `${card.startTime} - ${card.endTime}`
 
-const buildMetaLines = (card: ScheduleCard) =>
-  [
-    card.location ? `地点：${card.location}` : '',
-    card.description ? `备注：${card.description}` : '',
-    card.recurrenceDescription ?? '',
-  ].filter(Boolean)
+const buildMetaLines = (card: ScheduleCard): PickerMetaItem[] => {
+  const items: PickerMetaItem[] = [{ text: buildCardSummary(card) }]
+
+  if (card.recurrenceDescription) {
+    items.push({ text: card.recurrenceDescription, wide: true, block: true })
+  }
+
+  if (card.location) {
+    items.push({ text: `地点：${card.location}`, wide: true, block: true })
+  }
+
+  if (card.description) {
+    items.push({ text: `备注：${card.description}`, wide: true, block: true })
+  }
+
+  return items
+}
 
 const buildCardSearchText = (card: ScheduleCard) =>
   [
@@ -99,10 +116,6 @@ onMounted(() => {
     @update:visible="handleVisibleUpdate"
   >
     <div class="schedule-card-picker-modal">
-      <div class="schedule-card-picker-modal__intro">
-        搜索并选择一个事项，使用 Halo 控制台原生样式插入到当前文章中。
-      </div>
-
       <label class="schedule-card-picker-modal__search">
         <span>搜索事项</span>
         <input
@@ -122,26 +135,28 @@ onMounted(() => {
           :key="item.name"
         >
           <template #start>
-            <div class="schedule-card-picker-modal__item">
-              <span
-                class="schedule-card-picker-modal__dot"
-                :style="{ background: item.color || '#0f766e' }"
-              ></span>
+            <div
+              class="entry-start entry-start--interactive"
+              role="button"
+              tabindex="0"
+              @mousedown.stop.prevent
+              @click.stop.prevent="handleSelect(item)"
+            >
+              <span class="entry-dot" :style="{ background: item.color || '#3b82f6' }"></span>
 
-              <div class="schedule-card-picker-modal__item-main">
-                <div class="schedule-card-picker-modal__title">{{ item.title }}</div>
-                <div class="schedule-card-picker-modal__summary">{{ buildCardSummary(item) }}</div>
-
-                <div
-                  v-if="buildMetaLines(item).length"
-                  class="schedule-card-picker-modal__meta"
-                >
+              <div class="entry-main">
+                <div class="entry-title">{{ item.title }}</div>
+                <div class="entry-meta">
                   <span
-                    v-for="(line, index) in buildMetaLines(item)"
+                    v-for="(metaItem, index) in buildMetaLines(item)"
                     :key="`${item.name}-${index}`"
-                    class="schedule-card-picker-modal__meta-item"
+                    class="entry-meta__item"
+                    :class="{
+                      'entry-meta__item--wide': metaItem.wide,
+                      'entry-meta__item--block': metaItem.block,
+                    }"
                   >
-                    {{ line }}
+                    {{ metaItem.text }}
                   </span>
                 </div>
               </div>
@@ -149,7 +164,7 @@ onMounted(() => {
           </template>
 
           <template #end>
-            <VButton type="secondary" @click="handleSelect(item)">插入</VButton>
+            <VButton type="secondary" @mousedown.stop.prevent @click.stop.prevent="handleSelect(item)">选择</VButton>
           </template>
         </VEntity>
       </VEntityContainer>
@@ -160,15 +175,15 @@ onMounted(() => {
         message="可以换个关键词再试，或者先在日程日历插件里创建事项。"
       >
         <template #actions>
-          <VButton type="secondary" @click="handleCreate">去添加事项</VButton>
+          <VButton type="secondary" @mousedown.stop.prevent @click.stop.prevent="handleCreate">添加事项</VButton>
         </template>
       </VEmpty>
     </div>
 
     <template #footer>
       <div class="schedule-card-picker-modal__footer">
-        <VButton type="secondary" @click="handleCreate">去添加事项</VButton>
-        <VButton @click="handleClose">取消</VButton>
+        <VButton type="secondary" @mousedown.stop.prevent @click.stop.prevent="handleCreate">添加事项</VButton>
+        <VButton @mousedown.stop.prevent @click.stop.prevent="handleClose">取消</VButton>
       </div>
     </template>
   </VModal>
@@ -181,51 +196,48 @@ onMounted(() => {
   gap: 1rem;
 }
 
-.schedule-card-picker-modal__intro {
-  font-size: 0.875rem;
-  line-height: 1.6;
-  color: #6b7280;
-}
-
 .schedule-card-picker-modal__search {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 
   span {
-    font-size: 0.875rem;
+    font-size: 12px;
     font-weight: 600;
-    color: #111827;
+    color: var(--halo-text-color-secondary, #6b7280);
   }
 
   input {
     width: 100%;
-    padding: 0.75rem 0.875rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.75rem;
-    background: #ffffff;
-    color: #111827;
-    outline: none;
+    border: 1px solid var(--halo-border-color, #d1d5db);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font: inherit;
+    color: var(--halo-text-color, #111827);
+    background: var(--halo-bg-color, #fff);
   }
 
   input:focus {
-    border-color: #4ccba0;
-    box-shadow: 0 0 0 3px rgba(76, 203, 160, 0.16);
+    outline: none;
   }
 }
 
 .schedule-card-picker-modal__count {
-  font-size: 0.8125rem;
-  color: #6b7280;
+  font-size: 12px;
+  color: var(--halo-text-color-secondary, #6b7280);
 }
 
-.schedule-card-picker-modal__item {
+.entry-start {
   display: flex;
   align-items: flex-start;
   gap: 0.875rem;
 }
 
-.schedule-card-picker-modal__dot {
+.entry-start--interactive {
+  cursor: pointer;
+}
+
+.entry-dot {
   width: 0.75rem;
   height: 0.75rem;
   flex: none;
@@ -233,39 +245,52 @@ onMounted(() => {
   border-radius: 999px;
 }
 
-.schedule-card-picker-modal__item-main {
+.entry-main {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  gap: 6px;
 }
 
-.schedule-card-picker-modal__title {
-  font-size: 0.9375rem;
+.entry-title {
+  font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: var(--halo-text-color, #111827);
 }
 
-.schedule-card-picker-modal__summary {
-  font-size: 0.875rem;
-  color: #374151;
-}
-
-.schedule-card-picker-modal__meta {
+.entry-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.375rem 0.5rem;
+  gap: 8px;
 }
 
-.schedule-card-picker-modal__meta-item {
-  font-size: 0.8125rem;
+.entry-meta__item {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--halo-bg-color-secondary, #f3f4f6);
+  color: var(--halo-text-color-secondary, #6b7280);
+  font-size: 12px;
   line-height: 1.5;
-  color: #6b7280;
+  word-break: break-word;
+}
+
+.entry-meta__item--wide {
+  flex: 1 1 320px;
+  max-width: 100%;
+  border-radius: 12px;
+  white-space: normal;
+}
+
+.entry-meta__item--block {
+  flex-basis: 100%;
 }
 
 .schedule-card-picker-modal__footer {
   display: flex;
-  gap: 0.75rem;
   justify-content: flex-end;
+  gap: 12px;
 }
 </style>
