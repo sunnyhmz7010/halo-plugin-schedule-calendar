@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { axiosInstance } from '@halo-dev/api-client'
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { NodeViewProps } from '@halo-dev/richtext-editor'
 import { NodeViewWrapper } from '@halo-dev/richtext-editor'
 import { VButton, Toast } from '@halo-dev/components'
@@ -8,7 +8,7 @@ import MdiCalendarClockOutline from '~icons/mdi/calendar-clock-outline'
 import type { ExtensionListResult, ScheduleCard, ScheduleEntry } from '../types/schedule'
 import ScheduleCardPickerModal from './ScheduleCardPickerModal.vue'
 import ScheduleEntryCreateModal from './ScheduleEntryCreateModal.vue'
-import { ENTRY_API, toScheduleCards } from './schedule-card-data'
+import { ENTRY_API, toScheduleCard, toScheduleCards } from './schedule-card-data'
 
 const props = defineProps<NodeViewProps>()
 
@@ -17,12 +17,38 @@ const createVisible = ref(false)
 const pickerItems = ref<ScheduleCard[]>([])
 
 const attrs = computed(() => props.node.attrs as ScheduleCard)
-const hasSelectedEntry = computed(() => Boolean(attrs.value.name))
+const displayCard = ref<ScheduleCard>({ ...(attrs.value as ScheduleCard) })
+const hasSelectedEntry = computed(() => Boolean(displayCard.value.name))
 
 interface CardMetaItem {
   text: string
   wide?: boolean
   block?: boolean
+}
+
+const cloneCard = (value: ScheduleCard): ScheduleCard => ({
+  name: value.name || '',
+  title: value.title || '',
+  description: value.description || '',
+  location: value.location || '',
+  startTime: value.startTime || '',
+  endTime: value.endTime || '',
+  recurrenceDescription: value.recurrenceDescription || '',
+  color: value.color || '#0f766e',
+})
+
+const isSameCard = (left: ScheduleCard, right: ScheduleCard) =>
+  left.name === right.name &&
+  left.title === right.title &&
+  left.description === right.description &&
+  left.location === right.location &&
+  left.startTime === right.startTime &&
+  left.endTime === right.endTime &&
+  left.recurrenceDescription === right.recurrenceDescription &&
+  left.color === right.color
+
+const syncDisplayFromAttrs = () => {
+  displayCard.value = cloneCard(attrs.value)
 }
 
 const fetchCards = async () => {
@@ -54,17 +80,19 @@ const openCreateModal = () => {
 }
 
 const handleCardSelected = (card: ScheduleCard) => {
+  displayCard.value = cloneCard(card)
   props.updateAttributes(card)
   pickerVisible.value = false
 }
 
 const handleCreated = (card: ScheduleCard) => {
+  displayCard.value = cloneCard(card)
   props.updateAttributes(card)
   createVisible.value = false
 }
 
 const handleReset = () => {
-  props.updateAttributes({
+  const emptyCard = {
     name: '',
     title: '',
     description: '',
@@ -73,7 +101,9 @@ const handleReset = () => {
     endTime: '',
     recurrenceDescription: '',
     color: '#0f766e',
-  })
+  }
+  displayCard.value = emptyCard
+  props.updateAttributes(emptyCard)
 }
 
 const selectedMetaItems = computed<CardMetaItem[]>(() => {
@@ -87,27 +117,101 @@ const selectedMetaItems = computed<CardMetaItem[]>(() => {
     items.push({ text: summaryText.value })
   }
 
-  if (attrs.value.recurrenceDescription) {
-    items.push({ text: attrs.value.recurrenceDescription, wide: true, block: true })
+  if (displayCard.value.recurrenceDescription) {
+    items.push({ text: displayCard.value.recurrenceDescription, wide: true, block: true })
   }
 
-  if (attrs.value.location) {
-    items.push({ text: `地点：${attrs.value.location}`, wide: true, block: true })
+  if (displayCard.value.location) {
+    items.push({ text: `地点：${displayCard.value.location}`, wide: true, block: true })
   }
 
-  if (attrs.value.description) {
-    items.push({ text: `备注：${attrs.value.description}`, wide: true, block: true })
+  if (displayCard.value.description) {
+    items.push({ text: `备注：${displayCard.value.description}`, wide: true, block: true })
   }
 
   return items
 })
+
+const refreshSelectedCard = async (silent = true) => {
+  if (!attrs.value.name) {
+    syncDisplayFromAttrs()
+    return
+  }
+
+  try {
+    const { data } = await axiosInstance.get<ScheduleEntry>(`${ENTRY_API}/${encodeURIComponent(attrs.value.name)}`)
+    const latestCard = toScheduleCard(data)
+    displayCard.value = latestCard
+
+    if (!isSameCard(attrs.value, latestCard)) {
+      props.updateAttributes(latestCard)
+    }
+  } catch (error) {
+    console.error(error)
+
+    if (!silent) {
+      Toast.error('读取事项详情失败，请稍后重试。')
+    }
+  }
+}
 
 const summaryText = computed(() => {
   if (!hasSelectedEntry.value) {
     return '选择已有事项，或直接在这里添加一个新的事项。'
   }
 
-  return `${attrs.value.startTime || ''} - ${attrs.value.endTime || ''}`.trim()
+  return `${displayCard.value.startTime || ''} - ${displayCard.value.endTime || ''}`.trim()
+})
+
+watch(
+  () => attrs.value,
+  (value) => {
+    if (!value.name) {
+      syncDisplayFromAttrs()
+      return
+    }
+
+    if (!isSameCard(displayCard.value, value)) {
+      displayCard.value = cloneCard(value)
+    }
+  },
+  { deep: true },
+)
+
+watch(
+  () => attrs.value.name,
+  (name, previousName) => {
+    if (!name) {
+      syncDisplayFromAttrs()
+      return
+    }
+
+    if (name !== previousName) {
+      void refreshSelectedCard(true)
+    }
+  },
+)
+
+const handleWindowFocus = () => {
+  void refreshSelectedCard(true)
+}
+
+const handleVisibilityChange = () => {
+  if (!document.hidden) {
+    void refreshSelectedCard(true)
+  }
+}
+
+onMounted(() => {
+  syncDisplayFromAttrs()
+  void refreshSelectedCard(true)
+  window.addEventListener('focus', handleWindowFocus)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('focus', handleWindowFocus)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 
@@ -137,17 +241,17 @@ const summaryText = computed(() => {
       </template>
 
       <template v-else>
-        <div class="schedule-card-node-view__selected">
-          <div class="schedule-card-node-view__badge">日程卡片</div>
+          <div class="schedule-card-node-view__selected">
+            <div class="schedule-card-node-view__badge">日程卡片</div>
 
-          <div class="entry-start">
-            <span class="entry-dot" :style="{ background: attrs.color || '#3b82f6' }"></span>
+            <div class="entry-start">
+              <span class="entry-dot" :style="{ background: displayCard.color || '#3b82f6' }"></span>
             <div class="entry-main">
-              <div class="entry-title">{{ attrs.title }}</div>
+                <div class="entry-title">{{ displayCard.title }}</div>
               <div class="entry-meta">
                 <span
                   v-for="(item, index) in selectedMetaItems"
-                  :key="`${attrs.name}-${index}`"
+                  :key="`${displayCard.name}-${index}`"
                   class="entry-meta__item"
                   :class="{
                     'entry-meta__item--wide': item.wide,
