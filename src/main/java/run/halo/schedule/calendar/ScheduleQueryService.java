@@ -233,16 +233,20 @@ public class ScheduleQueryService {
                                 z-index: 1;
                                 display: flex;
                                 flex-direction: column;
-                                justify-content: flex-start;
+                                justify-content: center;
                                 align-items: center;
                                 box-sizing: border-box;
                                 min-width: 0;
                                 border-radius: 12px;
-                                padding: 6px 10px;
+                                padding: 6px 8px;
                                 color: #fff;
                                 box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
                                 overflow: hidden;
                                 text-align: center;
+                              }
+                              .calendar-block--split {
+                                border-radius: 8px;
+                                padding: 6px;
                               }
                               .calendar-block__title {
                                 font-weight: 700;
@@ -252,7 +256,7 @@ public class ScheduleQueryService {
                               }
                               .calendar-block__time,
                               .calendar-block__meta {
-                                margin-top: 4px;
+                                margin-top: 2px;
                                 font-size: 0.76rem;
                                 line-height: 1.35;
                                 opacity: 0.95;
@@ -429,6 +433,7 @@ public class ScheduleQueryService {
                                       height,
                                       top: (block.startMinutes / 60) * hourHeight,
                                       density,
+                                      isSplit: columnCount > 1,
                                       visibleMetaLines: buildVisibleMetaLines({
                                         ...block,
                                         density,
@@ -473,7 +478,7 @@ public class ScheduleQueryService {
                                 const body = section.querySelector(".day-column__body");
                                 assignColumns(day.occupied).forEach((block) => {
                                   const element = document.createElement("article");
-                                  element.className = "calendar-block";
+                                  element.className = block.isSplit ? "calendar-block calendar-block--split" : "calendar-block";
                                   element.title = `${block.title} ${block.start} - ${block.endLabel}${block.tooltipMeta ? ` ${block.tooltipMeta}` : ""}`;
                                   element.style.top = `${block.top}px`;
                                   element.style.left = block.left;
@@ -481,7 +486,7 @@ public class ScheduleQueryService {
                                   element.style.height = `${block.height}px`;
                                   element.style.background = block.color;
                                   const metaHtml =
-                                    Array.isArray(block.visibleMetaLines)
+                                    !block.isSplit && Array.isArray(block.visibleMetaLines)
                                       ? block.visibleMetaLines
                                           .map((line) => `<div class="calendar-block__meta">${line}</div>`)
                                       .join("")
@@ -489,7 +494,7 @@ public class ScheduleQueryService {
                                   element.innerHTML = `
                                     <div class="calendar-block__title">${block.title}</div>
                                     ${block.density !== "minimal" ? `<div class="calendar-block__time">${block.start} - ${block.endLabel}</div>` : ""}
-                                    ${block.density === "full" ? `<div class="calendar-block__meta">${block.durationLabel}</div>` : ""}
+                                    ${block.density === "full" && !block.isSplit ? `<div class="calendar-block__meta">${block.durationLabel}</div>` : ""}
                                     ${metaHtml}
                                   `;
                                   body.appendChild(element);

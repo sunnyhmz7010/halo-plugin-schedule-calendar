@@ -68,6 +68,7 @@ interface CalendarBlock {
   visibleMetaLines?: string[]
   tooltipMeta?: string
   isRecurring: boolean
+  isSplit: boolean
   startLabel: string
   endLabel: string
   duration: string
@@ -387,6 +388,7 @@ const buildDayBlocks = (
         left,
         width,
         density,
+        isSplit: columnCount > 1,
         visibleMetaLines,
       } satisfies CalendarBlock
     })
@@ -840,34 +842,35 @@ onMounted(() => {
                     v-for="block in day.blocks"
                     :key="block.id"
                     class="calendar-block"
-                  :style="{
-                    top: `${block.top}px`,
-                    height: `${block.height}px`,
-                    left: block.left,
-                    width: block.width,
-                    background: block.color,
-                  }"
-                  :title="`${block.title} ${block.startLabel} - ${block.endLabel}${block.tooltipMeta ? ` ${block.tooltipMeta}` : ''}`"
-                >
-                  <div class="calendar-block__title">{{ block.title }}</div>
-                  <div
-                    v-if="block.density !== 'minimal' && block.isRecurring"
-                    class="calendar-block__meta calendar-block__meta--badge"
+                    :class="{ 'calendar-block--split': block.isSplit }"
+                    :style="{
+                      top: `${block.top}px`,
+                      height: `${block.height}px`,
+                      left: block.left,
+                      width: block.width,
+                      background: block.color,
+                    }"
+                    :title="`${block.title} ${block.startLabel} - ${block.endLabel}${block.tooltipMeta ? ` ${block.tooltipMeta}` : ''}`"
                   >
-                    循环事项
-                  </div>
-                  <div v-if="block.density !== 'minimal'" class="calendar-block__time">
-                    {{ block.startLabel }} - {{ block.endLabel }}
-                  </div>
-                  <div v-if="block.density === 'full'" class="calendar-block__meta">{{ block.duration }}</div>
-                  <div
-                    v-for="(metaLine, metaIndex) in block.visibleMetaLines ?? []"
-                    :key="`${block.id}-meta-${metaIndex}`"
-                    class="calendar-block__meta"
-                  >
-                    {{ metaLine }}
-                  </div>
-                </article>
+                    <div class="calendar-block__title">{{ block.title }}</div>
+                    <div
+                      v-if="block.density !== 'minimal' && block.isRecurring && !block.isSplit"
+                      class="calendar-block__meta calendar-block__meta--badge"
+                    >
+                      循环事项
+                    </div>
+                    <div v-if="block.density !== 'minimal'" class="calendar-block__time">
+                      {{ block.startLabel }} - {{ block.endLabel }}
+                    </div>
+                    <div v-if="block.density === 'full' && !block.isSplit" class="calendar-block__meta">{{ block.duration }}</div>
+                    <div
+                      v-for="(metaLine, metaIndex) in block.isSplit ? [] : block.visibleMetaLines ?? []"
+                      :key="`${block.id}-meta-${metaIndex}`"
+                      class="calendar-block__meta"
+                    >
+                      {{ metaLine }}
+                    </div>
+                  </article>
                 </div>
               </div>
             </div>
@@ -1181,15 +1184,20 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   box-sizing: border-box;
   min-width: 0;
   border-radius: 10px;
-  padding: 6px 10px;
+  padding: 6px 8px;
   color: #fff;
   box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
   overflow: hidden;
   text-align: center;
+}
+
+.calendar-block--split {
+  border-radius: 8px;
+  padding: 6px;
 }
 
 .calendar-block__title {
@@ -1201,7 +1209,7 @@ onMounted(() => {
 
 .calendar-block__time,
 .calendar-block__meta {
-  margin-top: 4px;
+  margin-top: 2px;
   font-size: 12px;
   line-height: 1.35;
   opacity: 0.95;
