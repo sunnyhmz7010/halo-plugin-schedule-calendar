@@ -25,7 +25,6 @@ import {
   Toast,
 } from '@halo-dev/components'
 import type {
-  ExtensionListResult,
   ScheduleEntry,
   ScheduleEntryRecurrenceFrequency,
   ScheduleEntrySpec,
@@ -35,7 +34,9 @@ import {
   formatEntryScheduleSummary,
   formatRecurrenceDescription,
   isRecurringEntry,
+  spansMultipleLocalDates,
 } from '../utils/recurrence'
+import { fetchAllScheduleEntries } from '../editor/schedule-card-data'
 
 const apiBase = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
 const hourHeight = 56
@@ -139,8 +140,6 @@ const formatDateInput = (date: Date) => {
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
-
-const spansMultipleDates = (start: Date, end: Date) => formatDateInput(start) !== formatDateInput(end)
 
 const currentWeekStart = ref(startOfWeek(new Date()))
 const weekInput = ref(formatDateInput(currentWeekStart.value))
@@ -598,13 +597,7 @@ const fetchEntries = async () => {
   pageError.value = ''
 
   try {
-    const { data } = await axiosInstance.get<ExtensionListResult<ScheduleEntry>>(apiBase, {
-      params: {
-        page: 1,
-        size: 200,
-      },
-    })
-    entries.value = data.items ?? []
+    entries.value = await fetchAllScheduleEntries()
   } catch (err) {
     pageError.value = '事项加载失败，请检查插件权限或 Halo 运行状态。'
     console.error(err)
@@ -674,7 +667,7 @@ const validateForm = () => {
   }
 
   if (form.recurrenceFrequency !== 'NONE') {
-    if (spansMultipleDates(startDate, endDate)) {
+    if (spansMultipleLocalDates(startDate, endDate)) {
       dialogError.value = '跨天事项暂不支持循环，请拆分为单次事项或取消循环。'
       return null
     }

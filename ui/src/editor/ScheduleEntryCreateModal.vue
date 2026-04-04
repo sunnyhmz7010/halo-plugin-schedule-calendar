@@ -3,6 +3,7 @@ import { axiosInstance } from '@halo-dev/api-client'
 import { Toast, VAlert, VButton, VModal } from '@halo-dev/components'
 import { reactive, ref } from 'vue'
 import type { ScheduleCard, ScheduleEntry, ScheduleEntryRecurrenceFrequency, ScheduleEntrySpec } from '../types/schedule'
+import { spansMultipleLocalDates } from '../utils/recurrence'
 import { ENTRY_API, toScheduleCard } from './schedule-card-data'
 
 defineProps<{
@@ -29,12 +30,6 @@ const form = reactive({
   recurrenceInterval: 1,
   recurrenceUntil: '',
 })
-
-const spansMultipleDates = (start: Date, end: Date) => {
-  const startKey = start.toISOString().slice(0, 10)
-  const endKey = end.toISOString().slice(0, 10)
-  return startKey !== endKey
-}
 
 const buildEntrySpec = (startDate: Date, endDate: Date): ScheduleEntrySpec => ({
   title: form.title,
@@ -75,7 +70,7 @@ const validateForm = () => {
   }
 
   if (form.recurrenceFrequency !== 'NONE') {
-    if (spansMultipleDates(startDate, endDate)) {
+    if (spansMultipleLocalDates(startDate, endDate)) {
       errorMessage.value = '跨天事项暂不支持循环，请拆分为单次事项或取消循环。'
       return null
     }

@@ -29,6 +29,11 @@ export interface ScheduleEntry {
 
 export interface ExtensionListResult<T> {
   items: T[]
+  page?: number
+  size?: number
+  total?: number
+  last?: boolean
+  hasNext?: boolean
 }
 
 export interface ScheduleCard {

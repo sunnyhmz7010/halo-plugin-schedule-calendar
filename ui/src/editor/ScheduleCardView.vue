@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { axiosInstance } from '@halo-dev/api-client'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { NodeViewProps } from '@halo-dev/richtext-editor'
 import { NodeViewWrapper } from '@halo-dev/richtext-editor'
 import { VButton, VEmpty, Toast } from '@halo-dev/components'
-import type { ExtensionListResult, ScheduleCard, ScheduleEntry } from '../types/schedule'
+import { axiosInstance } from '@halo-dev/api-client'
+import type { ScheduleCard, ScheduleEntry } from '../types/schedule'
 import ScheduleCardPickerModal from './ScheduleCardPickerModal.vue'
 import ScheduleEntryCreateModal from './ScheduleEntryCreateModal.vue'
-import { ENTRY_API, toScheduleCard, toScheduleCards } from './schedule-card-data'
+import { ENTRY_API, fetchAllScheduleEntries, toScheduleCard, toScheduleCards } from './schedule-card-data'
 
 const props = defineProps<NodeViewProps>()
 
@@ -54,13 +54,9 @@ const syncDisplayFromAttrs = () => {
 
 const fetchCards = async () => {
   try {
-    const { data } = await axiosInstance.get<ExtensionListResult<ScheduleEntry>>(ENTRY_API, {
-      params: {
-        page: 1,
-        size: 200,
-      },
+    pickerItems.value = toScheduleCards({
+      items: await fetchAllScheduleEntries(),
     })
-    pickerItems.value = toScheduleCards(data)
     return true
   } catch (error) {
     console.error(error)
