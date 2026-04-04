@@ -30,6 +30,8 @@ import run.halo.app.plugin.ReactiveSettingFetcher;
 public class ScheduleQueryService {
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final DateTimeFormatter DATE_FORMATTER =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMATTER =
         DateTimeFormatter.ofPattern("HH:mm");
     private static final int CALENDAR_HEADER_HEIGHT = 64;
@@ -974,12 +976,16 @@ public class ScheduleQueryService {
     }
 
     private String formatOccurrenceLabel(LocalDateTime start, LocalDateTime end) {
-        return start.format(DateTimeFormatter.ofPattern("M/d", ZH_CN))
-            + start.getDayOfWeek().getDisplayName(TextStyle.SHORT, ZH_CN)
-            + " "
-            + TIME_FORMATTER.format(start)
-            + "-"
-            + TIME_FORMATTER.format(end);
+        if (start.toLocalDate().equals(end.toLocalDate())) {
+            return DATE_FORMATTER.format(start)
+                + " "
+                + TIME_FORMATTER.format(start)
+                + "-"
+                + TIME_FORMATTER.format(end);
+        }
+        return DATE_TIME_FORMATTER.format(start)
+            + " - "
+            + DATE_TIME_FORMATTER.format(end);
     }
 
     private String escapeHtml(String value) {

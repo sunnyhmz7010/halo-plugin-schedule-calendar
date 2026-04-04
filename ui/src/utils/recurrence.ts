@@ -22,15 +22,6 @@ const clockFormatter = new Intl.DateTimeFormat('zh-CN', {
   hour12: false,
 })
 
-const dateTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-})
-
 const startOfDay = (value: Date) => {
   const next = new Date(value)
   next.setHours(0, 0, 0, 0)
@@ -45,6 +36,15 @@ const toDateKey = (value: Date) => {
 }
 
 export const spansMultipleLocalDates = (start: Date, end: Date) => toDateKey(start) !== toDateKey(end)
+
+export const formatDisplayDate = (value: Date) => toDateKey(value)
+
+export const formatDisplayDateTime = (value: Date) => `${formatDisplayDate(value)} ${clockFormatter.format(value)}`
+
+export const formatDisplayDateTimeRange = (start: Date, end: Date) =>
+  spansMultipleLocalDates(start, end)
+    ? `${formatDisplayDateTime(start)} - ${formatDisplayDateTime(end)}`
+    : `${formatDisplayDate(start)} ${clockFormatter.format(start)}-${clockFormatter.format(end)}`
 
 const normalizeInterval = (interval?: number) => {
   if (!interval || Number.isNaN(interval) || interval < 1) {
@@ -177,23 +177,17 @@ export const formatEntryScheduleSummary = (entry: ScheduleEntry) => {
   const recurrenceLabel = formatRecurrenceDescription(entry.spec.recurrence)
   const start = new Date(entry.spec.startTime)
   const end = new Date(entry.spec.endTime)
+  const summary = formatDisplayDateTimeRange(start, end)
 
   if (!recurrenceLabel) {
-    return `${dateTimeFormatter.format(start)} - ${dateTimeFormatter.format(end)}`
+    return summary
   }
 
-  const endLabel =
-    toDateKey(start) === toDateKey(end) ? clockFormatter.format(end) : dateTimeFormatter.format(end)
-
-  return `${recurrenceLabel} · 首次 ${dateTimeFormatter.format(start)} - ${endLabel}`
+  return `${recurrenceLabel} · 首次 ${summary}`
 }
 
 export const formatOccurrenceLabel = (occurrence: ScheduleOccurrence) =>
-  `${occurrence.start.toLocaleDateString('zh-CN', {
-    month: 'numeric',
-    day: 'numeric',
-    weekday: 'short',
-  })} ${clockFormatter.format(occurrence.start)}-${clockFormatter.format(occurrence.end)}`
+  formatDisplayDateTimeRange(occurrence.start, occurrence.end)
 
 export const getNextOccurrenceLabel = (entry: ScheduleEntry, referenceTime = new Date()) => {
   if (!isRecurringEntry(entry)) {

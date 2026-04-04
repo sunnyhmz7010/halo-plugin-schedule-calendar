@@ -31,6 +31,7 @@ import type {
 } from '../types/schedule'
 import {
   expandEntryOccurrences,
+  formatDisplayDate,
   formatEntryScheduleSummary,
   formatRecurrenceDescription,
   isRecurringEntry,
@@ -219,23 +220,16 @@ const formatClock = (date: Date) =>
   })
 
 const formatOccurrenceLabel = (occurrence: CalendarOccurrence) => {
-  return `${occurrence.start.toLocaleDateString('zh-CN', {
-    month: 'numeric',
-    day: 'numeric',
-    weekday: 'short',
-  })} ${formatClock(occurrence.start)}-${formatClock(occurrence.end)}`
+  return spansMultipleLocalDates(occurrence.start, occurrence.end)
+    ? `${formatDisplayDate(occurrence.start)} ${formatClock(occurrence.start)} - ${formatDisplayDate(occurrence.end)} ${formatClock(occurrence.end)}`
+    : `${formatDisplayDate(occurrence.start)} ${formatClock(occurrence.start)}-${formatClock(occurrence.end)}`
 }
 
 const weekRangeLabel = computed(() => {
   const end = new Date(currentWeekStart.value)
   end.setDate(end.getDate() + 6)
 
-  const formatter = new Intl.DateTimeFormat('zh-CN', {
-    month: 'numeric',
-    day: 'numeric',
-  })
-
-  return `${formatter.format(currentWeekStart.value)} 至 ${formatter.format(end)}`
+  return `${formatDisplayDate(currentWeekStart.value)} 至 ${formatDisplayDate(end)}`
 })
 
 const goToCurrentWeek = () => {
@@ -416,7 +410,7 @@ const weekDays = computed(() => {
     return {
       id: day.toISOString(),
       weekday: day.toLocaleDateString('zh-CN', { weekday: 'short' }),
-      date: day.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }),
+      date: formatDisplayDate(day),
       blocks,
     }
   })

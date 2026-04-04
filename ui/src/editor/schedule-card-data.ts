@@ -1,11 +1,13 @@
 import { axiosInstance } from '@halo-dev/api-client'
 import type { ExtensionListResult, ScheduleCard, ScheduleEntry } from '../types/schedule'
-import { formatRecurrenceDescription, getNextOccurrenceLabel } from '../utils/recurrence'
+import {
+  formatDisplayDateTime,
+  formatRecurrenceDescription,
+  getNextOccurrenceLabel,
+} from '../utils/recurrence'
 
 export const ENTRY_API = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
 const ENTRY_PAGE_SIZE = 200
-
-const pad = (value: number) => String(value).padStart(2, '0')
 
 const formatEntryDateTime = (value?: string) => {
   if (!value) {
@@ -17,7 +19,7 @@ const formatEntryDateTime = (value?: string) => {
     return value
   }
 
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+  return formatDisplayDateTime(date)
 }
 
 export const toScheduleCard = (entry: ScheduleEntry): ScheduleCard => ({
