@@ -1,14 +1,10 @@
-import { axiosInstance } from '@halo-dev/api-client'
-import { Toast } from '@halo-dev/components'
-import { ToolboxItem } from '@halo-dev/richtext-editor'
+import { ToolboxItem, VueNodeViewRenderer } from '@halo-dev/richtext-editor'
 import { mergeAttributes, Node } from '@tiptap/core'
 import type { Editor, Range } from '@tiptap/core'
 import { markRaw } from 'vue'
 import MdiCalendarClockOutline from '~icons/mdi/calendar-clock-outline'
 import type { ScheduleCard } from '../types/schedule'
-import { openScheduleCardPicker } from './schedule-card-picker'
-
-const CARD_API = '/apis/api.schedule.calendar.sunny.dev/v1alpha1/calendar/entries'
+import ScheduleCardView from './ScheduleCardView.vue'
 
 const createEmptyCard = (): ScheduleCard => ({
   name: '',
@@ -20,55 +16,6 @@ const createEmptyCard = (): ScheduleCard => ({
   recurrenceDescription: '',
   color: '#0f766e',
 })
-
-const calendarIconMarkup = `
-  <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor" aria-hidden="true">
-    <path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 15H5V10h14zm-2-5h-3v3h-2v-3H9v-2h3V9h2v3h3z"/>
-  </svg>
-`
-
-const resolveSchedulePageUrl = () => `${window.location.origin}/console/tools/schedule-calendar`
-
-const openSchedulePage = () => {
-  window.open(resolveSchedulePageUrl(), '_blank', 'noopener,noreferrer')
-}
-
-const loadEntries = async () => {
-  const { data } = await axiosInstance.get<ScheduleCard[]>(CARD_API)
-  return data ?? []
-}
-
-const updateCardAttrs = (editor: Editor, position: number, attrs: Partial<ScheduleCard>) => {
-  const currentNode = editor.state.doc.nodeAt(position)
-  if (!currentNode) {
-    return
-  }
-
-  editor.view.dispatch(
-    editor.state.tr.setNodeMarkup(position, undefined, {
-      ...currentNode.attrs,
-      ...attrs,
-    }),
-  )
-}
-
-const openPickerForCard = async (editor: Editor, position: number) => {
-  try {
-    const items = await loadEntries()
-    const card = await openScheduleCardPicker(items, {
-      onCreate: openSchedulePage,
-    })
-
-    if (!card) {
-      return
-    }
-
-    updateCardAttrs(editor, position, card)
-  } catch (error) {
-    console.error(error)
-    Toast.error('读取事项列表失败，请稍后重试。')
-  }
-}
 
 const insertCard = (editor: Editor, range?: Range) => {
   const insertRange = range ?? {
@@ -145,161 +92,7 @@ export const ScheduleCardExtension = Node.create({
   },
 
   addNodeView() {
-    return ({ editor, node, getPos }) => {
-      let currentNode = node
-      const dom = document.createElement('div')
-
-      const createButton = (label: string, primary = false) => {
-        const button = document.createElement('button')
-        button.type = 'button'
-        button.textContent = label
-        button.style.cssText = [
-          'padding:8px 14px',
-          'border-radius:999px',
-          'border:1px solid rgba(15,23,42,0.12)',
-          primary ? 'background:#111827' : 'background:#ffffff',
-          primary ? 'color:#ffffff' : 'color:#111827',
-          'font-size:13px',
-          'font-weight:600',
-          'cursor:pointer',
-        ].join(';')
-        return button
-      }
-
-      const render = () => {
-        const attrs = currentNode.attrs as ScheduleCard
-        const hasSelectedEntry = Boolean(attrs.name)
-
-        dom.innerHTML = ''
-        dom.setAttribute('data-type', 'schedule-card')
-        const actions = document.createElement('div')
-        actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;justify-content:center;'
-
-        const selectButton = createButton(hasSelectedEntry ? '选择日程' : '选择日程', true)
-        selectButton.addEventListener('click', () => {
-          const position = typeof getPos === 'function' ? getPos() : null
-          if (typeof position !== 'number') {
-            return
-          }
-
-          void openPickerForCard(editor, position)
-        })
-
-        const createEntryButton = createButton('去添加事项')
-        createEntryButton.addEventListener('click', () => {
-          openSchedulePage()
-        })
-
-        actions.append(selectButton, createEntryButton)
-
-        if (!hasSelectedEntry) {
-          dom.style.cssText = [
-            'display:flex',
-            'flex-direction:column',
-            'align-items:center',
-            'justify-content:center',
-            'min-height:300px',
-            'padding:32px 24px',
-            'border:2px dashed rgba(203,213,225,0.95)',
-            'border-radius:16px',
-            'background:#fbfdff',
-            'text-align:center',
-          ].join(';')
-
-          const iconShell = document.createElement('div')
-          iconShell.innerHTML = calendarIconMarkup
-          iconShell.style.cssText = [
-            'display:flex',
-            'align-items:center',
-            'justify-content:center',
-            'width:84px',
-            'height:84px',
-            'border-radius:999px',
-            'background:rgba(76,203,160,0.16)',
-            'color:#67b99a',
-          ].join(';')
-
-          const title = document.createElement('div')
-          title.textContent = '日程卡片'
-          title.style.cssText = 'margin-top:18px;font-size:18px;font-weight:700;color:#111827;'
-
-          const summary = document.createElement('div')
-          summary.textContent = '选择已有事项，或先去添加一个新的事项。'
-          summary.style.cssText =
-            'margin-top:8px;font-size:13px;line-height:1.6;color:#6b7280;max-width:420px;'
-
-          dom.append(iconShell, title, summary, actions)
-          return
-        }
-
-        dom.style.cssText = [
-          'padding:18px',
-          'border-radius:18px',
-          `border-left:6px solid ${attrs.color || '#0f766e'}`,
-          'background:linear-gradient(135deg, rgba(15,118,110,0.12), rgba(255,255,255,0.98))',
-          'box-shadow:0 1px 2px rgba(15,23,42,0.05)',
-        ].join(';')
-
-        const badge = document.createElement('div')
-        badge.textContent = '日程卡片'
-        badge.style.cssText =
-          'font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;'
-
-        const title = document.createElement('div')
-        title.textContent = attrs.title
-        title.style.cssText = 'margin-top:6px;font-size:18px;font-weight:700;color:#111827;'
-
-        const summary = document.createElement('div')
-        summary.textContent = `${attrs.startTime || ''} - ${attrs.endTime || ''}`.trim()
-        summary.style.cssText = 'margin-top:8px;font-size:13px;line-height:1.6;color:#374151;'
-
-        const extras = document.createElement('div')
-        extras.style.cssText =
-          'display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:13px;line-height:1.6;color:#6b7280;'
-
-        if (attrs.recurrenceDescription) {
-          const recurrence = document.createElement('div')
-          recurrence.textContent = attrs.recurrenceDescription
-          recurrence.style.cssText = 'color:#0f766e;font-weight:600;'
-          extras.appendChild(recurrence)
-        }
-
-        if (attrs.location) {
-          const location = document.createElement('div')
-          location.textContent = `地点：${attrs.location}`
-          extras.appendChild(location)
-        }
-
-        if (attrs.description) {
-          const description = document.createElement('div')
-          description.textContent = `备注：${attrs.description}`
-          extras.appendChild(description)
-        }
-
-        dom.append(badge, title, summary)
-        if (extras.childNodes.length > 0) {
-          dom.appendChild(extras)
-        }
-        dom.appendChild(actions)
-      }
-
-      render()
-
-      return {
-        dom,
-        update(updatedNode: typeof node) {
-          currentNode = updatedNode
-          render()
-          return true
-        },
-        stopEvent(event: Event) {
-          return event.target instanceof HTMLElement && Boolean(event.target.closest('button'))
-        },
-        ignoreMutation() {
-          return true
-        },
-      }
-    }
+    return VueNodeViewRenderer(ScheduleCardView)
   },
 
   renderHTML({ HTMLAttributes }) {
