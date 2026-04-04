@@ -23,7 +23,7 @@ public class SchedulePageController {
 
     @GetMapping(value = "/schedule-calendar/cards/{name}", produces = MediaType.TEXT_HTML_VALUE)
     @ResponseBody
-    public Mono<String> card(@PathVariable String name) {
+    public Mono<String> card(@PathVariable("name") String name) {
         return scheduleQueryService.buildPublicCardPage(name);
     }
 }

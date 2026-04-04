@@ -29,7 +29,7 @@ public class ScheduleApiController {
     }
 
     @GetMapping("/entries/{name}")
-    public Mono<ScheduleQueryService.ScheduleCardResponse> entry(@PathVariable String name) {
+    public Mono<ScheduleQueryService.ScheduleCardResponse> entry(@PathVariable("name") String name) {
         return scheduleQueryService.getEntryCard(name);
     }
 }
