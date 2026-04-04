@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,5 +19,11 @@ public class SchedulePageController {
     @ResponseBody
     public Mono<String> page(@RequestParam(name = "start", required = false) LocalDate start) {
         return scheduleQueryService.buildPublicCalendarPage(start);
+    }
+
+    @GetMapping(value = "/schedule-calendar/cards/{name}", produces = MediaType.TEXT_HTML_VALUE)
+    @ResponseBody
+    public Mono<String> card(@PathVariable String name) {
+        return scheduleQueryService.buildPublicCardPage(name);
     }
 }

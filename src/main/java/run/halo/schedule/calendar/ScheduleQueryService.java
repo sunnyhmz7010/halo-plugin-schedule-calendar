@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import java.time.temporal.ChronoUnit;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.HtmlUtils;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.ReactiveExtensionClient;
@@ -512,6 +513,140 @@ public class ScheduleQueryService {
             });
     }
 
+    Mono<String> buildPublicCardPage(String name) {
+        return getEntryCard(name)
+            .map(card -> {
+                var title = escapeHtml(card.title());
+                var summary = escapeHtml(card.startTime() + " - " + card.endTime());
+                var recurrence = card.recurrenceDescription() == null ? "" : """
+                    <span class="entry-meta__item entry-meta__item--wide entry-meta__item--block">%s</span>
+                    """.formatted(escapeHtml(card.recurrenceDescription()));
+                var location = card.location() == null || card.location().isBlank() ? "" : """
+                    <span class="entry-meta__item entry-meta__item--wide entry-meta__item--block">地点：%s</span>
+                    """.formatted(escapeHtml(card.location()));
+                var description = card.description() == null || card.description().isBlank() ? "" : """
+                    <span class="entry-meta__item entry-meta__item--wide entry-meta__item--block">备注：%s</span>
+                    """.formatted(escapeHtml(card.description()));
+
+                return """
+                    <!DOCTYPE html>
+                    <html lang="zh-CN">
+                      <head>
+                        <meta charset="UTF-8" />
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                        <style>
+                          * { box-sizing: border-box; }
+                          html, body {
+                            margin: 0;
+                            padding: 0;
+                            background: transparent;
+                            font-family: "Segoe UI", "PingFang SC", sans-serif;
+                          }
+                          .schedule-card {
+                            border: 1px solid #e5e7eb;
+                            border-radius: 16px;
+                            background: #ffffff;
+                            overflow: hidden;
+                          }
+                          .schedule-card__inner {
+                            display: grid;
+                            gap: 12px;
+                            padding: 18px;
+                          }
+                          .schedule-card__badge {
+                            font-size: 12px;
+                            color: #6b7280;
+                          }
+                          .entry-start {
+                            display: flex;
+                            align-items: flex-start;
+                            gap: 12px;
+                            min-width: 0;
+                          }
+                          .entry-dot {
+                            width: 10px;
+                            height: 10px;
+                            margin-top: 6px;
+                            border-radius: 999px;
+                            flex: none;
+                          }
+                          .entry-main {
+                            display: flex;
+                            flex: 1;
+                            min-width: 0;
+                            flex-direction: column;
+                            gap: 8px;
+                          }
+                          .entry-title {
+                            min-width: 0;
+                            color: #111827;
+                            font-size: 14px;
+                            font-weight: 600;
+                            line-height: 1.5;
+                            word-break: break-word;
+                          }
+                          .entry-meta {
+                            display: flex;
+                            flex-wrap: wrap;
+                            gap: 8px;
+                            min-width: 0;
+                          }
+                          .entry-meta__item {
+                            display: inline-flex;
+                            align-items: center;
+                            flex: 0 1 auto;
+                            max-width: 100%%;
+                            min-width: 0;
+                            padding: 4px 10px;
+                            border-radius: 999px;
+                            background: #f8fafc;
+                            color: #6b7280;
+                            font-size: 12px;
+                            line-height: 1.5;
+                            word-break: break-word;
+                          }
+                          .entry-meta__item--wide {
+                            flex: 1 1 320px;
+                            max-width: 100%%;
+                            border-radius: 12px;
+                            white-space: normal;
+                          }
+                          .entry-meta__item--block {
+                            flex-basis: 100%%;
+                          }
+                        </style>
+                      </head>
+                      <body>
+                        <div class="schedule-card">
+                          <div class="schedule-card__inner">
+                            <div class="schedule-card__badge">日程卡片</div>
+                            <div class="entry-start">
+                              <span class="entry-dot" style="background:%s;"></span>
+                              <div class="entry-main">
+                                <div class="entry-title">%s</div>
+                                <div class="entry-meta">
+                                  <span class="entry-meta__item">%s</span>
+                                  %s
+                                  %s
+                                  %s
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </body>
+                    </html>
+                    """.formatted(
+                    escapeHtml(card.color()),
+                    title,
+                    summary,
+                    recurrence,
+                    location,
+                    description
+                );
+            });
+    }
+
     private Mono<List<ScheduleEntry>> listEntries() {
         return client.listAll(ScheduleEntry.class, ListOptions.builder().build(), Sort.unsorted())
             .collectList()
@@ -787,6 +922,10 @@ public class ScheduleQueryService {
             return label;
         }
         return label + "，截止 " + recurrence.getUntil();
+    }
+
+    private String escapeHtml(String value) {
+        return value == null ? "" : HtmlUtils.htmlEscape(value);
     }
 
     public record WeekViewResponse(String weekStart, String weekEnd, String currentWeekStart,

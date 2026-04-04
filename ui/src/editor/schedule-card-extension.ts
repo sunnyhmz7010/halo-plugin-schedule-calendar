@@ -96,61 +96,43 @@ export const ScheduleCardExtension = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    const description = HTMLAttributes.description as string | undefined
-    const location = HTMLAttributes.location as string | undefined
-    const recurrenceDescription = HTMLAttributes.recurrenceDescription as string | undefined
     const hasSelectedEntry = Boolean(HTMLAttributes.name)
-
-    const children: unknown[] = [
-      ['div', { style: 'font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;' }, '日程卡片'],
-      [
-        'div',
-        { style: 'margin-top:6px;font-size:18px;font-weight:700;color:#111827;' },
-        String(HTMLAttributes.title ?? (hasSelectedEntry ? '未命名事项' : '未选择日程')),
-      ],
-      [
-        'div',
-        { style: 'margin-top:8px;font-size:13px;color:#374151;line-height:1.6;' },
-        hasSelectedEntry
-          ? `${String(HTMLAttributes.startTime ?? '')} - ${String(HTMLAttributes.endTime ?? '')}`
-          : '选择已有事项，或先去添加一个新的事项。',
-      ],
-    ]
-
-    if (hasSelectedEntry && recurrenceDescription) {
-      children.push([
-        'div',
-        { style: 'margin-top:8px;font-size:13px;color:#0f766e;font-weight:600;line-height:1.6;' },
-        recurrenceDescription,
-      ])
-    }
-
-    if (hasSelectedEntry && location) {
-      children.push([
-        'div',
-        { style: 'margin-top:8px;font-size:13px;color:#6b7280;line-height:1.6;' },
-        `地点：${location}`,
-      ])
-    }
-
-    if (hasSelectedEntry && description) {
-      children.push([
-        'div',
-        { style: 'margin-top:4px;font-size:13px;color:#6b7280;line-height:1.6;' },
-        `备注：${description}`,
-      ])
-    }
+    const name = String(HTMLAttributes.name ?? '')
+    const iframeSrc = `/schedule-calendar/cards/${encodeURIComponent(name)}`
 
     return [
       'div',
       mergeAttributes(HTMLAttributes, {
         'data-type': 'schedule-card',
         'data-name': HTMLAttributes.name,
-        style: `padding:16px 18px;border-radius:18px;border-left:6px solid ${String(
-          HTMLAttributes.color ?? '#0f766e',
-        )};background:linear-gradient(135deg, rgba(15,118,110,0.12), rgba(255,255,255,0.95));`,
+        style: hasSelectedEntry
+          ? 'border-radius:18px;overflow:hidden;'
+          : 'padding:16px 18px;border-radius:18px;border:2px dashed #d1d5db;background:#f9fafb;',
       }),
-      ...children,
+      ...(hasSelectedEntry
+        ? [[
+            'iframe',
+            {
+              src: iframeSrc,
+              loading: 'lazy',
+              style: 'display:block;width:100%;min-height:160px;border:0;background:transparent;',
+              onload:
+                "try{this.style.height=Math.max(this.contentWindow.document.documentElement.scrollHeight,160)+'px';}catch(e){}",
+            },
+          ]]
+        : [
+            ['div', { style: 'font-size:12px;color:#6b7280;' }, '日程卡片'],
+            [
+              'div',
+              { style: 'margin-top:6px;font-size:16px;font-weight:700;color:#111827;' },
+              '未选择日程',
+            ],
+            [
+              'div',
+              { style: 'margin-top:8px;font-size:13px;color:#6b7280;line-height:1.6;' },
+              '选择已有事项，或先去添加一个新的事项。',
+            ],
+          ]),
     ]
   },
 })
