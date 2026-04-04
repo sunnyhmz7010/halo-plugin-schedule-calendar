@@ -106,8 +106,8 @@ export const ScheduleCardExtension = Node.create({
         'data-type': 'schedule-card',
         'data-name': HTMLAttributes.name,
         style: hasSelectedEntry
-          ? 'border-radius:18px;overflow:hidden;'
-          : 'padding:16px 18px;border-radius:18px;border:2px dashed #d1d5db;background:#f9fafb;',
+          ? 'border-radius:12px;overflow:hidden;'
+          : 'padding:18px;border-radius:12px;border:1px solid #e5e7eb;background:#ffffff;',
       }),
       ...(hasSelectedEntry
         ? [[
@@ -121,16 +121,15 @@ export const ScheduleCardExtension = Node.create({
             },
           ]]
         : [
-            ['div', { style: 'font-size:12px;color:#6b7280;' }, '日程卡片'],
             [
               'div',
-              { style: 'margin-top:6px;font-size:16px;font-weight:700;color:#111827;' },
-              '未选择日程',
+              { style: 'font-size:16px;font-weight:700;color:#111827;' },
+              '日程卡片',
             ],
             [
               'div',
               { style: 'margin-top:8px;font-size:13px;color:#6b7280;line-height:1.6;' },
-              '选择已有事项，或先去添加一个新的事项。',
+              '选择已有事项，或直接在这里添加一个新的事项。',
             ],
           ]),
     ]

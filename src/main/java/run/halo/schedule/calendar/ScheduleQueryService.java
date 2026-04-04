@@ -252,7 +252,7 @@ public class ScheduleQueryService {
                               .calendar-block__title {
                                 font-weight: 700;
                                 line-height: 1.2;
-                                width: 100%;
+                                width: 100%%;
                                 overflow-wrap: anywhere;
                               }
                               .calendar-block__time,
@@ -262,7 +262,7 @@ public class ScheduleQueryService {
                                 line-height: 1.35;
                                 opacity: 0.95;
                                 white-space: pre-line;
-                                width: 100%;
+                                width: 100%%;
                                 overflow-wrap: anywhere;
                               }
                               @media (max-width: 960px) {
@@ -517,10 +517,9 @@ public class ScheduleQueryService {
         return getEntryCard(name)
             .map(card -> {
                 var title = escapeHtml(card.title());
-                var summary = escapeHtml(card.startTime() + " - " + card.endTime());
-                var recurrence = card.recurrenceDescription() == null ? "" : """
-                    <span class="entry-meta__item entry-meta__item--wide entry-meta__item--block">%s</span>
-                    """.formatted(escapeHtml(card.recurrenceDescription()));
+                var summary = card.recurrenceDescription() == null || card.recurrenceDescription().isBlank()
+                    ? escapeHtml(card.startTime() + " - " + card.endTime())
+                    : escapeHtml(card.recurrenceDescription() + " · 首次 " + card.startTime() + " - " + card.endTime());
                 var location = card.location() == null || card.location().isBlank() ? "" : """
                     <span class="entry-meta__item entry-meta__item--wide entry-meta__item--block">地点：%s</span>
                     """.formatted(escapeHtml(card.location()));
@@ -543,23 +542,19 @@ public class ScheduleQueryService {
                             font-family: "Segoe UI", "PingFang SC", sans-serif;
                           }
                           .schedule-card {
-                            border: 1px solid #e5e7eb;
-                            border-radius: 16px;
-                            background: #ffffff;
-                            overflow: hidden;
-                          }
+                             border: 1px solid #e5e7eb;
+                             border-radius: 12px;
+                             background: #ffffff;
+                             overflow: hidden;
+                           }
                           .schedule-card__inner {
                             display: grid;
                             gap: 12px;
                             padding: 18px;
                           }
-                          .schedule-card__badge {
-                            font-size: 12px;
-                            color: #6b7280;
-                          }
-                          .entry-start {
-                            display: flex;
-                            align-items: flex-start;
+                           .entry-start {
+                             display: flex;
+                             align-items: flex-start;
                             gap: 12px;
                             min-width: 0;
                           }
@@ -619,14 +614,12 @@ public class ScheduleQueryService {
                       <body>
                         <div class="schedule-card">
                           <div class="schedule-card__inner">
-                            <div class="schedule-card__badge">日程卡片</div>
                             <div class="entry-start">
                               <span class="entry-dot" style="background:%s;"></span>
-                              <div class="entry-main">
-                                <div class="entry-title">%s</div>
-                                <div class="entry-meta">
-                                  <span class="entry-meta__item">%s</span>
-                                  %s
+                                <div class="entry-main">
+                                  <div class="entry-title">%s</div>
+                                  <div class="entry-meta">
+                                  <span class="entry-meta__item%s">%s</span>
                                   %s
                                   %s
                                 </div>
@@ -639,8 +632,10 @@ public class ScheduleQueryService {
                     """.formatted(
                     escapeHtml(card.color()),
                     title,
+                    card.recurrenceDescription() == null || card.recurrenceDescription().isBlank()
+                        ? ""
+                        : " entry-meta__item--wide entry-meta__item--block",
                     summary,
-                    recurrence,
                     location,
                     description
                 );

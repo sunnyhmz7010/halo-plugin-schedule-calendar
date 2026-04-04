@@ -26,11 +26,15 @@ interface PickerMetaItem {
 const buildCardSummary = (card: ScheduleCard) => `${card.startTime} - ${card.endTime}`
 
 const buildMetaLines = (card: ScheduleCard): PickerMetaItem[] => {
-  const items: PickerMetaItem[] = [{ text: buildCardSummary(card) }]
-
-  if (card.recurrenceDescription) {
-    items.push({ text: card.recurrenceDescription, wide: true, block: true })
-  }
+  const items: PickerMetaItem[] = [
+    card.recurrenceDescription
+      ? {
+          text: `${card.recurrenceDescription} · 首次 ${buildCardSummary(card)}`,
+          wide: true,
+          block: true,
+        }
+      : { text: buildCardSummary(card) },
+  ]
 
   if (card.location) {
     items.push({ text: `地点：${card.location}`, wide: true, block: true })
@@ -230,7 +234,8 @@ onMounted(() => {
 .entry-start {
   display: flex;
   align-items: flex-start;
-  gap: 0.875rem;
+  gap: 12px;
+  min-width: 0;
 }
 
 .entry-start--interactive {
@@ -238,39 +243,46 @@ onMounted(() => {
 }
 
 .entry-dot {
-  width: 0.75rem;
-  height: 0.75rem;
+  width: 10px;
+  height: 10px;
   flex: none;
-  margin-top: 0.375rem;
+  margin-top: 6px;
   border-radius: 999px;
 }
 
 .entry-main {
-  min-width: 0;
   display: flex;
+  flex: 1;
+  min-width: 0;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .entry-title {
+  min-width: 0;
   font-size: 14px;
   font-weight: 600;
   color: var(--halo-text-color, #111827);
+  line-height: 1.5;
+  word-break: break-word;
 }
 
 .entry-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
 }
 
 .entry-meta__item {
   display: inline-flex;
   align-items: center;
+  flex: 0 1 auto;
   max-width: 100%;
+  min-width: 0;
   padding: 4px 10px;
   border-radius: 999px;
-  background: var(--halo-bg-color-secondary, #f3f4f6);
+  background: var(--halo-bg-color-secondary, #f8fafc);
   color: var(--halo-text-color-secondary, #6b7280);
   font-size: 12px;
   line-height: 1.5;

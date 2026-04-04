@@ -44,6 +44,7 @@ const loading = ref(false)
 const saving = ref(false)
 const dialogVisible = ref(false)
 const entries = ref<ScheduleEntry[]>([])
+const entryKeyword = ref('')
 const pageError = ref('')
 const dialogError = ref('')
 const colorInputRef = ref<HTMLInputElement | null>(null)
@@ -455,6 +456,33 @@ const sortedEntries = computed(() => {
   return [...entries.value].sort((left, right) =>
     new Date(left.spec.startTime).getTime() - new Date(right.spec.startTime).getTime(),
   )
+})
+
+const buildEntrySearchText = (entry: ScheduleEntry) => {
+  const occurrenceSummary = entryOccurrenceSummaryMap.value.get(entry.metadata.name)
+
+  return [
+    entry.metadata.name,
+    entry.spec.title,
+    entry.spec.location,
+    entry.spec.description,
+    formatEntryScheduleSummary(entry),
+    occurrenceSummary?.currentWeekPreview,
+    occurrenceSummary?.nextOccurrenceLabel,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLocaleLowerCase()
+}
+
+const filteredSortedEntries = computed(() => {
+  const keyword = entryKeyword.value.trim().toLocaleLowerCase()
+
+  if (!keyword) {
+    return sortedEntries.value
+  }
+
+  return sortedEntries.value.filter((entry) => buildEntrySearchText(entry).includes(keyword))
 })
 
 const entryOccurrenceSummaryMap = computed(() => {
@@ -892,8 +920,17 @@ onMounted(() => {
           </div>
         </template>
 
-        <VEntityContainer v-if="sortedEntries.length">
-          <VEntity v-for="entry in sortedEntries" :key="entry.metadata.name">
+        <label v-if="entries.length" class="entry-search">
+          <span>搜索事项</span>
+          <input
+            v-model="entryKeyword"
+            type="search"
+            placeholder="搜索标题、地点、备注、时间或展开信息"
+          />
+        </label>
+
+        <VEntityContainer v-if="filteredSortedEntries.length">
+          <VEntity v-for="entry in filteredSortedEntries" :key="entry.metadata.name">
             <template #start>
               <div class="entry-start">
                 <span class="entry-dot" :style="{ background: entry.spec.color || '#3b82f6' }"></span>
@@ -931,8 +968,8 @@ onMounted(() => {
 
         <VEmpty
           v-else
-          title="还没有事项"
-          message="新增一个事项后，会同时显示在下方列表和上方周历中。"
+          :title="entries.length ? '没有匹配的事项' : '还没有事项'"
+          :message="entries.length ? '换个关键词试试，或者清空当前搜索条件。' : '新增一个事项后，会同时显示在下方列表和上方周历中。'"
         />
       </VCard>
     </div>
