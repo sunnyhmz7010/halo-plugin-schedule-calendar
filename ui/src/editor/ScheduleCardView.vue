@@ -19,6 +19,12 @@ const attrs = computed(() => props.node.attrs as ScheduleCard)
 const displayCard = ref<ScheduleCard>({ ...(attrs.value as ScheduleCard) })
 const hasSelectedEntry = computed(() => Boolean(displayCard.value.name))
 
+interface CardMetaItem {
+  text: string
+  wide?: boolean
+  block?: boolean
+}
+
 const cloneCard = (value: ScheduleCard): ScheduleCard => ({
   name: value.name || '',
   title: value.title || '',
@@ -99,25 +105,29 @@ const handleReset = () => {
   props.updateAttributes(emptyCard)
 }
 
-const selectedDetailLines = computed(() => {
+const selectedMetaItems = computed<CardMetaItem[]>(() => {
   if (!hasSelectedEntry.value) {
     return []
   }
 
-  const items: string[] = []
+  const items: CardMetaItem[] = []
 
   if (displayCard.value.recurrenceDescription) {
-    items.push(`${displayCard.value.recurrenceDescription} · 首次 ${displayCard.value.startTime} - ${displayCard.value.endTime}`)
+    items.push({
+      text: `${displayCard.value.recurrenceDescription} · 首次 ${displayCard.value.startTime} - ${displayCard.value.endTime}`,
+      wide: true,
+      block: true,
+    })
   } else if (summaryText.value) {
-    items.push(summaryText.value)
+    items.push({ text: summaryText.value })
   }
 
   if (displayCard.value.location) {
-    items.push(`地点：${displayCard.value.location}`)
+    items.push({ text: `地点：${displayCard.value.location}`, wide: true, block: true })
   }
 
   if (displayCard.value.description) {
-    items.push(`备注：${displayCard.value.description}`)
+    items.push({ text: `备注：${displayCard.value.description}`, wide: true, block: true })
   }
 
   return items
@@ -148,7 +158,7 @@ const refreshSelectedCard = async (silent = true) => {
 
 const summaryText = computed(() => {
   if (!hasSelectedEntry.value) {
-    return '选择已有事项，或直接在这里添加一个新的事项。'
+    return '选择已有事项，或直接在这里新增一个事项。'
   }
 
   return `${displayCard.value.startTime || ''} - ${displayCard.value.endTime || ''}`.trim()
@@ -221,7 +231,7 @@ onBeforeUnmount(() => {
             <template #actions>
               <div class="schedule-card-node-view__actions schedule-card-node-view__actions--center">
                 <VButton type="secondary" @click="openPicker">选择日程</VButton>
-                <VButton @click="openCreateModal">添加事项</VButton>
+                <VButton @click="openCreateModal">新增事项</VButton>
               </div>
             </template>
           </VEmpty>
@@ -231,17 +241,23 @@ onBeforeUnmount(() => {
       <template v-else>
         <div class="schedule-card-node-view__state schedule-card-node-view__state--selected">
           <div class="schedule-card-node-view__selected-card" contenteditable="false">
-            <div class="schedule-card-node-view__entry">
-              <span class="entry-dot" :style="{ background: displayCard.color || '#3b82f6' }"></span>
-              <div class="entry-main">
-                <div class="entry-title">{{ displayCard.title }}</div>
-                <div class="entry-details">
-                  <div
-                    v-for="(line, index) in selectedDetailLines"
-                    :key="`${displayCard.name}-${index}`"
-                    class="entry-detail"
-                  >
-                    {{ line }}
+            <div class="schedule-card-node-view__selected-card-body">
+              <div class="schedule-card-node-view__entry">
+                <span class="entry-dot" :style="{ background: displayCard.color || '#3b82f6' }"></span>
+                <div class="entry-main">
+                  <div class="entry-title">{{ displayCard.title }}</div>
+                  <div class="entry-meta">
+                    <span
+                      v-for="(item, index) in selectedMetaItems"
+                      :key="`${displayCard.name}-${index}`"
+                      class="entry-meta__item"
+                      :class="{
+                        'entry-meta__item--wide': item.wide,
+                        'entry-meta__item--block': item.block,
+                      }"
+                    >
+                      {{ item.text }}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -249,7 +265,7 @@ onBeforeUnmount(() => {
 
             <div class="schedule-card-node-view__entity-actions">
               <VButton size="sm" type="secondary" @click="openPicker">选择日程</VButton>
-              <VButton size="sm" @click="openCreateModal">添加事项</VButton>
+              <VButton size="sm" @click="openCreateModal">新增事项</VButton>
               <VButton size="sm" @click="handleReset">清空</VButton>
             </div>
           </div>
@@ -276,6 +292,7 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .schedule-card-node-view {
   width: calc(100% - 1px);
+  margin: 12px 0;
 }
 
 .schedule-card-node-view__panel {
@@ -285,7 +302,6 @@ onBeforeUnmount(() => {
 }
 
 .schedule-card-node-view__panel--selected {
-  background: color-mix(in srgb, var(--halo-primary-color, #4f46e5) 4%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--halo-primary-color, #4f46e5) 22%, transparent);
 }
 
@@ -304,12 +320,16 @@ onBeforeUnmount(() => {
 
 .schedule-card-node-view__selected-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
-  padding: 14px 16px;
-  border: 1px solid color-mix(in srgb, var(--halo-primary-color, #4f46e5) 14%, var(--halo-border-color, #e5e7eb));
+  padding: 18px;
+  border: 1px solid var(--halo-border-color, #e5e7eb);
   border-radius: 12px;
   background: var(--halo-bg-color, #fff);
+}
+
+.schedule-card-node-view__selected-card-body {
+  display: grid;
+  gap: 12px;
 }
 
 .schedule-card-node-view__entry {
@@ -317,7 +337,6 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   gap: 12px;
   min-width: 0;
-  padding: 2px 0;
 }
 
 .entry-dot {
@@ -333,7 +352,7 @@ onBeforeUnmount(() => {
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .entry-title {
@@ -345,17 +364,37 @@ onBeforeUnmount(() => {
   word-break: break-word;
 }
 
-.entry-details {
-  display: grid;
-  gap: 4px;
+.entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   min-width: 0;
 }
 
-.entry-detail {
+.entry-meta__item {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  max-width: 100%;
+  min-width: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--halo-bg-color-secondary, #f8fafc);
   color: var(--halo-text-color-secondary, #6b7280);
   font-size: 12px;
   line-height: 1.5;
   word-break: break-word;
+}
+
+.entry-meta__item--wide {
+  flex: 1 1 320px;
+  max-width: 100%;
+  border-radius: 12px;
+  white-space: normal;
+}
+
+.entry-meta__item--block {
+  flex-basis: 100%;
 }
 
 .schedule-card-node-view__actions {
@@ -372,8 +411,10 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: flex-start;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--halo-border-color, #eef2f7);
 }
 
 .schedule-card-node-view__state :deep(.empty) {
@@ -385,10 +426,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
-  .schedule-card-node-view__selected-card {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .schedule-card-node-view__entity-actions {
     justify-content: flex-start;
   }

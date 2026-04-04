@@ -160,7 +160,7 @@ const submit = async () => {
 <template>
   <VModal
     :visible="visible"
-    title="添加事项"
+    title="新增事项"
     :width="720"
     :layer-closable="false"
     :body-class="['schedule-entry-create-modal__body']"
@@ -242,7 +242,7 @@ const submit = async () => {
     <template #footer>
       <div class="modal-footer">
         <VButton @click="handleClose">取消</VButton>
-        <VButton type="primary" :loading="saving" @click="submit">添加并选中</VButton>
+        <VButton type="primary" :loading="saving" @click="submit">新增并选中</VButton>
       </div>
     </template>
   </VModal>

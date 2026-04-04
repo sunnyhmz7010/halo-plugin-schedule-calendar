@@ -115,9 +115,9 @@ export const ScheduleCardExtension = Node.create({
             {
               src: iframeSrc,
               loading: 'lazy',
-              style: 'display:block;width:100%;min-height:160px;border:0;background:transparent;',
+              style: 'display:block;width:100%;min-height:96px;border:0;background:transparent;',
               onload:
-                "try{this.style.height=Math.max(this.contentWindow.document.documentElement.scrollHeight,160)+'px';}catch(e){}",
+                "try{this.style.height=Math.max(this.contentWindow.document.documentElement.scrollHeight,96)+'px';}catch(e){}",
             },
           ]]
         : [
@@ -129,7 +129,7 @@ export const ScheduleCardExtension = Node.create({
             [
               'div',
               { style: 'margin-top:8px;font-size:13px;color:#6b7280;line-height:1.6;' },
-              '选择已有事项，或直接在这里添加一个新的事项。',
+              '选择已有事项，或直接在这里新增一个事项。',
             ],
           ]),
     ]

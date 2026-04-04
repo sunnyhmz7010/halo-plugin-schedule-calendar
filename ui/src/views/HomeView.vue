@@ -903,28 +903,34 @@ onMounted(() => {
         </div>
       </VCard>
 
-      <VCard title="事项" class="section-card">
-        <template #actions>
-          <div class="card-actions">
-            <div v-if="entries.length" class="entry-search">
-              <div class="entry-search__field">
-                <span class="entry-search__icon">
-                  <IconSearch />
-                </span>
-                <input
-                  v-model="entryKeyword"
-                  type="search"
-                  class="entry-search__input"
-                  placeholder="搜索标题、地点、备注、时间或展开信息"
-                />
+      <VCard class="section-card">
+        <template #header>
+          <div class="entry-card-header">
+            <div class="entry-card-header__top">
+              <div class="entry-card-header__title">事项</div>
+              <VButton type="secondary" @click="openCreateDialog">
+                <template #icon>
+                  <IconAddCircle />
+                </template>
+                新增事项
+              </VButton>
+            </div>
+
+            <div v-if="entries.length" class="entry-card-header__search-row">
+              <div class="entry-search">
+                <div class="entry-search__field">
+                  <span class="entry-search__icon">
+                    <IconSearch />
+                  </span>
+                  <input
+                    v-model="entryKeyword"
+                    type="search"
+                    class="entry-search__input"
+                    placeholder="搜索标题、地点、备注、时间或展开信息"
+                  />
+                </div>
               </div>
             </div>
-            <VButton type="secondary" @click="openCreateDialog">
-              <template #icon>
-                <IconAddCircle />
-              </template>
-              新增事项
-            </VButton>
           </div>
         </template>
 
@@ -1327,18 +1333,35 @@ onMounted(() => {
   gap: 8px;
 }
 
-.card-actions {
+.entry-card-header {
   display: grid;
-  align-items: center;
-  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
-  width: min(100%, 620px);
-  padding-right: 8px;
+  width: 100%;
+}
+
+.entry-card-header__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.entry-card-header__title {
+  color: var(--halo-text-color, #111827);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.entry-card-header__search-row {
+  display: flex;
+  justify-content: center;
 }
 
 .entry-search {
   display: flex;
   justify-content: center;
+  width: 100%;
   min-width: 0;
 }
 
@@ -1552,9 +1575,8 @@ onMounted(() => {
 }
 
 @media (max-width: 640px) {
-  .card-actions {
-    grid-template-columns: minmax(0, 1fr);
-    width: 100%;
+  .entry-card-header__top {
+    flex-wrap: wrap;
   }
 
   .entry-search {

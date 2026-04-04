@@ -153,14 +153,14 @@ watch(
         message="可以换个关键词再试，或者先在日程日历插件里创建事项。"
       >
         <template #actions>
-          <VButton type="secondary" @click="handleCreate">添加事项</VButton>
+          <VButton type="secondary" @click="handleCreate">新增事项</VButton>
         </template>
       </VEmpty>
     </div>
 
     <template #footer>
       <div class="schedule-card-picker-modal__footer">
-        <VButton type="secondary" @click="handleCreate">添加事项</VButton>
+        <VButton type="secondary" @click="handleCreate">新增事项</VButton>
         <VButton @click="handleClose">取消</VButton>
       </div>
     </template>
