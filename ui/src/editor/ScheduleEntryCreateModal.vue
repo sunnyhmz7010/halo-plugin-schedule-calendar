@@ -231,7 +231,7 @@ const submit = async () => {
 
       <label class="field field--compact">
         <span>颜色</span>
-        <button type="button" class="color-picker" @mousedown.stop.prevent @click.stop.prevent="openColorPicker">
+        <button type="button" class="color-picker" @click="openColorPicker">
           <span class="color-picker__preview" :style="{ background: form.color }"></span>
           <span class="color-picker__value">{{ form.color }}</span>
         </button>
@@ -241,8 +241,8 @@ const submit = async () => {
 
     <template #footer>
       <div class="modal-footer">
-        <VButton @mousedown.stop.prevent @click.stop.prevent="handleClose">取消</VButton>
-        <VButton type="primary" :loading="saving" @mousedown.stop.prevent @click.stop.prevent="submit">添加并选中</VButton>
+        <VButton @click="handleClose">取消</VButton>
+        <VButton type="primary" :loading="saving" @click="submit">添加并选中</VButton>
       </div>
     </template>
   </VModal>

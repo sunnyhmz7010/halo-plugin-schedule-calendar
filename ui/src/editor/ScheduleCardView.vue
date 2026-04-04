@@ -97,9 +97,9 @@ const summaryText = computed(() => {
           <div class="schedule-card-node-view__placeholder-title">日程卡片</div>
           <div class="schedule-card-node-view__placeholder-summary">{{ summaryText }}</div>
 
-          <div class="schedule-card-node-view__actions schedule-card-node-view__actions--center">
-            <VButton type="secondary" @mousedown.stop.prevent @click.stop.prevent="openPicker">选择日程</VButton>
-            <VButton @mousedown.stop.prevent @click.stop.prevent="openCreateModal">添加事项</VButton>
+          <div class="schedule-card-node-view__actions schedule-card-node-view__actions--center" contenteditable="false">
+            <VButton type="secondary" @click="openPicker">选择日程</VButton>
+            <VButton @click="openCreateModal">添加事项</VButton>
           </div>
         </div>
       </template>
@@ -116,10 +116,10 @@ const summaryText = computed(() => {
         <div v-if="attrs.location" class="schedule-card-node-view__meta">地点：{{ attrs.location }}</div>
         <div v-if="attrs.description" class="schedule-card-node-view__meta">备注：{{ attrs.description }}</div>
 
-        <div class="schedule-card-node-view__actions">
-          <VButton size="sm" type="secondary" @mousedown.stop.prevent @click.stop.prevent="openPicker">选择日程</VButton>
-          <VButton size="sm" @mousedown.stop.prevent @click.stop.prevent="openCreateModal">添加事项</VButton>
-          <VButton size="sm" @mousedown.stop.prevent @click.stop.prevent="handleReset">清空</VButton>
+        <div class="schedule-card-node-view__actions" contenteditable="false">
+          <VButton size="sm" type="secondary" @click="openPicker">选择日程</VButton>
+          <VButton size="sm" @click="openCreateModal">添加事项</VButton>
+          <VButton size="sm" @click="handleReset">清空</VButton>
         </div>
       </template>
     </div>

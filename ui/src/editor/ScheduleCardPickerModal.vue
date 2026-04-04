@@ -164,7 +164,7 @@ onMounted(() => {
           </template>
 
           <template #end>
-            <VButton type="secondary" @mousedown.stop.prevent @click.stop.prevent="handleSelect(item)">选择</VButton>
+            <VButton type="secondary" @click="handleSelect(item)">选择</VButton>
           </template>
         </VEntity>
       </VEntityContainer>
@@ -175,15 +175,15 @@ onMounted(() => {
         message="可以换个关键词再试，或者先在日程日历插件里创建事项。"
       >
         <template #actions>
-          <VButton type="secondary" @mousedown.stop.prevent @click.stop.prevent="handleCreate">添加事项</VButton>
+          <VButton type="secondary" @click="handleCreate">添加事项</VButton>
         </template>
       </VEmpty>
     </div>
 
     <template #footer>
       <div class="schedule-card-picker-modal__footer">
-        <VButton type="secondary" @mousedown.stop.prevent @click.stop.prevent="handleCreate">添加事项</VButton>
-        <VButton @mousedown.stop.prevent @click.stop.prevent="handleClose">取消</VButton>
+        <VButton type="secondary" @click="handleCreate">添加事项</VButton>
+        <VButton @click="handleClose">取消</VButton>
       </div>
     </template>
   </VModal>
