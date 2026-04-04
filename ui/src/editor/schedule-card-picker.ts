@@ -2,7 +2,14 @@ import { createApp, h } from 'vue'
 import type { ScheduleCard } from '../types/schedule'
 import ScheduleCardPickerModal from './ScheduleCardPickerModal.vue'
 
-export const openScheduleCardPicker = (items: ScheduleCard[]) =>
+interface OpenScheduleCardPickerOptions {
+  onCreate?: () => void
+}
+
+export const openScheduleCardPicker = (
+  items: ScheduleCard[],
+  options: OpenScheduleCardPickerOptions = {},
+) =>
   new Promise<ScheduleCard | null>((resolve) => {
     const container = document.createElement('div')
     document.body.appendChild(container)
@@ -30,6 +37,9 @@ export const openScheduleCardPicker = (items: ScheduleCard[]) =>
           items,
           onClose: () => settle(null),
           onSelect: (item: ScheduleCard) => settle(item),
+          onCreate: () => {
+            options.onCreate?.()
+          },
         })
       },
     })

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { axiosInstance } from '@halo-dev/api-client'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import {
   IconAddCircle,
   IconArrowLeft,
@@ -573,6 +573,14 @@ const fetchEntries = async () => {
   }
 }
 
+const restoreScrollPosition = async (top: number) => {
+  await nextTick()
+  window.scrollTo({
+    top,
+    behavior: 'auto',
+  })
+}
+
 const buildEntrySpec = (startDate: Date, endDate: Date): ScheduleEntrySpec => ({
   title: form.title,
   description: form.description || undefined,
@@ -633,6 +641,7 @@ const createEntry = async () => {
   }
 
   const { startDate, endDate } = validated
+  const scrollTop = window.scrollY
 
   saving.value = true
 
@@ -648,6 +657,8 @@ const createEntry = async () => {
 
     closeDialog()
     await fetchEntries()
+    await restoreScrollPosition(scrollTop)
+    Toast.success('事项已添加')
   } catch (err) {
     dialogError.value = '事项创建失败。'
     console.error(err)
@@ -669,6 +680,7 @@ const updateEntry = async () => {
   }
 
   const { startDate, endDate } = validated
+  const scrollTop = window.scrollY
   saving.value = true
 
   try {
@@ -684,6 +696,7 @@ const updateEntry = async () => {
 
     closeDialog()
     await fetchEntries()
+    await restoreScrollPosition(scrollTop)
     Toast.success('事项已更新')
   } catch (err) {
     dialogError.value = '事项更新失败。'
