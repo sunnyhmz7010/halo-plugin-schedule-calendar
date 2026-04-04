@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, type ComponentPublicInstance } from 'vue'
+import { computed, nextTick, ref, type ComponentPublicInstance, watch } from 'vue'
 import { VButton, VEmpty, VEntity, VEntityContainer, VModal } from '@halo-dev/components'
 import type { ScheduleCard } from '../types/schedule'
 
@@ -17,31 +17,17 @@ const emit = defineEmits<{
 const keyword = ref('')
 const keywordInputRef = ref<ComponentPublicInstance | null>(null)
 
-interface PickerMetaItem {
-  text: string
-  wide?: boolean
-  block?: boolean
-}
-
 const buildCardSummary = (card: ScheduleCard) => `${card.startTime} - ${card.endTime}`
 
-const buildMetaLines = (card: ScheduleCard): PickerMetaItem[] => {
-  const items: PickerMetaItem[] = [
-    card.recurrenceDescription
-      ? {
-          text: `${card.recurrenceDescription} · 首次 ${buildCardSummary(card)}`,
-          wide: true,
-          block: true,
-        }
-      : { text: buildCardSummary(card) },
-  ]
+const buildDetailLines = (card: ScheduleCard) => {
+  const items: string[] = [card.recurrenceDescription ? `${card.recurrenceDescription} · 首次 ${buildCardSummary(card)}` : buildCardSummary(card)]
 
   if (card.location) {
-    items.push({ text: `地点：${card.location}`, wide: true, block: true })
+    items.push(`地点：${card.location}`)
   }
 
   if (card.description) {
-    items.push({ text: `备注：${card.description}`, wide: true, block: true })
+    items.push(`备注：${card.description}`)
   }
 
   return items
@@ -96,16 +82,22 @@ const handleCreate = () => {
   emit('create')
 }
 
-onMounted(() => {
-  focusKeywordInput()
-})
+watch(
+  () => props.visible,
+  (visible) => {
+    if (visible) {
+      keyword.value = ''
+      focusKeywordInput()
+    }
+  },
+)
 </script>
 
 <template>
   <VModal
     :visible="visible"
-    title="选择日程卡片"
-    :width="760"
+    title="选择日程"
+    :width="720"
     :body-class="['schedule-card-picker-modal__body']"
     @update:visible="handleVisibleUpdate"
   >
@@ -124,38 +116,33 @@ onMounted(() => {
         <VEntity
           v-for="item in filteredItems"
           :key="item.name"
+          class="schedule-card-picker-modal__entity"
         >
           <template #start>
             <div
-              class="entry-start entry-start--interactive"
+              class="schedule-card-picker-modal__entity-content"
               role="button"
               tabindex="0"
               @mousedown.stop.prevent
               @click.stop.prevent="handleSelect(item)"
+              @keydown.enter.stop.prevent="handleSelect(item)"
+              @keydown.space.stop.prevent="handleSelect(item)"
             >
               <span class="entry-dot" :style="{ background: item.color || '#3b82f6' }"></span>
 
               <div class="entry-main">
                 <div class="entry-title">{{ item.title }}</div>
-                <div class="entry-meta">
-                  <span
-                    v-for="(metaItem, index) in buildMetaLines(item)"
+                <div class="entry-details">
+                  <div
+                    v-for="(detailLine, index) in buildDetailLines(item)"
                     :key="`${item.name}-${index}`"
-                    class="entry-meta__item"
-                    :class="{
-                      'entry-meta__item--wide': metaItem.wide,
-                      'entry-meta__item--block': metaItem.block,
-                    }"
+                    class="entry-detail"
                   >
-                    {{ metaItem.text }}
-                  </span>
+                    {{ detailLine }}
+                  </div>
                 </div>
               </div>
             </div>
-          </template>
-
-          <template #end>
-            <VButton type="secondary" @click="handleSelect(item)">选择</VButton>
           </template>
         </VEntity>
       </VEntityContainer>
@@ -184,7 +171,7 @@ onMounted(() => {
 .schedule-card-picker-modal {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 12px;
 }
 
 .schedule-card-picker-modal__search {
@@ -200,15 +187,24 @@ onMounted(() => {
   color: var(--halo-text-color-secondary, #6b7280);
 }
 
-.entry-start {
+.schedule-card-picker-modal__entity {
+  transition: background-color 0.2s ease;
+}
+
+.schedule-card-picker-modal__entity-content {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  width: 100%;
   min-width: 0;
+  cursor: pointer;
+  padding: 2px 0;
+  outline: none;
 }
 
-.entry-start--interactive {
-  cursor: pointer;
+.schedule-card-picker-modal__entity-content:focus-visible {
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--halo-primary-color, #4f46e5) 18%, transparent);
 }
 
 .entry-dot {
@@ -224,7 +220,7 @@ onMounted(() => {
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .entry-title {
@@ -236,37 +232,17 @@ onMounted(() => {
   word-break: break-word;
 }
 
-.entry-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.entry-details {
+  display: grid;
+  gap: 4px;
   min-width: 0;
 }
 
-.entry-meta__item {
-  display: inline-flex;
-  align-items: center;
-  flex: 0 1 auto;
-  max-width: 100%;
-  min-width: 0;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--halo-bg-color-secondary, #f8fafc);
+.entry-detail {
   color: var(--halo-text-color-secondary, #6b7280);
   font-size: 12px;
   line-height: 1.5;
   word-break: break-word;
-}
-
-.entry-meta__item--wide {
-  flex: 1 1 320px;
-  max-width: 100%;
-  border-radius: 12px;
-  white-space: normal;
-}
-
-.entry-meta__item--block {
-  flex-basis: 100%;
 }
 
 .schedule-card-picker-modal__footer {

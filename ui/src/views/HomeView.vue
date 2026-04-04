@@ -1323,18 +1323,18 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 12px;
   padding-right: 8px;
 }
 
 .entry-search {
-  flex: 1 1 320px;
-  min-width: min(100%, 240px);
+  flex: 0 1 320px;
+  min-width: 220px;
 }
 
 .entry-search :deep(.search-input) {
-  width: min(100%, 320px);
+  width: 100%;
 }
 
 .dialog-form {
@@ -1505,6 +1505,15 @@ onMounted(() => {
 }
 
 @media (max-width: 640px) {
+  .card-actions {
+    flex-wrap: wrap;
+  }
+
+  .entry-search {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+
   .schedule-view {
     font-size: 14px;
   }

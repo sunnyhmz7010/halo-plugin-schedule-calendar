@@ -19,12 +19,6 @@ const attrs = computed(() => props.node.attrs as ScheduleCard)
 const displayCard = ref<ScheduleCard>({ ...(attrs.value as ScheduleCard) })
 const hasSelectedEntry = computed(() => Boolean(displayCard.value.name))
 
-interface CardMetaItem {
-  text: string
-  wide?: boolean
-  block?: boolean
-}
-
 const cloneCard = (value: ScheduleCard): ScheduleCard => ({
   name: value.name || '',
   title: value.title || '',
@@ -105,29 +99,25 @@ const handleReset = () => {
   props.updateAttributes(emptyCard)
 }
 
-const selectedMetaItems = computed<CardMetaItem[]>(() => {
+const selectedDetailLines = computed(() => {
   if (!hasSelectedEntry.value) {
     return []
   }
 
-  const items: CardMetaItem[] = []
+  const items: string[] = []
 
   if (displayCard.value.recurrenceDescription) {
-    items.push({
-      text: `${displayCard.value.recurrenceDescription} · 首次 ${displayCard.value.startTime} - ${displayCard.value.endTime}`,
-      wide: true,
-      block: true,
-    })
+    items.push(`${displayCard.value.recurrenceDescription} · 首次 ${displayCard.value.startTime} - ${displayCard.value.endTime}`)
   } else if (summaryText.value) {
-    items.push({ text: summaryText.value })
+    items.push(summaryText.value)
   }
 
   if (displayCard.value.location) {
-    items.push({ text: `地点：${displayCard.value.location}`, wide: true, block: true })
+    items.push(`地点：${displayCard.value.location}`)
   }
 
   if (displayCard.value.description) {
-    items.push({ text: `备注：${displayCard.value.description}`, wide: true, block: true })
+    items.push(`备注：${displayCard.value.description}`)
   }
 
   return items
@@ -219,10 +209,10 @@ onBeforeUnmount(() => {
 <template>
   <node-view-wrapper as="div" class="schedule-card-node-view">
     <div
-      class="schedule-card-node-view__container"
+      class="schedule-card-node-view__panel"
       :class="{
-        'schedule-card-node-view__container--selected': selected,
-        'schedule-card-node-view__container--placeholder': !hasSelectedEntry,
+        'schedule-card-node-view__panel--selected': selected,
+        'schedule-card-node-view__panel--placeholder': !hasSelectedEntry,
       }"
     >
       <template v-if="!hasSelectedEntry">
@@ -243,34 +233,31 @@ onBeforeUnmount(() => {
           <VEntityContainer>
             <VEntity>
               <template #start>
-                <div class="entry-start" contenteditable="false">
+                <div class="schedule-card-node-view__entry" contenteditable="false">
                   <span class="entry-dot" :style="{ background: displayCard.color || '#3b82f6' }"></span>
                   <div class="entry-main">
                     <div class="entry-title">{{ displayCard.title }}</div>
-                    <div class="entry-meta">
-                      <span
-                        v-for="(item, index) in selectedMetaItems"
+                    <div class="entry-details">
+                      <div
+                        v-for="(line, index) in selectedDetailLines"
                         :key="`${displayCard.name}-${index}`"
-                        class="entry-meta__item"
-                        :class="{
-                          'entry-meta__item--wide': item.wide,
-                          'entry-meta__item--block': item.block,
-                        }"
+                        class="entry-detail"
                       >
-                        {{ item.text }}
-                      </span>
+                        {{ line }}
+                      </div>
                     </div>
                   </div>
                 </div>
               </template>
+              <template #end>
+                <div class="schedule-card-node-view__entity-actions" contenteditable="false">
+                  <VButton size="sm" type="secondary" @click="openPicker">选择日程</VButton>
+                  <VButton size="sm" @click="openCreateModal">添加事项</VButton>
+                  <VButton size="sm" @click="handleReset">清空</VButton>
+                </div>
+              </template>
             </VEntity>
           </VEntityContainer>
-
-          <div class="schedule-card-node-view__actions" contenteditable="false">
-            <VButton size="sm" type="secondary" @click="openPicker">选择日程</VButton>
-            <VButton size="sm" @click="openCreateModal">添加事项</VButton>
-            <VButton size="sm" @click="handleReset">清空</VButton>
-          </div>
         </div>
       </template>
     </div>
@@ -296,38 +283,36 @@ onBeforeUnmount(() => {
   width: calc(100% - 1px);
 }
 
-.schedule-card-node-view__container {
+.schedule-card-node-view__panel {
   width: 100%;
-  overflow: hidden;
   border-radius: 12px;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.schedule-card-node-view__panel--selected {
+  background: color-mix(in srgb, var(--halo-primary-color, #4f46e5) 4%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--halo-primary-color, #4f46e5) 22%, transparent);
+}
+
+.schedule-card-node-view__panel--placeholder {
   border: 1px solid var(--halo-border-color, #e5e7eb);
-  background: var(--halo-bg-color, #fff);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.schedule-card-node-view__container--selected {
-  border-color: rgba(85, 198, 160, 0.55);
-  box-shadow: 0 0 0 1px rgba(85, 198, 160, 0.18);
-}
-
-.schedule-card-node-view__container--placeholder {
   background: var(--halo-bg-color, #fff);
 }
 
 .schedule-card-node-view__state {
-  padding: 18px;
+  padding: 12px;
 }
 
 .schedule-card-node-view__state--selected {
-  display: grid;
-  gap: 12px;
+  padding: 0;
 }
 
-.entry-start {
+.schedule-card-node-view__entry {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   min-width: 0;
+  padding: 2px 0;
 }
 
 .entry-dot {
@@ -343,7 +328,7 @@ onBeforeUnmount(() => {
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .entry-title {
@@ -355,37 +340,17 @@ onBeforeUnmount(() => {
   word-break: break-word;
 }
 
-.entry-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.entry-details {
+  display: grid;
+  gap: 4px;
   min-width: 0;
 }
 
-.entry-meta__item {
-  display: inline-flex;
-  align-items: center;
-  flex: 0 1 auto;
-  max-width: 100%;
-  min-width: 0;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--halo-bg-color-secondary, #f8fafc);
+.entry-detail {
   color: var(--halo-text-color-secondary, #6b7280);
   font-size: 12px;
   line-height: 1.5;
   word-break: break-word;
-}
-
-.entry-meta__item--wide {
-  flex: 1 1 320px;
-  max-width: 100%;
-  border-radius: 12px;
-  white-space: normal;
-}
-
-.entry-meta__item--block {
-  flex-basis: 100%;
 }
 
 .schedule-card-node-view__actions {
@@ -398,11 +363,25 @@ onBeforeUnmount(() => {
   justify-content: center;
 }
 
+.schedule-card-node-view__entity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: 12px;
+}
+
 .schedule-card-node-view__state :deep(.empty) {
   padding: 18px 0 6px;
 }
 
 .schedule-card-node-view__state :deep(.empty__image) {
   margin-bottom: 12px;
+}
+
+@media (max-width: 640px) {
+  .schedule-card-node-view__entity-actions {
+    margin-left: 0;
+  }
 }
 </style>
