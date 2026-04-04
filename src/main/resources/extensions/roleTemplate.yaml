@@ -1,6 +1,23 @@
 apiVersion: v1alpha1
 kind: Role
 metadata:
+  name: role-template-schedule-calendar-anonymous
+  labels:
+    halo.run/role-template: "true"
+    halo.run/hidden: "true"
+    rbac.authorization.halo.run/aggregate-to-anonymous: "true"
+  annotations:
+    rbac.authorization.halo.run/display-name: "日程日历匿名访问"
+rules:
+  - apiGroups: ["schedule.calendar.sunny.dev"]
+    resources: ["scheduleentries"]
+    verbs: ["get", "list"]
+
+---
+
+apiVersion: v1alpha1
+kind: Role
+metadata:
   name: role-template-schedule-calendar-view
   labels:
     halo.run/role-template: "true"

@@ -62,9 +62,13 @@ public class ScheduleQueryService {
 
     Mono<ScheduleCardResponse> getEntryCard(String name) {
         return client.get(ScheduleEntry.class, name)
-            .map(entry -> {
-                return toScheduleCardResponse(entry);
-            });
+            .map(this::toScheduleCardResponse)
+            .onErrorResume(throwable -> listEntries()
+                .flatMap(entries -> entries.stream()
+                    .filter(entry -> entry.getMetadata() != null && name.equals(entry.getMetadata().getName()))
+                    .findFirst()
+                    .map(entry -> Mono.just(toScheduleCardResponse(entry)))
+                    .orElseGet(Mono::empty)));
     }
 
     Mono<List<ScheduleCardResponse>> listEntryCards() {
