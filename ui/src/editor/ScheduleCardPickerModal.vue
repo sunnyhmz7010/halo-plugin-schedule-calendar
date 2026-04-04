@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, type ComponentPublicInstance, watch } from 'vue'
-import { VButton, VEmpty, VEntity, VEntityContainer, VModal } from '@halo-dev/components'
+import { computed, nextTick, ref, watch } from 'vue'
+import { IconSearch, VButton, VEmpty, VModal } from '@halo-dev/components'
 import type { ScheduleCard } from '../types/schedule'
 
 const props = defineProps<{
@@ -15,7 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const keyword = ref('')
-const keywordInputRef = ref<ComponentPublicInstance | null>(null)
+const keywordInputRef = ref<HTMLInputElement | null>(null)
 
 const buildCardSummary = (card: ScheduleCard) => `${card.startTime} - ${card.endTime}`
 
@@ -59,8 +59,7 @@ const filteredItems = computed(() => {
 
 const focusKeywordInput = () => {
   void nextTick(() => {
-    const host = keywordInputRef.value?.$el as HTMLElement | undefined
-    host?.querySelector('input')?.focus()
+    keywordInputRef.value?.focus()
   })
 }
 
@@ -103,49 +102,50 @@ watch(
   >
     <div class="schedule-card-picker-modal">
       <div class="schedule-card-picker-modal__search">
-        <SearchInput
-          ref="keywordInputRef"
-          v-model="keyword"
-          placeholder="搜索标题、名称、地点、备注或循环规则"
-        />
+        <div class="schedule-card-picker-modal__search-field">
+          <span class="schedule-card-picker-modal__search-icon">
+            <IconSearch />
+          </span>
+          <input
+            ref="keywordInputRef"
+            v-model="keyword"
+            type="search"
+            class="schedule-card-picker-modal__search-input"
+            placeholder="搜索标题、名称、地点、备注或循环规则"
+          />
+        </div>
       </div>
 
       <div class="schedule-card-picker-modal__count">共 {{ filteredItems.length }} 个可选事项</div>
 
-      <VEntityContainer v-if="filteredItems.length">
-        <VEntity
+      <div v-if="filteredItems.length" class="schedule-card-picker-modal__list">
+        <button
           v-for="item in filteredItems"
           :key="item.name"
-          class="schedule-card-picker-modal__entity"
+          type="button"
+          class="schedule-card-picker-modal__item"
+          @click="handleSelect(item)"
         >
-          <template #start>
-            <div
-              class="schedule-card-picker-modal__entity-content"
-              role="button"
-              tabindex="0"
-              @mousedown.stop.prevent
-              @click.stop.prevent="handleSelect(item)"
-              @keydown.enter.stop.prevent="handleSelect(item)"
-              @keydown.space.stop.prevent="handleSelect(item)"
-            >
-              <span class="entry-dot" :style="{ background: item.color || '#3b82f6' }"></span>
+          <span class="entry-dot" :style="{ background: item.color || '#3b82f6' }"></span>
 
-              <div class="entry-main">
-                <div class="entry-title">{{ item.title }}</div>
-                <div class="entry-details">
-                  <div
-                    v-for="(detailLine, index) in buildDetailLines(item)"
-                    :key="`${item.name}-${index}`"
-                    class="entry-detail"
-                  >
-                    {{ detailLine }}
-                  </div>
-                </div>
+          <div class="entry-main">
+            <div class="schedule-card-picker-modal__item-header">
+              <div class="entry-title">{{ item.title }}</div>
+              <span class="schedule-card-picker-modal__item-action">选择</span>
+            </div>
+
+            <div class="entry-details">
+              <div
+                v-for="(detailLine, index) in buildDetailLines(item)"
+                :key="`${item.name}-${index}`"
+                class="entry-detail"
+              >
+                {{ detailLine }}
               </div>
             </div>
-          </template>
-        </VEntity>
-      </VEntityContainer>
+          </div>
+        </button>
+      </div>
 
       <VEmpty
         v-else
@@ -178,8 +178,46 @@ watch(
   width: 100%;
 }
 
-.schedule-card-picker-modal__search :deep(.search-input) {
+.schedule-card-picker-modal__search-field {
+  position: relative;
   width: 100%;
+}
+
+.schedule-card-picker-modal__search-icon {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--halo-text-color-secondary, #6b7280);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.schedule-card-picker-modal__search-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 14px 0 38px;
+  border: 1px solid var(--halo-border-color, #d1d5db);
+  border-radius: 10px;
+  background: var(--halo-bg-color, #fff);
+  color: var(--halo-text-color, #111827);
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.schedule-card-picker-modal__search-input::placeholder {
+  color: var(--halo-text-color-secondary, #9ca3af);
+}
+
+.schedule-card-picker-modal__search-input:focus {
+  border-color: color-mix(in srgb, var(--halo-primary-color, #4f46e5) 42%, var(--halo-border-color, #d1d5db));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--halo-primary-color, #4f46e5) 14%, transparent);
 }
 
 .schedule-card-picker-modal__count {
@@ -187,24 +225,37 @@ watch(
   color: var(--halo-text-color-secondary, #6b7280);
 }
 
-.schedule-card-picker-modal__entity {
-  transition: background-color 0.2s ease;
+.schedule-card-picker-modal__list {
+  display: grid;
+  gap: 10px;
 }
 
-.schedule-card-picker-modal__entity-content {
+.schedule-card-picker-modal__item {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   width: 100%;
   min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--halo-border-color, #e5e7eb);
+  border-radius: 12px;
+  background: var(--halo-bg-color, #fff);
   cursor: pointer;
-  padding: 2px 0;
+  text-align: left;
   outline: none;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.schedule-card-picker-modal__entity-content:focus-visible {
-  border-radius: 8px;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--halo-primary-color, #4f46e5) 18%, transparent);
+.schedule-card-picker-modal__item:hover {
+  border-color: color-mix(in srgb, var(--halo-primary-color, #4f46e5) 28%, var(--halo-border-color, #e5e7eb));
+  background: color-mix(in srgb, var(--halo-primary-color, #4f46e5) 3%, var(--halo-bg-color, #fff));
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+  transform: translateY(-1px);
+}
+
+.schedule-card-picker-modal__item:focus-visible {
+  border-color: color-mix(in srgb, var(--halo-primary-color, #4f46e5) 38%, var(--halo-border-color, #e5e7eb));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--halo-primary-color, #4f46e5) 14%, transparent);
 }
 
 .entry-dot {
@@ -221,6 +272,21 @@ watch(
   min-width: 0;
   flex-direction: column;
   gap: 6px;
+}
+
+.schedule-card-picker-modal__item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.schedule-card-picker-modal__item-action {
+  flex: none;
+  color: var(--halo-primary-color, #4f46e5);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 .entry-title {
@@ -249,5 +315,17 @@ watch(
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .schedule-card-picker-modal__item {
+    padding: 12px 14px;
+  }
+
+  .schedule-card-picker-modal__item-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
 }
 </style>

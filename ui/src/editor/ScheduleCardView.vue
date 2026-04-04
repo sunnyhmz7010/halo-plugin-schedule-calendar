@@ -3,7 +3,7 @@ import { axiosInstance } from '@halo-dev/api-client'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { NodeViewProps } from '@halo-dev/richtext-editor'
 import { NodeViewWrapper } from '@halo-dev/richtext-editor'
-import { VButton, VEmpty, VEntity, VEntityContainer, Toast } from '@halo-dev/components'
+import { VButton, VEmpty, Toast } from '@halo-dev/components'
 import type { ExtensionListResult, ScheduleCard, ScheduleEntry } from '../types/schedule'
 import ScheduleCardPickerModal from './ScheduleCardPickerModal.vue'
 import ScheduleEntryCreateModal from './ScheduleEntryCreateModal.vue'
@@ -230,34 +230,29 @@ onBeforeUnmount(() => {
 
       <template v-else>
         <div class="schedule-card-node-view__state schedule-card-node-view__state--selected">
-          <VEntityContainer>
-            <VEntity>
-              <template #start>
-                <div class="schedule-card-node-view__entry" contenteditable="false">
-                  <span class="entry-dot" :style="{ background: displayCard.color || '#3b82f6' }"></span>
-                  <div class="entry-main">
-                    <div class="entry-title">{{ displayCard.title }}</div>
-                    <div class="entry-details">
-                      <div
-                        v-for="(line, index) in selectedDetailLines"
-                        :key="`${displayCard.name}-${index}`"
-                        class="entry-detail"
-                      >
-                        {{ line }}
-                      </div>
-                    </div>
+          <div class="schedule-card-node-view__selected-card" contenteditable="false">
+            <div class="schedule-card-node-view__entry">
+              <span class="entry-dot" :style="{ background: displayCard.color || '#3b82f6' }"></span>
+              <div class="entry-main">
+                <div class="entry-title">{{ displayCard.title }}</div>
+                <div class="entry-details">
+                  <div
+                    v-for="(line, index) in selectedDetailLines"
+                    :key="`${displayCard.name}-${index}`"
+                    class="entry-detail"
+                  >
+                    {{ line }}
                   </div>
                 </div>
-              </template>
-              <template #end>
-                <div class="schedule-card-node-view__entity-actions" contenteditable="false">
-                  <VButton size="sm" type="secondary" @click="openPicker">选择日程</VButton>
-                  <VButton size="sm" @click="openCreateModal">添加事项</VButton>
-                  <VButton size="sm" @click="handleReset">清空</VButton>
-                </div>
-              </template>
-            </VEntity>
-          </VEntityContainer>
+              </div>
+            </div>
+
+            <div class="schedule-card-node-view__entity-actions">
+              <VButton size="sm" type="secondary" @click="openPicker">选择日程</VButton>
+              <VButton size="sm" @click="openCreateModal">添加事项</VButton>
+              <VButton size="sm" @click="handleReset">清空</VButton>
+            </div>
+          </div>
         </div>
       </template>
     </div>
@@ -305,6 +300,16 @@ onBeforeUnmount(() => {
 
 .schedule-card-node-view__state--selected {
   padding: 0;
+}
+
+.schedule-card-node-view__selected-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--halo-primary-color, #4f46e5) 14%, var(--halo-border-color, #e5e7eb));
+  border-radius: 12px;
+  background: var(--halo-bg-color, #fff);
 }
 
 .schedule-card-node-view__entry {
@@ -365,10 +370,10 @@ onBeforeUnmount(() => {
 
 .schedule-card-node-view__entity-actions {
   display: flex;
+  align-items: flex-start;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
-  margin-left: 12px;
 }
 
 .schedule-card-node-view__state :deep(.empty) {
@@ -380,8 +385,12 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
+  .schedule-card-node-view__selected-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .schedule-card-node-view__entity-actions {
-    margin-left: 0;
+    justify-content: flex-start;
   }
 }
 </style>

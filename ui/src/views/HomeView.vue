@@ -7,6 +7,7 @@ import {
   IconArrowRight,
   IconCalendar,
   IconDeleteBin,
+  IconSearch,
   VAlert,
   VButton,
   VCard,
@@ -906,10 +907,17 @@ onMounted(() => {
         <template #actions>
           <div class="card-actions">
             <div v-if="entries.length" class="entry-search">
-              <SearchInput
-                v-model="entryKeyword"
-                placeholder="搜索标题、地点、备注、时间或展开信息"
-              />
+              <div class="entry-search__field">
+                <span class="entry-search__icon">
+                  <IconSearch />
+                </span>
+                <input
+                  v-model="entryKeyword"
+                  type="search"
+                  class="entry-search__input"
+                  placeholder="搜索标题、地点、备注、时间或展开信息"
+                />
+              </div>
             </div>
             <VButton type="secondary" @click="openCreateDialog">
               <template #icon>
@@ -1320,21 +1328,60 @@ onMounted(() => {
 }
 
 .card-actions {
-  display: flex;
+  display: grid;
   align-items: center;
-  justify-content: flex-end;
-  flex-wrap: nowrap;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
+  width: min(100%, 620px);
   padding-right: 8px;
 }
 
 .entry-search {
-  flex: 0 1 320px;
-  min-width: 220px;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
 }
 
-.entry-search :deep(.search-input) {
+.entry-search__field {
+  position: relative;
+  width: min(100%, 460px);
+}
+
+.entry-search__icon {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--halo-text-color-secondary, #6b7280);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.entry-search__input {
   width: 100%;
+  height: 40px;
+  padding: 0 14px 0 38px;
+  border: 1px solid var(--halo-border-color, #d1d5db);
+  border-radius: 10px;
+  background: var(--halo-bg-color, #fff);
+  color: var(--halo-text-color, #111827);
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entry-search__input::placeholder {
+  color: var(--halo-text-color-secondary, #9ca3af);
+}
+
+.entry-search__input:focus {
+  border-color: color-mix(in srgb, var(--halo-primary-color, #4f46e5) 42%, var(--halo-border-color, #d1d5db));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--halo-primary-color, #4f46e5) 14%, transparent);
 }
 
 .dialog-form {
@@ -1506,12 +1553,16 @@ onMounted(() => {
 
 @media (max-width: 640px) {
   .card-actions {
-    flex-wrap: wrap;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
   }
 
   .entry-search {
-    flex-basis: 100%;
-    min-width: 0;
+    justify-content: stretch;
+  }
+
+  .entry-search__field {
+    width: 100%;
   }
 
   .schedule-view {
