@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { IconSearch, VButton, VEmpty, VModal } from '@halo-dev/components'
+import { IconSearch, VButton, VEmpty, VEntity, VEntityContainer, VEntityField, VModal } from '@halo-dev/components'
 import type { ScheduleCard } from '../types/schedule'
 
 const props = defineProps<{
@@ -22,6 +22,10 @@ const buildCardSummary = (card: ScheduleCard) => `${card.startTime} - ${card.end
 const buildDetailLines = (card: ScheduleCard) => {
   const items: string[] = [card.recurrenceDescription ? `${card.recurrenceDescription} · 首次 ${buildCardSummary(card)}` : buildCardSummary(card)]
 
+  if (card.nextOccurrenceLabel) {
+    items.push(`下一次出现：${card.nextOccurrenceLabel}`)
+  }
+
   if (card.location) {
     items.push(`地点：${card.location}`)
   }
@@ -42,6 +46,7 @@ const buildCardSearchText = (card: ScheduleCard) =>
     card.startTime,
     card.endTime,
     card.recurrenceDescription,
+    card.nextOccurrenceLabel,
   ]
     .filter(Boolean)
     .join(' ')
@@ -118,34 +123,39 @@ watch(
 
       <div class="schedule-card-picker-modal__count">共 {{ filteredItems.length }} 个可选事项</div>
 
-      <div v-if="filteredItems.length" class="schedule-card-picker-modal__list">
-        <button
+      <VEntityContainer v-if="filteredItems.length">
+        <VEntity
           v-for="item in filteredItems"
           :key="item.name"
-          type="button"
-          class="schedule-card-picker-modal__item"
-          @click="handleSelect(item)"
+          class="schedule-card-picker-modal__entity"
         >
-          <span class="entry-dot" :style="{ background: item.color || '#3b82f6' }"></span>
-
-          <div class="entry-main">
-            <div class="schedule-card-picker-modal__item-header">
-              <div class="entry-title">{{ item.title }}</div>
-              <span class="schedule-card-picker-modal__item-action">选择</span>
-            </div>
-
-            <div class="entry-details">
-              <div
-                v-for="(detailLine, index) in buildDetailLines(item)"
-                :key="`${item.name}-${index}`"
-                class="entry-detail"
+          <template #start>
+            <div class="schedule-card-picker-modal__entity-start">
+              <span class="entry-dot" :style="{ background: item.color || '#3b82f6' }"></span>
+              <VEntityField
+                :title="item.title"
+                @click="handleSelect(item)"
               >
-                {{ detailLine }}
-              </div>
+                <template #description>
+                  <div class="entry-details">
+                    <div
+                      v-for="(detailLine, index) in buildDetailLines(item)"
+                      :key="`${item.name}-${index}`"
+                      class="entry-detail"
+                    >
+                      {{ detailLine }}
+                    </div>
+                  </div>
+                </template>
+              </VEntityField>
             </div>
-          </div>
-        </button>
-      </div>
+          </template>
+
+          <template #end>
+            <VButton size="sm" type="secondary" @click="handleSelect(item)">选择</VButton>
+          </template>
+        </VEntity>
+      </VEntityContainer>
 
       <VEmpty
         v-else
@@ -225,37 +235,12 @@ watch(
   color: var(--halo-text-color-secondary, #6b7280);
 }
 
-.schedule-card-picker-modal__list {
-  display: grid;
-  gap: 10px;
-}
-
-.schedule-card-picker-modal__item {
+.schedule-card-picker-modal__entity-start {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   width: 100%;
   min-width: 0;
-  padding: 14px 16px;
-  border: 1px solid var(--halo-border-color, #e5e7eb);
-  border-radius: 12px;
-  background: var(--halo-bg-color, #fff);
-  cursor: pointer;
-  text-align: left;
-  outline: none;
-  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-.schedule-card-picker-modal__item:hover {
-  border-color: color-mix(in srgb, var(--halo-primary-color, #4f46e5) 28%, var(--halo-border-color, #e5e7eb));
-  background: color-mix(in srgb, var(--halo-primary-color, #4f46e5) 3%, var(--halo-bg-color, #fff));
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
-  transform: translateY(-1px);
-}
-
-.schedule-card-picker-modal__item:focus-visible {
-  border-color: color-mix(in srgb, var(--halo-primary-color, #4f46e5) 38%, var(--halo-border-color, #e5e7eb));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--halo-primary-color, #4f46e5) 14%, transparent);
 }
 
 .entry-dot {
@@ -266,36 +251,18 @@ watch(
   border-radius: 999px;
 }
 
-.entry-main {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  flex-direction: column;
-  gap: 6px;
+.schedule-card-picker-modal__entity :deep(.entity-field-wrapper) {
+  width: 100%;
+  max-width: none;
 }
 
-.schedule-card-picker-modal__item-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.schedule-card-picker-modal__item-action {
-  flex: none;
-  color: var(--halo-primary-color, #4f46e5);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.5;
-}
-
-.entry-title {
-  min-width: 0;
+.schedule-card-picker-modal__entity :deep(.entity-field-title) {
   font-size: 14px;
   font-weight: 600;
-  color: var(--halo-text-color, #111827);
-  line-height: 1.5;
-  word-break: break-word;
+}
+
+.schedule-card-picker-modal__entity :deep(.entity-field-description-body) {
+  margin-top: 6px;
 }
 
 .entry-details {
@@ -315,17 +282,5 @@ watch(
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-}
-
-@media (max-width: 640px) {
-  .schedule-card-picker-modal__item {
-    padding: 12px 14px;
-  }
-
-  .schedule-card-picker-modal__item-header {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 4px;
-  }
 }
 </style>

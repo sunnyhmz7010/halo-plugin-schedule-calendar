@@ -498,9 +498,15 @@ const entryOccurrenceSummaryMap = computed(() => {
   return new Map<string, EntryOccurrenceSummary>(
     entries.value.map((entry) => {
       const currentWeekOccurrences = expandEntryOccurrences(entry, weekRangeStart, weekRangeEnd)
-      const upcomingOccurrence = expandEntryOccurrences(entry, upcomingStart, upcomingEnd).find(
+      const upcomingOccurrences = expandEntryOccurrences(entry, upcomingStart, upcomingEnd).filter(
         (occurrence) => occurrence.end > upcomingStart,
       )
+      const entryStart = new Date(entry.spec.startTime)
+      const upcomingOccurrence = isRecurringEntry(entry)
+        ? entryStart > upcomingStart
+          ? upcomingOccurrences.find((occurrence) => occurrence.start > entryStart)
+          : upcomingOccurrences[0]
+        : upcomingOccurrences[0]
 
       return [
         entry.metadata.name,
@@ -906,17 +912,9 @@ onMounted(() => {
       <VCard class="section-card">
         <template #header>
           <div class="entry-card-header">
-            <div class="entry-card-header__top">
-              <div class="entry-card-header__title">事项</div>
-              <VButton type="secondary" @click="openCreateDialog">
-                <template #icon>
-                  <IconAddCircle />
-                </template>
-                新增事项
-              </VButton>
-            </div>
+            <div class="entry-card-header__title">事项</div>
 
-            <div v-if="entries.length" class="entry-card-header__search-row">
+            <div v-if="entries.length" class="entry-card-header__search">
               <div class="entry-search">
                 <div class="entry-search__field">
                   <span class="entry-search__icon">
@@ -930,6 +928,15 @@ onMounted(() => {
                   />
                 </div>
               </div>
+            </div>
+
+            <div class="entry-card-header__actions">
+              <VButton type="secondary" @click="openCreateDialog">
+                <template #icon>
+                  <IconAddCircle />
+                </template>
+                新增事项
+              </VButton>
             </div>
           </div>
         </template>
@@ -1335,15 +1342,10 @@ onMounted(() => {
 
 .entry-card-header {
   display: grid;
-  gap: 12px;
-  width: 100%;
-}
-
-.entry-card-header__top {
-  display: flex;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
+  width: 100%;
 }
 
 .entry-card-header__title {
@@ -1353,9 +1355,15 @@ onMounted(() => {
   line-height: 1.4;
 }
 
-.entry-card-header__search-row {
+.entry-card-header__search {
   display: flex;
   justify-content: center;
+  min-width: 0;
+}
+
+.entry-card-header__actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .entry-search {
@@ -1575,12 +1583,16 @@ onMounted(() => {
 }
 
 @media (max-width: 640px) {
-  .entry-card-header__top {
-    flex-wrap: wrap;
+  .entry-card-header {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .entry-search {
     justify-content: stretch;
+  }
+
+  .entry-card-header__actions {
+    justify-content: flex-start;
   }
 
   .entry-search__field {

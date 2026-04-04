@@ -14,6 +14,7 @@ const createEmptyCard = (): ScheduleCard => ({
   startTime: '',
   endTime: '',
   recurrenceDescription: '',
+  nextOccurrenceLabel: '',
   color: '#0f766e',
 })
 
@@ -50,6 +51,7 @@ export const ScheduleCardExtension = Node.create({
       startTime: { default: '' },
       endTime: { default: '' },
       recurrenceDescription: { default: '' },
+      nextOccurrenceLabel: { default: '' },
       color: { default: '#0f766e' },
     }
   },
@@ -106,8 +108,8 @@ export const ScheduleCardExtension = Node.create({
         'data-type': 'schedule-card',
         'data-name': HTMLAttributes.name,
         style: hasSelectedEntry
-          ? 'border-radius:12px;overflow:hidden;'
-          : 'padding:18px;border-radius:12px;border:1px solid #e5e7eb;background:#ffffff;',
+          ? 'display:block;margin:12px 0;border-radius:12px;overflow:hidden;line-height:0;'
+          : 'display:block;margin:12px 0;padding:18px;border-radius:12px;border:1px solid #e5e7eb;background:#ffffff;',
       }),
       ...(hasSelectedEntry
         ? [[
@@ -115,7 +117,7 @@ export const ScheduleCardExtension = Node.create({
             {
               src: iframeSrc,
               loading: 'lazy',
-              style: 'display:block;width:100%;min-height:96px;border:0;background:transparent;',
+              style: 'display:block;width:100%;min-height:96px;margin:0;border:0;background:transparent;vertical-align:top;',
               onload:
                 "try{this.style.height=Math.max(this.contentWindow.document.documentElement.scrollHeight,96)+'px';}catch(e){}",
             },

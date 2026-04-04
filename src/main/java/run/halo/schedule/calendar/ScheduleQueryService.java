@@ -61,20 +61,22 @@ public class ScheduleQueryService {
     }
 
     Mono<ScheduleCardResponse> getEntryCard(String name) {
+        var zoneId = ZoneId.systemDefault();
         return client.get(ScheduleEntry.class, name)
-            .map(this::toScheduleCardResponse)
+            .map(entry -> toScheduleCardResponse(entry, zoneId))
             .onErrorResume(throwable -> listEntries()
                 .flatMap(entries -> entries.stream()
                     .filter(entry -> entry.getMetadata() != null && name.equals(entry.getMetadata().getName()))
                     .findFirst()
-                    .map(entry -> Mono.just(toScheduleCardResponse(entry)))
+                    .map(entry -> Mono.just(toScheduleCardResponse(entry, zoneId)))
                     .orElseGet(Mono::empty)));
     }
 
     Mono<List<ScheduleCardResponse>> listEntryCards() {
+        var zoneId = ZoneId.systemDefault();
         return listEntries()
             .map(entries -> entries.stream()
-                .map(this::toScheduleCardResponse)
+                .map(entry -> toScheduleCardResponse(entry, zoneId))
                 .toList());
     }
 
@@ -630,6 +632,7 @@ public class ScheduleQueryService {
                 html.append("\">");
                 html.append(summary);
                 html.append("</span>");
+                appendCardMetaItem(html, "下一次出现：", card.nextOccurrenceLabel());
                 appendCardMetaItem(html, "地点：", card.location());
                 appendCardMetaItem(html, "备注：", card.description());
                 html.append("""
@@ -663,7 +666,7 @@ public class ScheduleQueryService {
                 .collect(Collectors.toList()));
     }
 
-    private ScheduleCardResponse toScheduleCardResponse(ScheduleEntry entry) {
+    private ScheduleCardResponse toScheduleCardResponse(ScheduleEntry entry, ZoneId zoneId) {
         var spec = entry.getSpec();
         return new ScheduleCardResponse(
             entry.getMetadata().getName(),
@@ -673,6 +676,7 @@ public class ScheduleQueryService {
             formatDateTime(spec.getStartTime()),
             formatDateTime(spec.getEndTime()),
             recurrenceDescription(spec.getRecurrence()),
+            nextOccurrenceLabel(entry, zoneId),
             defaultColor(spec.getColor())
         );
     }
@@ -932,6 +936,52 @@ public class ScheduleQueryService {
         return label + "，截止 " + recurrence.getUntil();
     }
 
+    private String nextOccurrenceLabel(ScheduleEntry entry, ZoneId zoneId) {
+        var spec = entry.getSpec();
+        if (!isRecurring(spec)) {
+            return null;
+        }
+
+        var baseStart = spec.getStartTime().atZoneSameInstant(zoneId).toLocalDateTime();
+        var baseEnd = spec.getEndTime().atZoneSameInstant(zoneId).toLocalDateTime();
+        if (!baseEnd.isAfter(baseStart)) {
+            return null;
+        }
+
+        var now = LocalDateTime.now(zoneId);
+        var upcomingOccurrences = occurrencesForRange(entry, now, now.plusDays(90), zoneId).stream()
+            .filter(occurrence -> occurrence.end().isAfter(now))
+            .toList();
+        if (upcomingOccurrences.isEmpty()) {
+            return null;
+        }
+
+        ScheduleOccurrence nextOccurrence;
+        if (baseStart.isAfter(now)) {
+            nextOccurrence = upcomingOccurrences.stream()
+                .filter(occurrence -> occurrence.start().isAfter(baseStart))
+                .findFirst()
+                .orElse(null);
+        } else {
+            nextOccurrence = upcomingOccurrences.getFirst();
+        }
+
+        if (nextOccurrence == null) {
+            return null;
+        }
+
+        return formatOccurrenceLabel(nextOccurrence.start(), nextOccurrence.end());
+    }
+
+    private String formatOccurrenceLabel(LocalDateTime start, LocalDateTime end) {
+        return start.format(DateTimeFormatter.ofPattern("M/d", ZH_CN))
+            + start.getDayOfWeek().getDisplayName(TextStyle.SHORT, ZH_CN)
+            + " "
+            + TIME_FORMATTER.format(start)
+            + "-"
+            + TIME_FORMATTER.format(end);
+    }
+
     private String escapeHtml(String value) {
         return value == null ? "" : HtmlUtils.htmlEscape(value);
     }
@@ -954,6 +1004,6 @@ public class ScheduleQueryService {
 
     public record ScheduleCardResponse(String name, String title, String description, String location,
                                        String startTime, String endTime, String recurrenceDescription,
-                                       String color) {
+                                       String nextOccurrenceLabel, String color) {
     }
 }

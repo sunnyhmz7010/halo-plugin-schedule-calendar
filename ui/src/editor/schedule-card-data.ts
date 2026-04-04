@@ -1,5 +1,5 @@
 import type { ExtensionListResult, ScheduleCard, ScheduleEntry } from '../types/schedule'
-import { formatRecurrenceDescription } from '../utils/recurrence'
+import { formatRecurrenceDescription, getNextOccurrenceLabel } from '../utils/recurrence'
 
 export const ENTRY_API = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
 
@@ -26,6 +26,7 @@ export const toScheduleCard = (entry: ScheduleEntry): ScheduleCard => ({
   startTime: formatEntryDateTime(entry.spec.startTime),
   endTime: formatEntryDateTime(entry.spec.endTime),
   recurrenceDescription: formatRecurrenceDescription(entry.spec.recurrence),
+  nextOccurrenceLabel: getNextOccurrenceLabel(entry),
   color: entry.spec.color || '#3b82f6',
 })
 

@@ -39,5 +39,6 @@ export interface ScheduleCard {
   startTime: string
   endTime: string
   recurrenceDescription?: string
+  nextOccurrenceLabel?: string
   color: string
 }

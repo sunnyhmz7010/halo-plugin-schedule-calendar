@@ -33,6 +33,7 @@ const cloneCard = (value: ScheduleCard): ScheduleCard => ({
   startTime: value.startTime || '',
   endTime: value.endTime || '',
   recurrenceDescription: value.recurrenceDescription || '',
+  nextOccurrenceLabel: value.nextOccurrenceLabel || '',
   color: value.color || '#0f766e',
 })
 
@@ -44,6 +45,7 @@ const isSameCard = (left: ScheduleCard, right: ScheduleCard) =>
   left.startTime === right.startTime &&
   left.endTime === right.endTime &&
   left.recurrenceDescription === right.recurrenceDescription &&
+  left.nextOccurrenceLabel === right.nextOccurrenceLabel &&
   left.color === right.color
 
 const syncDisplayFromAttrs = () => {
@@ -99,6 +101,7 @@ const handleReset = () => {
     startTime: '',
     endTime: '',
     recurrenceDescription: '',
+    nextOccurrenceLabel: '',
     color: '#0f766e',
   }
   displayCard.value = emptyCard
@@ -120,6 +123,10 @@ const selectedMetaItems = computed<CardMetaItem[]>(() => {
     })
   } else if (summaryText.value) {
     items.push({ text: summaryText.value })
+  }
+
+  if (displayCard.value.nextOccurrenceLabel) {
+    items.push({ text: `下一次出现：${displayCard.value.nextOccurrenceLabel}`, wide: true, block: true })
   }
 
   if (displayCard.value.location) {

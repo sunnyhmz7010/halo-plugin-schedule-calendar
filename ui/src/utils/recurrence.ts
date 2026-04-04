@@ -188,6 +188,39 @@ export const formatEntryScheduleSummary = (entry: ScheduleEntry) => {
   return `${recurrenceLabel} · 首次 ${dateTimeFormatter.format(start)} - ${endLabel}`
 }
 
+export const formatOccurrenceLabel = (occurrence: ScheduleOccurrence) =>
+  `${occurrence.start.toLocaleDateString('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    weekday: 'short',
+  })} ${clockFormatter.format(occurrence.start)}-${clockFormatter.format(occurrence.end)}`
+
+export const getNextOccurrenceLabel = (entry: ScheduleEntry, referenceTime = new Date()) => {
+  if (!isRecurringEntry(entry)) {
+    return ''
+  }
+
+  const upcomingStart = new Date(referenceTime)
+  const upcomingEnd = new Date(upcomingStart)
+  upcomingEnd.setDate(upcomingEnd.getDate() + 90)
+
+  const upcomingOccurrences = expandEntryOccurrences(entry, upcomingStart, upcomingEnd).filter(
+    (occurrence) => occurrence.end > upcomingStart,
+  )
+
+  if (!upcomingOccurrences.length) {
+    return ''
+  }
+
+  const entryStart = new Date(entry.spec.startTime)
+  const nextOccurrence =
+    entryStart > upcomingStart
+      ? upcomingOccurrences.find((occurrence) => occurrence.start > entryStart)
+      : upcomingOccurrences[0]
+
+  return nextOccurrence ? formatOccurrenceLabel(nextOccurrence) : ''
+}
+
 export const expandEntryOccurrences = (
   entry: ScheduleEntry,
   rangeStart: Date,
