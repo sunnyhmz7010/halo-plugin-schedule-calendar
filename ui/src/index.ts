@@ -1,11 +1,10 @@
 import { definePlugin } from '@halo-dev/console-shared'
-import HomeView from './views/HomeView.vue'
-import BackupTab from './views/BackupTab.vue'
 import { IconCalendar } from '@halo-dev/components'
-import { markRaw } from 'vue'
-import { ScheduleCardExtension } from './editor/schedule-card-extension'
+import { defineAsyncComponent, markRaw } from 'vue'
 
 const managePermissions = ['plugin:schedule-calendar:manage']
+const HomeView = defineAsyncComponent(() => import('./views/HomeView.vue'))
+const BackupTab = defineAsyncComponent(() => import('./views/BackupTab.vue'))
 
 const openScheduleCalendarConsole = () => {
   window.location.assign(new URL('/console/schedule-calendar', window.location.origin).toString())
@@ -34,7 +33,6 @@ export default definePlugin({
     },
   ],
   extensionPoints: {
-    'default:editor:extension:create': () => [ScheduleCardExtension],
     'plugin:self:tabs:create': () => [
       {
         id: 'schedule-calendar-backup',
