@@ -2,6 +2,7 @@
 import { axiosInstance } from '@halo-dev/api-client'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
+  Dialog,
   IconAddCircle,
   IconArrowLeft,
   IconArrowRight,
@@ -21,6 +22,7 @@ import {
   VModal,
   VPageHeader,
   VStatusDot,
+  VTabbar,
   VTag,
   Toast,
 } from '@halo-dev/components'
@@ -106,6 +108,8 @@ interface EntryMetaItem {
   wide?: boolean
   block?: boolean
 }
+
+type WeekViewMode = 'calendar' | 'agenda'
 
 const hourLabels = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`)
 
@@ -233,8 +237,12 @@ const weekRangeLabel = computed(() => {
   return `${formatDisplayDate(currentWeekStart.value)} 至 ${formatDisplayDate(end)}`
 })
 
-const isMobileCalendar = computed(() => viewportWidth.value <= 768)
 const dialogWidth = computed(() => Math.min(720, Math.max(280, viewportWidth.value - 24)))
+const weekViewMode = ref<WeekViewMode>(viewportWidth.value <= 768 ? 'agenda' : 'calendar')
+const weekViewModeItems = [
+  { id: 'calendar', label: '日历布局' },
+  { id: 'agenda', label: '事项布局' },
+]
 
 const goToCurrentWeek = () => {
   currentWeekStart.value = startOfWeek(new Date())
@@ -793,6 +801,20 @@ const removeEntry = async (name: string) => {
   }
 }
 
+const confirmRemoveEntry = (entry: ScheduleEntry) => {
+  Dialog.warning({
+    title: '确认删除事项',
+    description: `删除后将无法恢复，「${entry.spec.title}」会从周历和事项列表中移除。`,
+    confirmType: 'danger',
+    confirmText: '删除',
+    cancelText: '取消',
+    showCancel: true,
+    onConfirm: () => {
+      void removeEntry(entry.metadata.name)
+    },
+  })
+}
+
 onMounted(() => {
   updateViewportWidth()
   window.addEventListener('resize', updateViewportWidth)
@@ -857,6 +879,12 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="week-toolbar__side week-toolbar__side--right">
+            <VTabbar
+              v-model:active-id="weekViewMode"
+              :items="weekViewModeItems"
+              type="outline"
+              class="week-view-mode"
+            />
             <VButton @click="goToCurrentWeek">回到本周</VButton>
             <VButton @click="moveWeek(1)">
               下一周
@@ -871,8 +899,8 @@ onBeforeUnmount(() => {
           <VLoading />
         </div>
 
-        <div v-else class="calendar-shell">
-          <div v-if="isMobileCalendar" class="calendar-mobile">
+        <div v-else class="calendar-shell" :class="{ 'calendar-shell--agenda': weekViewMode === 'agenda' }">
+          <div v-if="weekViewMode === 'agenda'" class="calendar-mobile">
             <section
               v-for="day in weekDays"
               :key="`${day.id}-mobile`"
@@ -1049,7 +1077,7 @@ onBeforeUnmount(() => {
                   </template>
                   编辑
                 </VButton>
-                <VButton ghost @click="removeEntry(entry.metadata.name)">
+                <VButton ghost @click="confirmRemoveEntry(entry)">
                   <template #icon>
                     <IconDeleteBin />
                   </template>
@@ -1204,6 +1232,10 @@ onBeforeUnmount(() => {
   min-width: 220px;
 }
 
+.week-view-mode {
+  min-width: 188px;
+}
+
 .week-toolbar__range {
   font-size: 13px;
   font-weight: 600;
@@ -1230,6 +1262,10 @@ onBeforeUnmount(() => {
 
 .calendar-shell {
   overflow-x: auto;
+}
+
+.calendar-shell--agenda {
+  overflow-x: visible;
 }
 
 .calendar-mobile {
@@ -1723,6 +1759,10 @@ onBeforeUnmount(() => {
     flex-wrap: wrap;
   }
 
+  .week-view-mode {
+    width: 100%;
+  }
+
   .week-picker {
     width: 100%;
     max-width: 320px;
@@ -1795,6 +1835,14 @@ onBeforeUnmount(() => {
     width: 100%;
   }
 
+  .week-toolbar__side--right {
+    gap: 10px;
+  }
+
+  .week-toolbar__side--right :deep(.tabbar) {
+    width: 100%;
+  }
+
   .schedule-view {
     font-size: 14px;
   }
@@ -1861,4 +1909,5 @@ onBeforeUnmount(() => {
     width: 100%;
   }
 }
+
 </style>
