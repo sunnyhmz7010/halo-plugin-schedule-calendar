@@ -108,8 +108,8 @@ export const ScheduleCardExtension = Node.create({
         'data-type': 'schedule-card',
         'data-name': HTMLAttributes.name,
         style: hasSelectedEntry
-          ? 'display:block;margin:12px 0;border-radius:12px;overflow:hidden;line-height:0;'
-          : 'display:block;margin:12px 0;padding:18px;border-radius:12px;border:1px solid #e5e7eb;background:#ffffff;',
+          ? 'display:block;margin:6px 0;border-radius:12px;overflow:hidden;line-height:0;'
+          : 'display:block;margin:6px 0;padding:14px 16px;border-radius:12px;border:1px solid #e5e7eb;background:#ffffff;',
       }),
       ...(hasSelectedEntry
         ? [[
@@ -117,9 +117,9 @@ export const ScheduleCardExtension = Node.create({
             {
               src: iframeSrc,
               loading: 'lazy',
-              style: 'display:block;width:100%;min-height:96px;margin:0;border:0;background:transparent;vertical-align:top;',
+              style: 'display:block;width:100%;min-height:72px;margin:0;border:0;background:transparent;vertical-align:top;',
               onload:
-                "try{const d=this.contentWindow.document;const card=d.querySelector('.schedule-card');const cardHeight=card?Math.ceil(card.getBoundingClientRect().height):0;const docHeight=Math.max(d.body?.scrollHeight||0,d.documentElement?.scrollHeight||0,96);const resolvedHeight=cardHeight&&docHeight>cardHeight+24?cardHeight:Math.max(cardHeight,docHeight,96);this.style.height=resolvedHeight+'px';}catch(e){}",
+                "try{const d=this.contentWindow.document;const card=d.querySelector('.schedule-card');const cardHeight=card?Math.ceil(card.getBoundingClientRect().height):0;const docHeight=Math.max(d.body?.scrollHeight||0,d.documentElement?.scrollHeight||0,72);const resolvedHeight=cardHeight&&docHeight>cardHeight+24?cardHeight:Math.max(cardHeight,docHeight,72);this.style.height=resolvedHeight+'px';}catch(e){}",
             },
           ]]
         : [

@@ -554,8 +554,8 @@ public class ScheduleQueryService {
                           }
                           .schedule-card__inner {
                             display: grid;
-                            gap: 12px;
-                            padding: 18px;
+                            gap: 10px;
+                            padding: 14px 16px;
                           }
                           .entry-start {
                             display: flex;
@@ -575,7 +575,7 @@ public class ScheduleQueryService {
                             flex: 1;
                             min-width: 0;
                             flex-direction: column;
-                            gap: 8px;
+                            gap: 6px;
                           }
                           .entry-title {
                             min-width: 0;
@@ -588,7 +588,7 @@ public class ScheduleQueryService {
                           .entry-meta {
                             display: flex;
                             flex-wrap: wrap;
-                            gap: 8px;
+                            gap: 6px;
                             min-width: 0;
                           }
                           .entry-meta__item {
