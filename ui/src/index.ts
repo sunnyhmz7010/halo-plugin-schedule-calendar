@@ -2,7 +2,6 @@ import { definePlugin } from '@halo-dev/console-shared'
 import { IconCalendar } from '@halo-dev/components'
 import { defineAsyncComponent, markRaw } from 'vue'
 
-const managePermissions = ['plugin:schedule-calendar:manage']
 const HomeView = defineAsyncComponent(() => import('./views/HomeView.vue'))
 const BackupTab = defineAsyncComponent(() => import('./views/BackupTab.vue'))
 
@@ -22,7 +21,6 @@ export default definePlugin({
         meta: {
           title: '日程日历',
           searchable: true,
-          permissions: managePermissions,
           menu: {
             name: '日程日历',
             icon: markRaw(IconCalendar),
@@ -38,7 +36,6 @@ export default definePlugin({
         id: 'schedule-calendar-backup',
         label: '数据备份',
         component: markRaw(BackupTab),
-        permissions: managePermissions,
       },
     ],
     'console:dashboard:widgets:internal:quick-action:item:create': () => [
@@ -47,7 +44,6 @@ export default definePlugin({
         icon: markRaw(IconCalendar),
         title: '日程日历',
         action: openScheduleCalendarConsole,
-        permissions: managePermissions,
       },
     ],
   },
