@@ -3,6 +3,14 @@
 
 import type { DefineComponent } from 'vue'
 
+declare global {
+  const __SCHEDULE_CALENDAR_VERSION__: string
+
+  interface Window {
+    __SCHEDULE_CALENDAR_VERSION__?: string
+  }
+}
+
 declare module 'vue' {
   export interface GlobalComponents {
     SearchInput: DefineComponent<{
@@ -11,3 +19,5 @@ declare module 'vue' {
     }>
   }
 }
+
+export {}

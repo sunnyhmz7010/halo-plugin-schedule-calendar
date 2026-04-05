@@ -7,6 +7,8 @@ import { ScheduleCardExtension } from './editor/schedule-card-extension'
 
 const managePermissions = ['plugin:schedule-calendar:manage']
 
+window.__SCHEDULE_CALENDAR_VERSION__ = __SCHEDULE_CALENDAR_VERSION__
+
 const openScheduleCalendarConsole = () => {
   window.location.assign(new URL('/console/schedule-calendar', window.location.origin).toString())
 }
