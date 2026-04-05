@@ -211,9 +211,8 @@ public class ScheduleQueryService {
                               }
                               .calendar__grid {
                                 display: grid;
-                                grid-template-columns: 78px minmax(980px, 1fr);
-                                min-width: 1058px;
-                                width: 100%%;
+                                grid-template-columns: 78px minmax(0, 1fr);
+                                width: max(100%%, 1058px);
                               }
                               .time-column__header,
                               .day-column__header {
@@ -283,8 +282,8 @@ public class ScheduleQueryService {
                                 z-index: 1;
                                 display: flex;
                                 flex-direction: column;
-                                justify-content: flex-start;
-                                align-items: flex-start;
+                                justify-content: center;
+                                align-items: center;
                                 box-sizing: border-box;
                                 min-width: 0;
                                 border-radius: 12px;
@@ -292,7 +291,7 @@ public class ScheduleQueryService {
                                 color: #fff;
                                 box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
                                 overflow: hidden;
-                                text-align: left;
+                                text-align: center;
                               }
                               .calendar-block--split {
                                 border-radius: 8px;
@@ -406,12 +405,9 @@ public class ScheduleQueryService {
                                   padding: 8px 10px;
                                   font-size: 0.9rem;
                                 }
-                                .view-mode {
-                                  width: 100%%;
-                                }
                                 .calendar__grid {
-                                  grid-template-columns: 60px minmax(840px, 1fr);
-                                  min-width: 900px;
+                                  grid-template-columns: 60px minmax(0, 1fr);
+                                  width: max(100%%, 900px);
                                 }
                                 .time-column__header,
                                 .day-column__header {
@@ -436,13 +432,9 @@ public class ScheduleQueryService {
                                 }
                               }
                               @media (max-width: 640px) {
-                                .view-mode {
-                                  display: grid;
-                                  grid-template-columns: repeat(2, minmax(0, 1fr));
-                                }
                                 .calendar__grid {
-                                  grid-template-columns: 52px minmax(840px, 1fr);
-                                  min-width: 892px;
+                                  grid-template-columns: 52px minmax(0, 1fr);
+                                  width: max(100%%, 892px);
                                 }
                                 .day-column__header strong {
                                   font-size: 0.75rem;

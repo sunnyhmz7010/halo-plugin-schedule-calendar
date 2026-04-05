@@ -859,12 +859,18 @@ onBeforeUnmount(() => {
 
       <VCard class="section-card">
         <div class="week-toolbar">
-          <div class="week-toolbar__side week-toolbar__side--left">
+          <div class="week-toolbar__nav">
             <VButton @click="moveWeek(-1)">
               <template #icon>
                 <IconArrowLeft />
               </template>
               上一周
+            </VButton>
+            <VButton @click="moveWeek(1)">
+              <template #icon>
+                <IconArrowRight />
+              </template>
+              下一周
             </VButton>
           </div>
 
@@ -878,6 +884,10 @@ onBeforeUnmount(() => {
             />
           </div>
 
+          <div class="week-toolbar__current">
+            <VButton @click="goToCurrentWeek">回到本周</VButton>
+          </div>
+
           <div class="week-toolbar__mode">
             <VTabbar
               v-model:active-id="weekViewMode"
@@ -885,16 +895,6 @@ onBeforeUnmount(() => {
               type="outline"
               class="week-view-mode"
             />
-          </div>
-
-          <div class="week-toolbar__side week-toolbar__side--right">
-            <VButton @click="goToCurrentWeek">回到本周</VButton>
-            <VButton @click="moveWeek(1)">
-              下一周
-              <template #icon>
-                <IconArrowRight />
-              </template>
-            </VButton>
           </div>
         </div>
 
@@ -1213,22 +1213,17 @@ onBeforeUnmount(() => {
 }
 
 .week-toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) auto auto;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
   margin-bottom: 16px;
 }
 
-.week-toolbar__side {
+.week-toolbar__nav {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
-}
-
-.week-toolbar__side--right {
-  justify-content: flex-end;
 }
 
 .week-toolbar__center {
@@ -1239,14 +1234,19 @@ onBeforeUnmount(() => {
   min-width: 220px;
 }
 
+.week-toolbar__current,
 .week-toolbar__mode {
   display: flex;
   justify-content: center;
-  flex: none;
 }
 
 .week-view-mode {
   min-width: 188px;
+}
+
+.week-toolbar__mode :deep(.tabbar) {
+  width: auto;
+  max-width: 100%;
 }
 
 .week-toolbar__range {
@@ -1390,9 +1390,8 @@ onBeforeUnmount(() => {
 
 .calendar-grid {
   display: grid;
-  grid-template-columns: 72px minmax(980px, 1fr);
-  min-width: 1052px;
-  width: 100%;
+  grid-template-columns: 72px minmax(0, 1fr);
+  width: max(100%, 1052px);
   border: 1px solid var(--halo-border-color, #e5e7eb);
   border-radius: 12px;
   overflow: hidden;
@@ -1474,8 +1473,8 @@ onBeforeUnmount(() => {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: center;
   box-sizing: border-box;
   min-width: 0;
   border-radius: 10px;
@@ -1483,7 +1482,7 @@ onBeforeUnmount(() => {
   color: #fff;
   box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
   overflow: hidden;
-  text-align: left;
+  text-align: center;
 }
 
 .calendar-block--split {
@@ -1762,30 +1761,31 @@ onBeforeUnmount(() => {
   }
 
   .week-toolbar {
-    flex-wrap: wrap;
-    justify-content: center;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-items: center;
     gap: 12px;
   }
 
-  .week-toolbar__side,
-  .week-toolbar__side--right,
+  .week-toolbar__nav,
+  .week-toolbar__center,
+  .week-toolbar__current,
   .week-toolbar__mode {
-    justify-content: center;
-    flex: none;
     width: 100%;
+  }
+
+  .week-toolbar__nav {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+
+  .week-toolbar__center,
+  .week-toolbar__current,
+  .week-toolbar__mode {
+    grid-column: 1 / -1;
   }
 
   .week-toolbar__center {
-    width: 100%;
     min-width: 0;
-  }
-
-  .week-toolbar__side {
-    flex-wrap: wrap;
-  }
-
-  .week-view-mode {
-    width: 100%;
   }
 
   .week-picker {
@@ -1794,8 +1794,8 @@ onBeforeUnmount(() => {
   }
 
   .calendar-grid {
-    grid-template-columns: 60px minmax(840px, 1fr);
-    min-width: 900px;
+    grid-template-columns: 60px minmax(0, 1fr);
+    width: max(100%, 900px);
   }
 
   .time-column__header,
@@ -1861,19 +1861,17 @@ onBeforeUnmount(() => {
     width: 100%;
   }
 
-  .week-toolbar__side--left,
-  .week-toolbar__center,
-  .week-toolbar__mode,
-  .week-toolbar__side--right {
-    width: 100%;
+  .week-toolbar {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .week-toolbar__side--right {
+  .week-toolbar__nav {
     gap: 10px;
+    flex-wrap: wrap;
   }
 
-  .week-toolbar__mode :deep(.tabbar) {
-    width: 100%;
+  .week-toolbar__current {
+    justify-content: center;
   }
 
   .schedule-view {
@@ -1887,8 +1885,8 @@ onBeforeUnmount(() => {
   }
 
   .calendar-grid {
-    grid-template-columns: 52px minmax(840px, 1fr);
-    min-width: 892px;
+    grid-template-columns: 52px minmax(0, 1fr);
+    width: max(100%, 892px);
   }
 
   .day-column__header strong {
