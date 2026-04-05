@@ -179,13 +179,6 @@ const restoreBackup = async (event: Event) => {
 
 <template>
   <div class="backup-tab">
-    <VAlert
-      type="warning"
-      title="备份说明"
-      description="导出会包含插件设置与全部事项；导入会按备份内容覆盖当前设置，并同步事项数据。"
-      :closable="false"
-    />
-
     <div class="backup-grid">
       <VCard class="backup-card">
         <div class="backup-card__body">

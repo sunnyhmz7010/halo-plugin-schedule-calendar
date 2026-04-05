@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { axiosInstance } from '@halo-dev/api-client'
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   IconAddCircle,
   IconArrowLeft,
@@ -53,6 +53,7 @@ const pageError = ref('')
 const dialogError = ref('')
 const colorInputRef = ref<HTMLInputElement | null>(null)
 const editingEntryName = ref<string | null>(null)
+const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
 
 const form = reactive({
   title: '',
@@ -231,6 +232,9 @@ const weekRangeLabel = computed(() => {
 
   return `${formatDisplayDate(currentWeekStart.value)} 至 ${formatDisplayDate(end)}`
 })
+
+const isMobileCalendar = computed(() => viewportWidth.value <= 768)
+const dialogWidth = computed(() => Math.min(720, Math.max(280, viewportWidth.value - 24)))
 
 const goToCurrentWeek = () => {
   currentWeekStart.value = startOfWeek(new Date())
@@ -586,6 +590,10 @@ const openColorPicker = () => {
   colorInputRef.value?.click()
 }
 
+const updateViewportWidth = () => {
+  viewportWidth.value = window.innerWidth
+}
+
 const fetchEntries = async () => {
   loading.value = true
   pageError.value = ''
@@ -786,8 +794,14 @@ const removeEntry = async (name: string) => {
 }
 
 onMounted(() => {
+  updateViewportWidth()
+  window.addEventListener('resize', updateViewportWidth)
   syncWeekInput()
   void fetchEntries()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateViewportWidth)
 })
 </script>
 
@@ -858,7 +872,55 @@ onMounted(() => {
         </div>
 
         <div v-else class="calendar-shell">
-          <div class="calendar-grid">
+          <div v-if="isMobileCalendar" class="calendar-mobile">
+            <section
+              v-for="day in weekDays"
+              :key="`${day.id}-mobile`"
+              class="calendar-mobile-day"
+            >
+              <header class="calendar-mobile-day__header">
+                <div class="calendar-mobile-day__heading">
+                  <strong>{{ day.weekday }}</strong>
+                  <span>{{ day.date }}</span>
+                </div>
+
+                <VTag theme="default">{{ day.blocks.length }} 项</VTag>
+              </header>
+
+              <div v-if="day.blocks.length" class="calendar-mobile-day__list">
+                <article
+                  v-for="block in day.blocks"
+                  :key="`${block.id}-mobile`"
+                  class="calendar-mobile-block"
+                >
+                  <div class="calendar-mobile-block__accent" :style="{ background: block.color }"></div>
+
+                  <div class="calendar-mobile-block__content">
+                    <div class="calendar-mobile-block__top">
+                      <div class="calendar-mobile-block__title">{{ block.title }}</div>
+                      <VTag v-if="block.isRecurring" theme="default">循环</VTag>
+                    </div>
+
+                    <div class="calendar-mobile-block__time">
+                      {{ block.startLabel }} - {{ block.endLabel }}
+                    </div>
+                    <div class="calendar-mobile-block__meta">{{ block.duration }}</div>
+                    <div
+                      v-for="(metaLine, metaIndex) in block.metaLines ?? []"
+                      :key="`${block.id}-mobile-meta-${metaIndex}`"
+                      class="calendar-mobile-block__meta"
+                    >
+                      {{ metaLine }}
+                    </div>
+                  </div>
+                </article>
+              </div>
+
+              <div v-else class="calendar-mobile-day__empty">当天暂无事项</div>
+            </section>
+          </div>
+
+          <div v-else class="calendar-grid">
             <div class="time-column">
               <div class="time-column__header" :style="{ height: `${headerHeight}px` }">时间</div>
               <div class="time-column__body" :style="{ height: `${dayColumnHeight}px` }">
@@ -1009,7 +1071,7 @@ onMounted(() => {
     <VModal
       :visible="dialogVisible"
       :title="dialogTitle"
-      :width="720"
+      :width="dialogWidth"
       :layer-closable="false"
       :body-class="['schedule-modal-body']"
       @update:visible="handleDialogVisibleUpdate"
@@ -1168,6 +1230,104 @@ onMounted(() => {
 
 .calendar-shell {
   overflow-x: auto;
+}
+
+.calendar-mobile {
+  display: grid;
+  gap: 12px;
+}
+
+.calendar-mobile-day {
+  border: 1px solid var(--halo-border-color, #e5e7eb);
+  border-radius: 12px;
+  background: var(--halo-bg-color-secondary, #f8fafc);
+  overflow: hidden;
+}
+
+.calendar-mobile-day__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--halo-border-color, #e5e7eb);
+}
+
+.calendar-mobile-day__heading {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.calendar-mobile-day__heading strong {
+  color: var(--halo-text-color, #111827);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.calendar-mobile-day__heading span {
+  margin-top: 4px;
+  color: var(--halo-text-color-secondary, #6b7280);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.calendar-mobile-day__list {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.calendar-mobile-day__empty {
+  padding: 18px 16px;
+  color: var(--halo-text-color-secondary, #6b7280);
+  font-size: 13px;
+}
+
+.calendar-mobile-block {
+  display: grid;
+  grid-template-columns: 4px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--halo-bg-color, #fff);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.calendar-mobile-block__accent {
+  width: 4px;
+  border-radius: 999px;
+}
+
+.calendar-mobile-block__content {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.calendar-mobile-block__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.calendar-mobile-block__title {
+  min-width: 0;
+  color: var(--halo-text-color, #111827);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.calendar-mobile-block__time,
+.calendar-mobile-block__meta {
+  color: var(--halo-text-color-secondary, #6b7280);
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
 }
 
 .calendar-grid {
@@ -1559,6 +1719,10 @@ onMounted(() => {
     min-width: 0;
   }
 
+  .week-toolbar__side {
+    flex-wrap: wrap;
+  }
+
   .week-picker {
     width: 100%;
     max-width: 320px;
@@ -1607,14 +1771,24 @@ onMounted(() => {
   .entry-card-header {
     grid-template-columns: minmax(0, 1fr);
     padding: 14px 16px;
+    justify-items: center;
   }
 
   .entry-search {
     justify-content: stretch;
   }
 
+  .entry-card-header__title,
   .entry-card-header__actions {
-    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .entry-card-header__title {
+    text-align: center;
+  }
+
+  .entry-card-header__actions {
+    justify-content: center;
   }
 
   .entry-search__field {
@@ -1652,6 +1826,23 @@ onMounted(() => {
     min-height: 34px;
   }
 
+  .calendar-mobile-day__header {
+    padding: 12px 14px;
+  }
+
+  .calendar-mobile-day__list {
+    padding: 10px;
+  }
+
+  .calendar-mobile-block {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .calendar-mobile-block__top {
+    flex-wrap: wrap;
+  }
+
   .dialog-form {
     gap: 12px;
   }
@@ -1660,6 +1851,14 @@ onMounted(() => {
   .field textarea,
   .week-picker {
     padding: 8px 10px;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer :deep(button) {
+    width: 100%;
   }
 }
 </style>

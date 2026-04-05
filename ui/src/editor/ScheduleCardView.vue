@@ -429,8 +429,19 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
+  .schedule-card-node-view__selected-card {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .schedule-card-node-view__actions,
   .schedule-card-node-view__entity-actions {
     justify-content: flex-start;
+  }
+
+  .schedule-card-node-view__actions :deep(button),
+  .schedule-card-node-view__entity-actions :deep(button) {
+    flex: 1 1 100%;
   }
 }
 </style>

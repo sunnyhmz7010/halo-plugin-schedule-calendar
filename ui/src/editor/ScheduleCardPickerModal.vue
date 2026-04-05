@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { IconSearch, VButton, VEmpty, VEntityField, VModal } from '@halo-dev/components'
 import type { ScheduleCard } from '../types/schedule'
 
@@ -16,6 +16,9 @@ const emit = defineEmits<{
 
 const keyword = ref('')
 const keywordInputRef = ref<HTMLInputElement | null>(null)
+const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
+
+const modalWidth = computed(() => Math.min(720, Math.max(280, viewportWidth.value - 24)))
 
 const buildCardSummary = (card: ScheduleCard) => `${card.startTime} - ${card.endTime}`
 
@@ -68,6 +71,10 @@ const focusKeywordInput = () => {
   })
 }
 
+const updateViewportWidth = () => {
+  viewportWidth.value = window.innerWidth
+}
+
 const handleClose = () => {
   emit('close')
 }
@@ -95,13 +102,22 @@ watch(
     }
   },
 )
+
+onMounted(() => {
+  updateViewportWidth()
+  window.addEventListener('resize', updateViewportWidth)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateViewportWidth)
+})
 </script>
 
 <template>
   <VModal
     :visible="visible"
     title="选择日程"
-    :width="720"
+    :width="modalWidth"
     :body-class="['schedule-card-picker-modal__body']"
     @update:visible="handleVisibleUpdate"
   >
@@ -316,6 +332,14 @@ watch(
 
   .schedule-card-picker-modal__item-actions {
     justify-content: flex-start;
+  }
+
+  .schedule-card-picker-modal__footer {
+    flex-direction: column-reverse;
+  }
+
+  .schedule-card-picker-modal__footer :deep(button) {
+    width: 100%;
   }
 }
 </style>

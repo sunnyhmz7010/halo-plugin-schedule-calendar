@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { axiosInstance } from '@halo-dev/api-client'
 import { Toast, VAlert, VButton, VModal } from '@halo-dev/components'
-import { reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import type { ScheduleCard, ScheduleEntry, ScheduleEntryRecurrenceFrequency, ScheduleEntrySpec } from '../types/schedule'
 import { spansMultipleLocalDates } from '../utils/recurrence'
 import { ENTRY_API, toScheduleCard } from './schedule-card-data'
@@ -18,6 +18,7 @@ const emit = defineEmits<{
 const saving = ref(false)
 const errorMessage = ref('')
 const colorInputRef = ref<HTMLInputElement | null>(null)
+const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
 
 const form = reactive({
   title: '',
@@ -30,6 +31,8 @@ const form = reactive({
   recurrenceInterval: 1,
   recurrenceUntil: '',
 })
+
+const modalWidth = computed(() => Math.min(720, Math.max(280, viewportWidth.value - 24)))
 
 const buildEntrySpec = (startDate: Date, endDate: Date): ScheduleEntrySpec => ({
   title: form.title,
@@ -107,6 +110,10 @@ const openColorPicker = () => {
   colorInputRef.value?.click()
 }
 
+const updateViewportWidth = () => {
+  viewportWidth.value = window.innerWidth
+}
+
 const handleClose = () => {
   resetForm()
   emit('close')
@@ -150,13 +157,22 @@ const submit = async () => {
     saving.value = false
   }
 }
+
+onMounted(() => {
+  updateViewportWidth()
+  window.addEventListener('resize', updateViewportWidth)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateViewportWidth)
+})
 </script>
 
 <template>
   <VModal
     :visible="visible"
     title="新增事项"
-    :width="720"
+    :width="modalWidth"
     :layer-closable="false"
     :body-class="['schedule-entry-create-modal__body']"
     @update:visible="handleVisibleUpdate"
@@ -340,6 +356,28 @@ const submit = async () => {
   .field-row,
   .field-row--recurrence {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .field--compact {
+    width: 100%;
+  }
+
+  .color-picker {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .dialog-form {
+    gap: 12px;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer :deep(button) {
+    width: 100%;
   }
 }
 </style>
