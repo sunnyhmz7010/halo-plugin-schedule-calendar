@@ -8,7 +8,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Public route: `/schedule-calendar`
 - Admin capability: create, view, edit, and delete schedule entries in a weekly calendar view.
 - Editor capability: insert a schedule card for a single entry.
-- Current stable version: `v1.2.0`
+- Current stable version: `v2.0.0`
 
 ## Tech Stack
 
@@ -72,6 +72,8 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - This repo no longer keeps a committed `CHANGELOG.md`; release history is maintained in GitHub Releases instead.
 - For this repository, release notes should use the heading `## 更新内容`.
 - Release notes should describe concrete 新增功能、修复内容、优化点, and should avoid vague wording such as "收敛".
+- Stable release notes must describe only the delta since the previous stable release; do not repeat capabilities already published in earlier stable versions unless there is a new material change to that capability in this release.
+- Before editing or publishing release notes, compare the target version against the previous stable tag and review recent GitHub release bodies so repeated items are removed and missing new items, such as permission-control changes, are not omitted.
 - GitHub Actions release build is triggered by the `Release published` event.
 - For prereleases, prefer creating a GitHub prerelease and let CI build and upload the jar.
 - A local full Gradle build is optional before release if the user does not need local verification.
