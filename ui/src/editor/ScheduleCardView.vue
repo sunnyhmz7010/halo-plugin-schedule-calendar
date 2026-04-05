@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import type { Editor as HaloEditor, NodeViewProps } from '@halo-dev/richtext-editor'
-import { BlockActionButton, BlockCard, NodeViewWrapper } from '@halo-dev/richtext-editor'
+import type { NodeViewProps } from '@halo-dev/richtext-editor'
+import { BlockActionButton, NodeViewWrapper } from '@halo-dev/richtext-editor'
 import { Toast } from '@halo-dev/components'
 import { axiosInstance } from '@halo-dev/api-client'
 import type { ScheduleCard, ScheduleEntry } from '../types/schedule'
@@ -19,7 +19,6 @@ const createVisible = ref(false)
 const pickerItems = ref<ScheduleCard[]>([])
 
 const attrs = computed(() => props.node.attrs as ScheduleCard)
-const blockCardEditor = computed(() => props.editor as unknown as HaloEditor)
 const displayCard = ref<ScheduleCard>({ ...(attrs.value as ScheduleCard) })
 const hasSelectedEntry = computed(() => Boolean(displayCard.value.name))
 
@@ -167,6 +166,14 @@ const summaryText = computed(() =>
   hasSelectedEntry.value ? `${displayCard.value.startTime || ''} - ${displayCard.value.endTime || ''}`.trim() : '',
 )
 
+const selectNode = () => {
+  if (typeof props.getPos !== 'function') {
+    return
+  }
+
+  props.editor.commands.setNodeSelection(props.getPos())
+}
+
 watch(
   () => attrs.value,
   (value) => {
@@ -221,19 +228,18 @@ onBeforeUnmount(() => {
 
 <template>
   <node-view-wrapper as="div" class="schedule-card-node-view">
-    <BlockCard
-      :selected="selected"
-      :editor="blockCardEditor"
-      :get-pos="getPos"
-      :delete-node="deleteNode"
+    <section
+      class="schedule-card-node-view__block editor-block group"
+      :class="{ 'editor-block--selected': selected }"
     >
-      <template #content>
+      <div class="editor-block__content">
         <div
           class="schedule-card-node-view__content"
           :class="{
             'schedule-card-node-view__content--placeholder': !hasSelectedEntry,
           }"
           contenteditable="false"
+          @mousedown.prevent="selectNode"
         >
           <template v-if="!hasSelectedEntry">
             <div class="schedule-card-node-view__placeholder">
@@ -266,9 +272,13 @@ onBeforeUnmount(() => {
             </div>
           </template>
         </div>
-      </template>
+      </div>
 
-      <template #actions>
+      <div
+        class="schedule-card-node-view__floating-actions invisible group-hover:visible"
+        :class="{ '!visible': selected }"
+      >
+        <div class="editor-block__actions">
         <BlockActionButton tooltip="选择日程" @click="openPicker">
           <template #icon>
             <MdiCalendarSearchOutline />
@@ -284,8 +294,14 @@ onBeforeUnmount(() => {
             <MdiCloseCircleOutline />
           </template>
         </BlockActionButton>
-      </template>
-    </BlockCard>
+        <BlockActionButton tooltip="删除" @click="deleteNode">
+          <template #icon>
+            <MdiCloseCircleOutline />
+          </template>
+        </BlockActionButton>
+        </div>
+      </div>
+    </section>
 
     <ScheduleCardPickerModal
       :visible="pickerVisible"
@@ -306,6 +322,17 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .schedule-card-node-view {
   width: 100%;
+}
+
+.schedule-card-node-view__block {
+  position: relative;
+}
+
+.schedule-card-node-view__floating-actions {
+  position: absolute;
+  top: -48px;
+  right: 0;
+  padding-bottom: 8px;
 }
 
 .schedule-card-node-view__content {
