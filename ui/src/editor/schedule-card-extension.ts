@@ -119,7 +119,7 @@ export const ScheduleCardExtension = Node.create({
               loading: 'lazy',
               style: 'display:block;width:100%;min-height:96px;margin:0;border:0;background:transparent;vertical-align:top;',
               onload:
-                "try{this.style.height=Math.max(this.contentWindow.document.documentElement.scrollHeight,96)+'px';}catch(e){}",
+                "try{const d=this.contentWindow.document;const card=d.querySelector('.schedule-card');const cardHeight=card?Math.ceil(card.getBoundingClientRect().height):0;const docHeight=Math.max(d.body?.scrollHeight||0,d.documentElement?.scrollHeight||0,96);const resolvedHeight=cardHeight&&docHeight>cardHeight+24?cardHeight:Math.max(cardHeight,docHeight,96);this.style.height=resolvedHeight+'px';}catch(e){}",
             },
           ]]
         : [
