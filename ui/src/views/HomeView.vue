@@ -1390,9 +1390,9 @@ onBeforeUnmount(() => {
 
 .calendar-grid {
   display: grid;
-  grid-template-columns: 72px 980px;
+  grid-template-columns: 72px minmax(980px, 1fr);
   min-width: 1052px;
-  width: max-content;
+  width: 100%;
   border: 1px solid var(--halo-border-color, #e5e7eb);
   border-radius: 12px;
   overflow: hidden;
@@ -1794,7 +1794,7 @@ onBeforeUnmount(() => {
   }
 
   .calendar-grid {
-    grid-template-columns: 60px 840px;
+    grid-template-columns: 60px minmax(840px, 1fr);
     min-width: 900px;
   }
 
@@ -1887,7 +1887,7 @@ onBeforeUnmount(() => {
   }
 
   .calendar-grid {
-    grid-template-columns: 52px 840px;
+    grid-template-columns: 52px minmax(840px, 1fr);
     min-width: 892px;
   }
 
