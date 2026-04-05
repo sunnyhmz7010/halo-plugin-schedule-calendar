@@ -26,6 +26,8 @@ public class ScheduleBackupService {
     static final String BACKUP_API_VERSION = "schedule.calendar.sunny.dev/v1alpha1";
     static final String BACKUP_KIND = "ScheduleBackup";
     static final int BACKUP_SCHEMA_VERSION = 1;
+    private static final String CORE_API_VERSION = "v1alpha1";
+    private static final String CONFIG_MAP_KIND = "ConfigMap";
     private static final String CONFIG_MAP_NAME = "schedule-calendar-settings";
 
     private final ReactiveExtensionClient client;
@@ -149,13 +151,14 @@ public class ScheduleBackupService {
     private Mono<Void> importSettings(Map<String, JsonNode> settings) {
         var data = encodeSettings(settings);
         return client.fetch(ConfigMap.class, CONFIG_MAP_NAME)
-            .switchIfEmpty(Mono.defer(() -> Mono.just(newConfigMap())))
             .flatMap(configMap -> {
                 configMap.setData(data);
-                return client.fetch(ConfigMap.class, CONFIG_MAP_NAME)
-                    .hasElement()
-                    .flatMap(exists -> exists ? client.update(configMap) : client.create(configMap))
-                    .then();
+                return client.update(configMap).then();
+            })
+            .onErrorResume(throwable -> {
+                var configMap = newConfigMap();
+                configMap.setData(data);
+                return client.create(configMap).then();
             });
     }
 
@@ -164,6 +167,8 @@ public class ScheduleBackupService {
         metadata.setName(CONFIG_MAP_NAME);
 
         var configMap = new ConfigMap();
+        configMap.setApiVersion(CORE_API_VERSION);
+        configMap.setKind(CONFIG_MAP_KIND);
         configMap.setMetadata(metadata);
         return configMap;
     }

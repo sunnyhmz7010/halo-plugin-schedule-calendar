@@ -28,6 +28,24 @@ const importing = ref(false)
 const importSummary = ref('')
 const importInputRef = ref<HTMLInputElement | null>(null)
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (typeof error === 'object' && error !== null) {
+    const response = (error as { response?: { data?: { message?: string; detail?: string } } }).response
+    const detail = response?.data?.detail
+    const message = response?.data?.message
+
+    if (detail) {
+      return detail
+    }
+
+    if (message) {
+      return message
+    }
+  }
+
+  return fallback
+}
+
 const exportDescription = computed(() =>
   '导出当前插件设置和全部事项，生成一份可用于恢复的 JSON 备份文件。'
 )
@@ -71,7 +89,7 @@ const exportBackup = async () => {
     Toast.success('备份已导出')
   } catch (error) {
     console.error(error)
-    Toast.error('备份导出失败')
+    Toast.error(getErrorMessage(error, '备份导出失败'))
   } finally {
     exporting.value = false
   }
@@ -100,7 +118,7 @@ const restoreBackup = async (event: Event) => {
     Toast.success('备份已恢复')
   } catch (error) {
     console.error(error)
-    Toast.error('备份恢复失败')
+    Toast.error(getErrorMessage(error, '备份恢复失败'))
   } finally {
     importing.value = false
     input.value = ''
