@@ -951,7 +951,7 @@ onBeforeUnmount(() => {
             </section>
           </div>
 
-          <div v-else class="calendar-grid">
+          <div v-else class="calendar-desktop">
             <div class="calendar-grid-scroll">
               <div class="calendar-grid">
                 <div class="time-column">
