@@ -1,9 +1,11 @@
 import { definePlugin } from '@halo-dev/console-shared'
+import HomeView from './views/HomeView.vue'
+import BackupTab from './views/BackupTab.vue'
 import { IconCalendar } from '@halo-dev/components'
-import { defineAsyncComponent, markRaw } from 'vue'
+import { markRaw } from 'vue'
+import { ScheduleCardExtension } from './editor/schedule-card-extension'
 
-const HomeView = defineAsyncComponent(() => import('./views/HomeView.vue'))
-const BackupTab = defineAsyncComponent(() => import('./views/BackupTab.vue'))
+const managePermissions = ['plugin:schedule-calendar:manage']
 
 const openScheduleCalendarConsole = () => {
   window.location.assign(new URL('/console/schedule-calendar', window.location.origin).toString())
@@ -21,6 +23,7 @@ export default definePlugin({
         meta: {
           title: '日程日历',
           searchable: true,
+          permissions: managePermissions,
           menu: {
             name: '日程日历',
             icon: markRaw(IconCalendar),
@@ -31,11 +34,13 @@ export default definePlugin({
     },
   ],
   extensionPoints: {
+    'default:editor:extension:create': () => [ScheduleCardExtension],
     'plugin:self:tabs:create': () => [
       {
         id: 'schedule-calendar-backup',
         label: '数据备份',
         component: markRaw(BackupTab),
+        permissions: managePermissions,
       },
     ],
     'console:dashboard:widgets:internal:quick-action:item:create': () => [
@@ -44,6 +49,7 @@ export default definePlugin({
         icon: markRaw(IconCalendar),
         title: '日程日历',
         action: openScheduleCalendarConsole,
+        permissions: managePermissions,
       },
     ],
   },
