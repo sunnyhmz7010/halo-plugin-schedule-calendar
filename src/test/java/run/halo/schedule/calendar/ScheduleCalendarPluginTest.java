@@ -1,5 +1,7 @@
 package run.halo.schedule.calendar;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,6 +27,6 @@ class ScheduleCalendarPluginTest {
     @Test
     void contextLoads() {
         plugin.start();
-        verify(schemeManager).register(ScheduleEntry.class);
+        verify(schemeManager).register(eq(ScheduleEntry.class), any());
     }
 }
