@@ -878,13 +878,16 @@ onBeforeUnmount(() => {
             />
           </div>
 
-          <div class="week-toolbar__side week-toolbar__side--right">
+          <div class="week-toolbar__mode">
             <VTabbar
               v-model:active-id="weekViewMode"
               :items="weekViewModeItems"
               type="outline"
               class="week-view-mode"
             />
+          </div>
+
+          <div class="week-toolbar__side week-toolbar__side--right">
             <VButton @click="goToCurrentWeek">回到本周</VButton>
             <VButton @click="moveWeek(1)">
               下一周
@@ -949,64 +952,68 @@ onBeforeUnmount(() => {
           </div>
 
           <div v-else class="calendar-grid">
-            <div class="time-column">
-              <div class="time-column__header" :style="{ height: `${headerHeight}px` }">时间</div>
-              <div class="time-column__body" :style="{ height: `${dayColumnHeight}px` }">
-                <div
-                  v-for="hour in hourLabels"
-                  :key="hour"
-                  class="time-column__slot"
-                  :style="{ height: `${hourHeight}px` }"
-                >
-                  {{ hour }}
-                </div>
-              </div>
-            </div>
-
-            <div class="day-columns">
-              <div
-                v-for="day in weekDays"
-                :key="day.id"
-                class="day-column"
-              >
-                <header class="day-column__header" :style="{ height: `${headerHeight}px` }">
-                  <strong>{{ day.weekday }}</strong>
-                  <span>{{ day.date }}</span>
-                </header>
-
-                <div
-                  class="day-column__body"
-                  :style="{ height: `${dayColumnHeight}px` }"
-                >
-                  <div class="day-column__lines"></div>
-
-                  <article
-                    v-for="block in day.blocks"
-                    :key="block.id"
-                    class="calendar-block"
-                    :class="{ 'calendar-block--split': block.isSplit }"
-                    :style="{
-                      top: `${block.top}px`,
-                      height: `${block.height}px`,
-                      left: block.left,
-                      width: block.width,
-                      background: block.color,
-                    }"
-                    :title="`${block.title} ${block.startLabel} - ${block.endLabel}${block.tooltipMeta ? ` ${block.tooltipMeta}` : ''}`"
-                  >
-                    <div class="calendar-block__title">{{ block.title }}</div>
-                    <div v-if="block.density !== 'minimal'" class="calendar-block__time">
-                      {{ block.startLabel }} - {{ block.endLabel }}
-                    </div>
-                    <div v-if="block.density === 'full' && !block.isSplit" class="calendar-block__meta">{{ block.duration }}</div>
+            <div class="calendar-grid-scroll">
+              <div class="calendar-grid">
+                <div class="time-column">
+                  <div class="time-column__header" :style="{ height: `${headerHeight}px` }">时间</div>
+                  <div class="time-column__body" :style="{ height: `${dayColumnHeight}px` }">
                     <div
-                      v-for="(metaLine, metaIndex) in block.isSplit ? [] : block.visibleMetaLines ?? []"
-                      :key="`${block.id}-meta-${metaIndex}`"
-                      class="calendar-block__meta"
+                      v-for="hour in hourLabels"
+                      :key="hour"
+                      class="time-column__slot"
+                      :style="{ height: `${hourHeight}px` }"
                     >
-                      {{ metaLine }}
+                      {{ hour }}
                     </div>
-                  </article>
+                  </div>
+                </div>
+
+                <div class="day-columns">
+                  <div
+                    v-for="day in weekDays"
+                    :key="day.id"
+                    class="day-column"
+                  >
+                    <header class="day-column__header" :style="{ height: `${headerHeight}px` }">
+                      <strong>{{ day.weekday }}</strong>
+                      <span>{{ day.date }}</span>
+                    </header>
+
+                    <div
+                      class="day-column__body"
+                      :style="{ height: `${dayColumnHeight}px` }"
+                    >
+                      <div class="day-column__lines"></div>
+
+                      <article
+                        v-for="block in day.blocks"
+                        :key="block.id"
+                        class="calendar-block"
+                        :class="{ 'calendar-block--split': block.isSplit }"
+                        :style="{
+                          top: `${block.top}px`,
+                          height: `${block.height}px`,
+                          left: block.left,
+                          width: block.width,
+                          background: block.color,
+                        }"
+                        :title="`${block.title} ${block.startLabel} - ${block.endLabel}${block.tooltipMeta ? ` ${block.tooltipMeta}` : ''}`"
+                      >
+                        <div class="calendar-block__title">{{ block.title }}</div>
+                        <div v-if="block.density !== 'minimal'" class="calendar-block__time">
+                          {{ block.startLabel }} - {{ block.endLabel }}
+                        </div>
+                        <div v-if="block.density === 'full' && !block.isSplit" class="calendar-block__meta">{{ block.duration }}</div>
+                        <div
+                          v-for="(metaLine, metaIndex) in block.isSplit ? [] : block.visibleMetaLines ?? []"
+                          :key="`${block.id}-meta-${metaIndex}`"
+                          class="calendar-block__meta"
+                        >
+                          {{ metaLine }}
+                        </div>
+                      </article>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1232,6 +1239,12 @@ onBeforeUnmount(() => {
   min-width: 220px;
 }
 
+.week-toolbar__mode {
+  display: flex;
+  justify-content: center;
+  flex: none;
+}
+
 .week-view-mode {
   min-width: 188px;
 }
@@ -1266,6 +1279,15 @@ onBeforeUnmount(() => {
 
 .calendar-shell--agenda {
   overflow-x: visible;
+}
+
+.calendar-grid-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  padding-bottom: 4px;
 }
 
 .calendar-mobile {
@@ -1368,7 +1390,9 @@ onBeforeUnmount(() => {
 
 .calendar-grid {
   display: grid;
-  grid-template-columns: 72px minmax(980px, 1fr);
+  grid-template-columns: 72px 980px;
+  min-width: 1052px;
+  width: max-content;
   border: 1px solid var(--halo-border-color, #e5e7eb);
   border-radius: 12px;
   overflow: hidden;
@@ -1450,8 +1474,8 @@ onBeforeUnmount(() => {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   box-sizing: border-box;
   min-width: 0;
   border-radius: 10px;
@@ -1459,7 +1483,7 @@ onBeforeUnmount(() => {
   color: #fff;
   box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
   overflow: hidden;
-  text-align: center;
+  text-align: left;
 }
 
 .calendar-block--split {
@@ -1744,7 +1768,8 @@ onBeforeUnmount(() => {
   }
 
   .week-toolbar__side,
-  .week-toolbar__side--right {
+  .week-toolbar__side--right,
+  .week-toolbar__mode {
     justify-content: center;
     flex: none;
     width: 100%;
@@ -1769,7 +1794,8 @@ onBeforeUnmount(() => {
   }
 
   .calendar-grid {
-    grid-template-columns: 60px minmax(700px, 1fr);
+    grid-template-columns: 60px 840px;
+    min-width: 900px;
   }
 
   .time-column__header,
@@ -1835,11 +1861,18 @@ onBeforeUnmount(() => {
     width: 100%;
   }
 
+  .week-toolbar__side--left,
+  .week-toolbar__center,
+  .week-toolbar__mode,
+  .week-toolbar__side--right {
+    width: 100%;
+  }
+
   .week-toolbar__side--right {
     gap: 10px;
   }
 
-  .week-toolbar__side--right :deep(.tabbar) {
+  .week-toolbar__mode :deep(.tabbar) {
     width: 100%;
   }
 
@@ -1854,7 +1887,8 @@ onBeforeUnmount(() => {
   }
 
   .calendar-grid {
-    grid-template-columns: 52px minmax(560px, 1fr);
+    grid-template-columns: 52px 840px;
+    min-width: 892px;
   }
 
   .day-column__header strong {
@@ -1889,6 +1923,10 @@ onBeforeUnmount(() => {
 
   .calendar-mobile-block__top {
     flex-wrap: wrap;
+  }
+
+  .calendar-block {
+    padding: 5px 6px;
   }
 
   .dialog-form {

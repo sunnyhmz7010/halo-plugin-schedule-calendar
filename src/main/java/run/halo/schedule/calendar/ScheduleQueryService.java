@@ -162,17 +162,58 @@ public class ScheduleQueryService {
                                 border-radius: 12px;
                                 font: inherit;
                               }
+                              .view-mode {
+                                display: inline-flex;
+                                gap: 8px;
+                                padding: 6px;
+                                margin-bottom: 16px;
+                                border: 1px solid var(--line);
+                                border-radius: 16px;
+                                background: rgba(255,255,255,0.72);
+                                backdrop-filter: blur(8px);
+                              }
+                              .view-mode__button {
+                                border: 0;
+                                padding: 10px 18px;
+                                border-radius: 12px;
+                                font: inherit;
+                                color: var(--muted);
+                                background: transparent;
+                                cursor: pointer;
+                              }
+                              .view-mode__button.is-active {
+                                color: var(--text);
+                                background: #fff;
+                                box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+                              }
+                              .calendar-wrap {
+                                display: grid;
+                                gap: 16px;
+                              }
                               .calendar {
-                                overflow-x: auto;
                                 border: 1px solid var(--line);
                                 border-radius: 20px;
                                 background: var(--panel);
                                 backdrop-filter: blur(8px);
                                 box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
                               }
+                              .calendar[hidden],
+                              .agenda[hidden] {
+                                display: none !important;
+                              }
+                              .calendar__scroller {
+                                width: 100%%;
+                                overflow-x: auto;
+                                overflow-y: hidden;
+                                -webkit-overflow-scrolling: touch;
+                                touch-action: pan-x;
+                                padding-bottom: 4px;
+                              }
                               .calendar__grid {
                                 display: grid;
-                                grid-template-columns: 78px minmax(980px, 1fr);
+                                grid-template-columns: 78px 980px;
+                                min-width: 1058px;
+                                width: max-content;
                               }
                               .time-column__header,
                               .day-column__header {
@@ -242,8 +283,8 @@ public class ScheduleQueryService {
                                 z-index: 1;
                                 display: flex;
                                 flex-direction: column;
-                                justify-content: center;
-                                align-items: center;
+                                justify-content: flex-start;
+                                align-items: flex-start;
                                 box-sizing: border-box;
                                 min-width: 0;
                                 border-radius: 12px;
@@ -251,7 +292,7 @@ public class ScheduleQueryService {
                                 color: #fff;
                                 box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
                                 overflow: hidden;
-                                text-align: center;
+                                text-align: left;
                               }
                               .calendar-block--split {
                                 border-radius: 8px;
@@ -272,6 +313,76 @@ public class ScheduleQueryService {
                                 white-space: pre-line;
                                 width: 100%%;
                                 overflow-wrap: anywhere;
+                              }
+                              .agenda {
+                                display: grid;
+                                gap: 12px;
+                              }
+                              .agenda-day {
+                                border: 1px solid var(--line);
+                                border-radius: 18px;
+                                background: var(--panel);
+                                overflow: hidden;
+                                backdrop-filter: blur(8px);
+                                box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+                              }
+                              .agenda-day__header {
+                                display: flex;
+                                align-items: center;
+                                justify-content: space-between;
+                                gap: 12px;
+                                padding: 16px 18px;
+                                border-bottom: 1px solid var(--line);
+                              }
+                              .agenda-day__heading {
+                                display: grid;
+                                gap: 4px;
+                              }
+                              .agenda-day__heading strong {
+                                font-size: 1rem;
+                              }
+                              .agenda-day__heading span,
+                              .agenda-day__count,
+                              .agenda-card__meta {
+                                color: var(--muted);
+                                font-size: 0.86rem;
+                                line-height: 1.5;
+                              }
+                              .agenda-day__count {
+                                white-space: nowrap;
+                              }
+                              .agenda-day__list {
+                                display: grid;
+                                gap: 10px;
+                                padding: 14px;
+                              }
+                              .agenda-day__empty {
+                                padding: 18px;
+                                color: var(--muted);
+                                font-size: 0.92rem;
+                              }
+                              .agenda-card {
+                                display: grid;
+                                grid-template-columns: 4px minmax(0, 1fr);
+                                gap: 12px;
+                                padding: 14px;
+                                border-radius: 16px;
+                                background: #fff;
+                              }
+                              .agenda-card__accent {
+                                width: 4px;
+                                border-radius: 999px;
+                              }
+                              .agenda-card__content {
+                                display: grid;
+                                gap: 4px;
+                                min-width: 0;
+                              }
+                              .agenda-card__title {
+                                font-size: 1rem;
+                                font-weight: 700;
+                                line-height: 1.5;
+                                word-break: break-word;
                               }
                               @media (max-width: 960px) {
                                 main {
@@ -295,8 +406,12 @@ public class ScheduleQueryService {
                                   padding: 8px 10px;
                                   font-size: 0.9rem;
                                 }
+                                .view-mode {
+                                  width: 100%%;
+                                }
                                 .calendar__grid {
-                                  grid-template-columns: 60px minmax(700px, 1fr);
+                                  grid-template-columns: 60px 840px;
+                                  min-width: 900px;
                                 }
                                 .time-column__header,
                                 .day-column__header {
@@ -321,14 +436,31 @@ public class ScheduleQueryService {
                                 }
                               }
                               @media (max-width: 640px) {
+                                .view-mode {
+                                  display: grid;
+                                  grid-template-columns: repeat(2, minmax(0, 1fr));
+                                }
                                 .calendar__grid {
-                                  grid-template-columns: 52px minmax(560px, 1fr);
+                                  grid-template-columns: 52px 840px;
+                                  min-width: 892px;
                                 }
                                 .day-column__header strong {
                                   font-size: 0.75rem;
                                 }
                                 .day-column__header span {
                                   font-size: 0.65rem;
+                                }
+                                .calendar-block {
+                                  padding: 5px 6px;
+                                }
+                                .agenda-day__header {
+                                  padding: 14px 16px;
+                                }
+                                .agenda-day__list {
+                                  padding: 10px;
+                                }
+                                .agenda-card {
+                                  padding: 12px;
                                 }
                               }
                             </style>
@@ -346,24 +478,70 @@ public class ScheduleQueryService {
                                   <a id="current-week" href="#">回到本周</a>
                                 </div>
                               </section>
-                              <section class="calendar">
-                                <div class="calendar__grid">
-                                  <div class="time-column">
-                                    <div class="time-column__header">时间</div>
-                                    <div class="time-column__body" id="time-column"></div>
+                              <section class="view-mode" aria-label="视图切换">
+                                <button type="button" class="view-mode__button" data-view-mode="calendar">日历布局</button>
+                                <button type="button" class="view-mode__button" data-view-mode="agenda">事项布局</button>
+                              </section>
+                              <section class="calendar-wrap">
+                                <section class="calendar" id="calendar-view">
+                                  <div class="calendar__scroller">
+                                    <div class="calendar__grid">
+                                      <div class="time-column">
+                                        <div class="time-column__header">时间</div>
+                                        <div class="time-column__body" id="time-column"></div>
+                                      </div>
+                                      <div class="day-columns" id="calendar-grid"></div>
+                                    </div>
                                   </div>
-                                  <div class="day-columns" id="calendar-grid"></div>
-                                </div>
+                                </section>
+                                <section class="agenda" id="agenda-view"></section>
                               </section>
                             </main>
                             <script>
                               const payload = %s;
                               const hourHeight = %d;
                               const totalHeight = hourHeight * 24;
-                              const buildWeekUrl = (start) => `/schedule-calendar?start=${encodeURIComponent(start)}`;
+                              const searchParams = new URLSearchParams(window.location.search);
+                              let currentView = searchParams.get("view") === "agenda"
+                                ? "agenda"
+                                : (window.innerWidth <= 768 ? "agenda" : "calendar");
+                              const buildWeekUrl = (start) => {
+                                const params = new URLSearchParams(window.location.search);
+                                params.set("start", start);
+                                if (currentView === "agenda") {
+                                  params.set("view", currentView);
+                                } else {
+                                  params.delete("view");
+                                }
+                                return `/schedule-calendar?${params.toString()}`;
+                              };
                               const toMinutes = (value) => {
                                 const [hours, minutes] = value.split(":").map(Number);
                                 return hours * 60 + minutes;
+                              };
+                              const calendarView = document.getElementById("calendar-view");
+                              const agendaView = document.getElementById("agenda-view");
+                              const prevWeekLink = document.getElementById("prev-week");
+                              const nextWeekLink = document.getElementById("next-week");
+                              const currentWeekLink = document.getElementById("current-week");
+                              const viewModeButtons = Array.from(document.querySelectorAll("[data-view-mode]"));
+                              const syncViewMode = () => {
+                                calendarView.hidden = currentView !== "calendar";
+                                agendaView.hidden = currentView !== "agenda";
+                                viewModeButtons.forEach((button) => {
+                                  button.classList.toggle("is-active", button.dataset.viewMode === currentView);
+                                });
+                                prevWeekLink.href = buildWeekUrl(payload.previousWeekStart);
+                                nextWeekLink.href = buildWeekUrl(payload.nextWeekStart);
+                                currentWeekLink.href = buildWeekUrl(payload.currentWeekStart);
+                                const params = new URLSearchParams(window.location.search);
+                                if (currentView === "agenda") {
+                                  params.set("view", currentView);
+                                } else {
+                                  params.delete("view");
+                                }
+                                const query = params.toString();
+                                window.history.replaceState(null, "", query ? `${window.location.pathname}?${query}` : window.location.pathname);
                               };
                               const assignColumns = (blocks) => {
                                 const prepared = blocks.map((block) => ({
@@ -452,9 +630,42 @@ public class ScheduleQueryService {
                                   });
                                 });
                               };
-                              document.getElementById("prev-week").href = buildWeekUrl(payload.previousWeekStart);
-                              document.getElementById("next-week").href = buildWeekUrl(payload.nextWeekStart);
-                              document.getElementById("current-week").href = buildWeekUrl(payload.currentWeekStart);
+                              const buildAgendaCard = (block) => {
+                                const article = document.createElement("article");
+                                article.className = "agenda-card";
+
+                                const accent = document.createElement("div");
+                                accent.className = "agenda-card__accent";
+                                accent.style.background = block.color;
+
+                                const content = document.createElement("div");
+                                content.className = "agenda-card__content";
+
+                                const title = document.createElement("div");
+                                title.className = "agenda-card__title";
+                                title.textContent = block.title;
+                                content.appendChild(title);
+
+                                const time = document.createElement("div");
+                                time.className = "agenda-card__meta";
+                                time.textContent = `${block.start} - ${block.end}`;
+                                content.appendChild(time);
+
+                                const duration = document.createElement("div");
+                                duration.className = "agenda-card__meta";
+                                duration.textContent = block.durationLabel;
+                                content.appendChild(duration);
+
+                                (Array.isArray(block.metaLines) ? block.metaLines : []).forEach((line) => {
+                                  const meta = document.createElement("div");
+                                  meta.className = "agenda-card__meta";
+                                  meta.textContent = line;
+                                  content.appendChild(meta);
+                                });
+
+                                article.append(accent, content);
+                                return article;
+                              };
                               const weekPicker = document.getElementById("week-picker");
                               weekPicker.value = payload.weekStart;
                               weekPicker.addEventListener("change", (event) => {
@@ -471,6 +682,7 @@ public class ScheduleQueryService {
                                 slot.textContent = `${String(hour).padStart(2, "0")}:00`;
                                 timeColumn.appendChild(slot);
                               });
+                              const agenda = document.getElementById("agenda-view");
                               const grid = document.getElementById("calendar-grid");
                               payload.days.forEach((day) => {
                                 const section = document.createElement("div");
@@ -509,7 +721,50 @@ public class ScheduleQueryService {
                                   body.appendChild(element);
                                 });
                                 grid.appendChild(section);
+
+                                const agendaDay = document.createElement("section");
+                                agendaDay.className = "agenda-day";
+
+                                const agendaHeader = document.createElement("header");
+                                agendaHeader.className = "agenda-day__header";
+
+                                const agendaHeading = document.createElement("div");
+                                agendaHeading.className = "agenda-day__heading";
+                                const dayTitle = document.createElement("strong");
+                                dayTitle.textContent = day.dayLabel;
+                                const dayDate = document.createElement("span");
+                                dayDate.textContent = day.date;
+                                agendaHeading.append(dayTitle, dayDate);
+
+                                const agendaCount = document.createElement("div");
+                                agendaCount.className = "agenda-day__count";
+                                agendaCount.textContent = `${day.occupied.length} 项`;
+                                agendaHeader.append(agendaHeading, agendaCount);
+                                agendaDay.appendChild(agendaHeader);
+
+                                if (day.occupied.length) {
+                                  const agendaList = document.createElement("div");
+                                  agendaList.className = "agenda-day__list";
+                                  day.occupied.forEach((block) => {
+                                    agendaList.appendChild(buildAgendaCard(block));
+                                  });
+                                  agendaDay.appendChild(agendaList);
+                                } else {
+                                  const empty = document.createElement("div");
+                                  empty.className = "agenda-day__empty";
+                                  empty.textContent = "当天暂无事项";
+                                  agendaDay.appendChild(empty);
+                                }
+
+                                agenda.appendChild(agendaDay);
                               });
+                              viewModeButtons.forEach((button) => {
+                                button.addEventListener("click", () => {
+                                  currentView = button.dataset.viewMode === "agenda" ? "agenda" : "calendar";
+                                  syncViewMode();
+                                });
+                              });
+                              syncViewMode();
                             </script>
                           </body>
                         </html>
