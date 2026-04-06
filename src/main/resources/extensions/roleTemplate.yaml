@@ -30,6 +30,10 @@ rules:
   - apiGroups: ["schedule.calendar.sunny.dev"]
     resources: ["scheduleentries"]
     verbs: ["get", "list"]
+  - apiGroups: ["console.api.schedule.calendar.sunny.dev"]
+    resources: ["permissions"]
+    resourceNames: ["view"]
+    verbs: ["get"]
 
 ---
 
@@ -49,7 +53,11 @@ metadata:
 rules:
   - apiGroups: ["schedule.calendar.sunny.dev"]
     resources: ["scheduleentries"]
-    verbs: ["create", "patch", "update", "delete", "deletecollection"]
+    verbs: ["get", "list", "create", "patch", "update", "delete", "deletecollection"]
   - apiGroups: ["console.api.schedule.calendar.sunny.dev"]
     resources: ["backupexports"]
     verbs: ["get", "list"]
+  - apiGroups: ["console.api.schedule.calendar.sunny.dev"]
+    resources: ["permissions"]
+    resourceNames: ["view", "manage"]
+    verbs: ["get"]

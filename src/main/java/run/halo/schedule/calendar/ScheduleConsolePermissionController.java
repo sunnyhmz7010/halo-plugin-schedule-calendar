@@ -12,7 +12,7 @@ import reactor.core.publisher.Mono;
 public class ScheduleConsolePermissionController {
 
     @GetMapping("/view")
-    @PreAuthorize("hasAuthority('plugin:schedule-calendar:view')")
+    @PreAuthorize("hasAnyAuthority('plugin:schedule-calendar:view', 'plugin:schedule-calendar:manage')")
     public Mono<ResponseEntity<Void>> viewPermission() {
         return Mono.just(ResponseEntity.noContent().build());
     }
