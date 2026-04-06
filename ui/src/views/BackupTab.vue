@@ -228,13 +228,6 @@ const restoreBackup = (event: Event) => {
 
 <template>
   <div class="backup-tab">
-    <VAlert
-      type="info"
-      title="插件数据备份"
-      description="这里仅备份当前插件的设置与事项数据，不影响站点其他内容。"
-      :closable="false"
-    />
-
     <VCard>
       <VEntityContainer>
         <VEntity>
@@ -247,7 +240,9 @@ const restoreBackup = (event: Event) => {
             </div>
           </template>
           <template #end>
-            <VButton type="primary" :loading="exporting" @click="exportBackup">下载备份</VButton>
+            <VButton type="primary" :loading="exporting" @click="exportBackup">
+              下载备份文件
+            </VButton>
           </template>
         </VEntity>
 

@@ -634,14 +634,8 @@ const loadPermissionLevel = async () => {
   permissionLevel.value = 'unknown'
 
   try {
-    const response = await axiosInstance.post(
-      apiBase,
-      {
-        apiVersion: 'schedule.calendar.sunny.dev/v1alpha1',
-        kind: 'ScheduleEntry',
-        metadata: {},
-        spec: {},
-      },
+    const response = await axiosInstance.delete(
+      `${apiBase}/${encodeURIComponent('__permission_probe__')}`,
       {
         validateStatus: (status) => status >= 200 && status < 500,
       },
