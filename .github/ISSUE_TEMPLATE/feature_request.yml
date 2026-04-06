@@ -10,32 +10,26 @@ body:
         Thanks for sharing your idea.
         感谢你提出建议。
 
-        Please describe the use case first, then the proposed solution.
-        请先说明使用场景，再描述你希望的改进方案。
+        A short use case and expected behavior are enough.
+        简单说明场景和期望效果就可以。
 
   - type: textarea
-    id: problem
+    id: use-case
     attributes:
-      label: Problem or Use Case / 问题或场景
-      description: What problem are you trying to solve? / 你想解决什么问题？
-      placeholder: Describe the scenario or workflow you want to improve. / 描述你想改善的场景或流程。
+      label: Use Case / 使用场景
+      description: What are you trying to do, and where is the current pain point? / 你想做什么，当前卡点在哪里？
+      placeholder: Describe the scenario briefly. / 简要描述场景。
     validations:
       required: true
 
   - type: textarea
     id: proposal
     attributes:
-      label: Proposed Solution / 期望方案
+      label: Expected Improvement / 期望改进
       description: What would you like the plugin to do? / 你希望插件怎么做？
       placeholder: Describe the feature or behavior you want. / 描述你希望新增的功能或行为。
     validations:
       required: true
-
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives Considered / 替代方案
-      description: Have you considered any workaround or alternative approach? / 是否考虑过其他做法或临时方案？
 
   - type: dropdown
     id: area
@@ -51,14 +45,12 @@ body:
         - Permissions / 权限
         - Documentation / 文档
         - Other / 其他
-    validations:
-      required: true
 
   - type: textarea
-    id: additional-context
+    id: context
     attributes:
       label: Additional Context / 补充信息
-      description: Add screenshots, mockups, links, or other references if helpful. / 可补充截图、示意图、链接或其他参考信息。
+      description: Mockups, screenshots, links, or alternative ideas if helpful. / 可补充示意图、截图、链接或其他想法。
 
   - type: checkboxes
     id: checks
@@ -66,4 +58,3 @@ body:
       label: Checklist / 提交前确认
       options:
         - label: I have searched existing issues before submitting this request. / 我已先搜索过现有 Issue。
-          required: true

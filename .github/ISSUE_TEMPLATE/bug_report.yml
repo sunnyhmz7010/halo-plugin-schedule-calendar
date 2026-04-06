@@ -10,8 +10,17 @@ body:
         Thanks for reporting a bug.
         感谢你反馈问题。
 
-        Please provide enough detail to help reproduce and diagnose the issue.
-        请尽量提供足够信息，方便复现与排查。
+        A short description and simple reproduction steps are enough.
+        简单描述问题，加上复现步骤就可以。
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Bug Summary / 问题概述
+      description: Describe the issue clearly and concisely. / 请简要描述问题。
+      placeholder: What went wrong? / 出现了什么问题？
+    validations:
+      required: true
 
   - type: dropdown
     id: area
@@ -27,60 +36,34 @@ body:
         - Backup and restore / 备份与恢复
         - Permissions / 权限
         - Other / 其他
-  - type: textarea
-    id: summary
-    attributes:
-      label: Bug Summary / 问题概述
-      description: Describe the issue clearly and concisely. / 请简要描述问题。
-      placeholder: What went wrong? / 出现了什么问题？
-    validations:
-      required: true
 
   - type: textarea
     id: steps
     attributes:
       label: Steps to Reproduce / 复现步骤
-      description: Provide a minimal set of steps to reproduce the issue. / 请提供最小复现步骤。
+      description: If possible, list the shortest steps to reproduce it. / 如方便，请提供最小复现步骤。
       placeholder: |
         1. Go to ... / 进入 ...
         2. Click ... / 点击 ...
         3. See error ... / 出现 ...
-    validations:
-      required: true
 
   - type: textarea
-    id: expected
+    id: context
     attributes:
-      label: Expected Behavior / 期望结果
-      description: What did you expect to happen? / 你期望发生什么？
-  - type: textarea
-    id: actual
-    attributes:
-      label: Actual Behavior / 实际结果
-      description: What actually happened? / 实际发生了什么？
+      label: Additional Context / 补充信息
+      description: Logs, screenshots, Halo version, plugin version, browser, device, or anything else helpful. / 可补充日志、截图、Halo 版本、插件版本、浏览器、设备等信息。
+
   - type: input
     id: halo-version
     attributes:
       label: Halo Version / Halo 版本
       placeholder: e.g. 2.23.2
+
   - type: input
     id: plugin-version
     attributes:
       label: Plugin Version / 插件版本
       placeholder: e.g. 2.4.0
-  - type: input
-    id: environment
-    attributes:
-      label: Environment / 环境信息
-      description: Browser / device / OS / deployment environment if relevant / 浏览器、设备、系统、部署环境等
-      placeholder: e.g. iPhone Safari, Chrome on Windows, Docker deployment
-
-  - type: textarea
-    id: logs
-    attributes:
-      label: Logs or Screenshots / 日志或截图
-      description: Paste relevant logs, stack traces, API responses, or screenshots. / 可粘贴日志、报错堆栈、接口响应或截图。
-      render: shell
 
   - type: checkboxes
     id: checks
