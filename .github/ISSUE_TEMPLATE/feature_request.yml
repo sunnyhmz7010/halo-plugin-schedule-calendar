@@ -25,8 +25,6 @@ body:
       label: Expected Improvement / 期望改进
       description: What would you like the plugin to do? / 你希望插件怎么做？
       placeholder: Describe the feature or behavior you want. / 描述你希望新增的功能或行为。
-    validations:
-      required: true
 
   - type: checkboxes
     id: checks
