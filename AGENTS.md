@@ -8,7 +8,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Public route: `/schedule-calendar`
 - Admin capability: create, view, edit, and delete schedule entries in a weekly calendar view.
 - Editor capability: insert a schedule card for a single entry.
-- Current stable version: `v2.0.0`
+- Current stable version: `v2.2.0`
 
 ## Tech Stack
 
@@ -21,6 +21,8 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 
 - Version: `gradle.properties`
 - Plugin metadata: `src/main/resources/plugin.yaml`
+- Role templates: `src/main/resources/extensions/roleTemplate.yaml`
+- Native plugin settings schema: `src/main/resources/extensions/settings.yaml`
 - Repo rules: `AGENTS.md`
 - User docs: `README.md`
 - Main admin page: `ui/src/views/HomeView.vue`
@@ -60,6 +62,10 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Do not keep local-only Gradle workarounds in `ui/build.gradle` after troubleshooting; restore the committed repo version unless the user explicitly wants the workaround merged.
 - Keep the working tree clean before handoff: do not leave local build outputs, dependency caches, screenshots for debugging, or temporary troubleshooting files committed or untracked.
 - `gradle/wrapper/` is normal committed project infrastructure for this repo; do not treat it as garbage when cleaning the repository.
+- For this project, Halo-native plugin settings must be preferred over custom settings pages. Do not reintroduce a custom settings tab unless the user explicitly asks for it.
+- The plugin backup feature belongs in the plugin settings area, but the page itself should stay visually close to Halo native patterns and avoid extra decorative copy.
+- Do not use invalid create requests to probe permissions. For admin permission checks, prefer no-side-effect probes against real resources.
+- Do not add `@halo-dev/ui-shared` just to read UI permissions in this repo. It pulls extra frontend dependencies such as `pinia`/`vue-router` and can break the current plugin build.
 
 ## Release Conventions
 
@@ -72,12 +78,22 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - This repo no longer keeps a committed `CHANGELOG.md`; release history is maintained in GitHub Releases instead.
 - For this repository, release notes should use the heading `## 更新内容`.
 - Release notes should describe concrete 新增功能、修复内容、优化点, and should avoid vague wording such as "收敛".
-- Stable release notes must describe only the delta since the previous stable release; do not repeat capabilities already published in earlier stable versions unless there is a new material change to that capability in this release.
-- Before editing or publishing release notes, compare the target version against the previous stable tag and review recent GitHub release bodies so repeated items are removed and missing new items, such as permission-control changes, are not omitted.
+- Stable release notes must aggregate the effective changes across the whole prerelease cycle since the previous stable release.
+- When converting a beta series into a stable release, do not keep the beta notes verbatim and do not omit beta-only fixes. Rewrite the stable notes in the repo's formal structure.
+- Before editing or publishing release notes, compare the target version against the previous stable tag and review recent GitHub release bodies so repeated items are removed and missing new items, especially permission-control and backup-recovery changes, are not omitted.
 - GitHub Actions release build is triggered by the `Release published` event.
 - For prereleases, prefer creating a GitHub prerelease and let CI build and upload the jar.
 - A local full Gradle build is optional before release if the user does not need local verification.
 - If the user asks to "覆盖" an existing release version, it is acceptable to delete and recreate the GitHub Release/tag at the latest commit, then rerun the release workflow if needed.
+- If the user asks to delete a whole beta series before a stable release, remove both the GitHub prereleases and their tags before creating the stable tag.
+
+## Permission Rules
+
+- `roleTemplate.yaml` is the source of truth for Halo role aggregation in this repo.
+- The `manage` role must include the real `scheduleentries` read/write verbs it depends on; do not rely only on transitive role assumptions when the UI needs direct resource access.
+- If frontend behavior depends on whether a user can manage schedule entries, prefer probing real `scheduleentries` capability with a no-side-effect request rather than relying only on custom permission endpoints.
+- If a custom permission endpoint is kept, its authorization rules and the role template entries for that endpoint must be updated together.
+- Never use an invalid create payload to probe permissions. That can hit Halo validation first and generate misleading 500 logs instead of a clean permission result.
 
 ## Rendering Conventions
 
