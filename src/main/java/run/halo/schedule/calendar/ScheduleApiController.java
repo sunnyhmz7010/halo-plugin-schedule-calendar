@@ -11,24 +11,46 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("/apis/api.schedule.calendar.sunny.dev/v1alpha1/calendar")
+@RequestMapping("/apis/api.schedule.calendar.sunny.dev/v1alpha1")
 @RequiredArgsConstructor
 public class ScheduleApiController {
     private final ScheduleQueryService scheduleQueryService;
 
-    @GetMapping("/week")
+    @GetMapping("/weeks")
     public Mono<ScheduleQueryService.WeekViewResponse> currentWeek(
         @RequestParam(name = "start", required = false) LocalDate start
     ) {
         return scheduleQueryService.getWeekView(start);
     }
 
-    @GetMapping("/entries")
+    @GetMapping("/days")
+    public Mono<ScheduleQueryService.DayView> day(
+        @RequestParam(name = "date", required = false) LocalDate date
+    ) {
+        return scheduleQueryService.getDayView(date);
+    }
+
+    @GetMapping("/occurrences")
+    public Mono<List<ScheduleQueryService.OccurrenceResponse>> range(
+        @RequestParam(name = "start", required = false) LocalDate start,
+        @RequestParam(name = "end", required = false) LocalDate end
+    ) {
+        return scheduleQueryService.listOccurrences(start, end);
+    }
+
+    @GetMapping("/upcoming")
+    public Mono<List<ScheduleQueryService.OccurrenceResponse>> upcoming(
+        @RequestParam(name = "limit", required = false) Integer limit
+    ) {
+        return scheduleQueryService.listUpcomingOccurrences(limit);
+    }
+
+    @GetMapping("/entrycards")
     public Mono<List<ScheduleQueryService.ScheduleCardResponse>> entries() {
         return scheduleQueryService.listEntryCards();
     }
 
-    @GetMapping("/entries/{name}")
+    @GetMapping("/entrycards/{name}")
     public Mono<ScheduleQueryService.ScheduleCardResponse> entry(@PathVariable("name") String name) {
         return scheduleQueryService.getEntryCard(name);
     }

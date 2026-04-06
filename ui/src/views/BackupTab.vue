@@ -2,8 +2,7 @@
 import { axiosInstance } from '@halo-dev/api-client'
 import { Toast, VAlert, VButton, VCard } from '@halo-dev/components'
 import { computed, ref } from 'vue'
-import { ENTRY_API, fetchAllScheduleEntries } from '../editor/schedule-card-data'
-import type { ScheduleEntry, ScheduleEntrySpec } from '../types/schedule'
+import type { ScheduleEntrySpec } from '../types/schedule'
 
 interface ScheduleBackupPayload {
   apiVersion?: string
@@ -17,8 +16,14 @@ interface ScheduleBackupPayload {
   }>
 }
 
-const backupApi = '/apis/api.console.schedule.calendar.sunny.dev/v1alpha1/backups'
-const pluginConfigApi = '/apis/api.console.halo.run/v1alpha1/plugins/schedule-calendar/json-config'
+interface ScheduleBackupImportResult {
+  totalEntries: number
+  createdEntries: number
+  deletedEntries: number
+}
+
+const backupExportApi = '/apis/console.api.schedule.calendar.sunny.dev/v1alpha1/backupexports'
+const backupImportApi = '/apis/console.api.schedule.calendar.sunny.dev/v1alpha1/backupimports'
 
 const exporting = ref(false)
 const importing = ref(false)
@@ -81,7 +86,7 @@ const exportBackup = async () => {
   exporting.value = true
 
   try {
-    const { data } = await axiosInstance.get<ScheduleBackupPayload>(`${backupApi}/export`)
+    const { data } = await axiosInstance.get<ScheduleBackupPayload>(backupExportApi)
     downloadJson(data)
     Toast.success('备份已导出')
   } catch (error) {
@@ -94,59 +99,6 @@ const exportBackup = async () => {
 
 const openImportPicker = () => {
   importInputRef.value?.click()
-}
-
-const toScheduleEntry = (item: ScheduleBackupPayload['entries'][number]): ScheduleEntry => ({
-  apiVersion: 'schedule.calendar.sunny.dev/v1alpha1',
-  kind: 'ScheduleEntry',
-  metadata: {
-    name: item.name,
-  },
-  spec: item.spec,
-})
-
-const restorePluginSettings = async (settings?: Record<string, unknown>) => {
-  await axiosInstance.put(pluginConfigApi, settings ?? {})
-}
-
-const restoreEntries = async (items: ScheduleBackupPayload['entries']) => {
-  const existingEntries = await fetchAllScheduleEntries()
-  const existingByName = new Map(existingEntries.map((entry) => [entry.metadata.name, entry]))
-  const importedEntries = items.map((item) => toScheduleEntry(item))
-  const importedNames = new Set(importedEntries.map((entry) => entry.metadata.name))
-
-  for (const entry of importedEntries) {
-    const existing = existingByName.get(entry.metadata.name)
-
-    if (existing) {
-      await axiosInstance.put(`${ENTRY_API}/${encodeURIComponent(entry.metadata.name)}`, {
-        apiVersion: existing.apiVersion ?? entry.apiVersion,
-        kind: existing.kind ?? entry.kind,
-        metadata: {
-          ...existing.metadata,
-          name: entry.metadata.name,
-        },
-        spec: entry.spec,
-      })
-      continue
-    }
-
-    await axiosInstance.post(ENTRY_API, entry)
-  }
-
-  for (const entry of existingEntries) {
-    if (importedNames.has(entry.metadata.name)) {
-      continue
-    }
-
-    await axiosInstance.delete(`${ENTRY_API}/${encodeURIComponent(entry.metadata.name)}`)
-  }
-
-  return {
-    totalEntries: importedEntries.length,
-    createdEntries: importedEntries.filter((entry) => !existingByName.has(entry.metadata.name)).length,
-    deletedEntries: existingEntries.filter((entry) => !importedNames.has(entry.metadata.name)).length,
-  }
 }
 
 const restoreBackup = async (event: Event) => {
@@ -162,8 +114,7 @@ const restoreBackup = async (event: Event) => {
   try {
     const text = await file.text()
     const payload = JSON.parse(text) as ScheduleBackupPayload
-    const data = await restoreEntries(payload.entries)
-    await restorePluginSettings(payload.settings)
+    const { data } = await axiosInstance.post<ScheduleBackupImportResult>(backupImportApi, payload)
 
     importSummary.value = `已同步 ${data.totalEntries} 条事项，新建 ${data.createdEntries} 条，移除 ${data.deletedEntries} 条。`
     Toast.success('备份已恢复')

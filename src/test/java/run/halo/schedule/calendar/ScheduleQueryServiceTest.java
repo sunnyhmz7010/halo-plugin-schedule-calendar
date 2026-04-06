@@ -115,6 +115,69 @@ class ScheduleQueryServiceTest {
         });
     }
 
+    @Test
+    void returnsSingleDayViewForRequestedDate() {
+        var entry = scheduleEntry(
+            "office-hours",
+            "答疑时间",
+            OffsetDateTime.parse("2026-04-02T10:00:00+08:00"),
+            OffsetDateTime.parse("2026-04-02T11:00:00+08:00"),
+            recurrence(ScheduleEntry.RecurrenceFrequency.NONE, 1, null)
+        );
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.just(entry));
+
+        var day = service.getDayView(LocalDate.of(2026, 4, 2)).block();
+
+        assertThat(day).isNotNull();
+        assertThat(day.date()).isEqualTo("2026-04-02");
+        assertThat(day.occupied()).singleElement().satisfies(block -> {
+            assertThat(block.title()).isEqualTo("答疑时间");
+            assertThat(block.start()).isEqualTo("10:00");
+            assertThat(block.end()).isEqualTo("11:00");
+        });
+    }
+
+    @Test
+    void expandsOccurrencesAcrossRequestedRange() {
+        var entry = scheduleEntry(
+            "daily-standup",
+            "站会",
+            OffsetDateTime.parse("2026-04-01T09:00:00+08:00"),
+            OffsetDateTime.parse("2026-04-01T09:30:00+08:00"),
+            recurrence(ScheduleEntry.RecurrenceFrequency.DAILY, 1, LocalDate.of(2026, 4, 3))
+        );
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.just(entry));
+
+        var occurrences = service.listOccurrences(LocalDate.of(2026, 4, 1), LocalDate.of(2026, 4, 3)).block();
+
+        assertThat(occurrences).hasSize(3);
+        assertThat(occurrences)
+            .extracting(ScheduleQueryService.OccurrenceResponse::date)
+            .containsExactly("2026-04-01", "2026-04-02", "2026-04-03");
+    }
+
+    @Test
+    void limitsUpcomingOccurrences() {
+        var entry = scheduleEntry(
+            "training",
+            "晨训",
+            OffsetDateTime.now().plusDays(1).withHour(8).withMinute(0).withSecond(0).withNano(0),
+            OffsetDateTime.now().plusDays(1).withHour(9).withMinute(0).withSecond(0).withNano(0),
+            recurrence(ScheduleEntry.RecurrenceFrequency.DAILY, 1, LocalDate.now().plusDays(10))
+        );
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.just(entry));
+
+        var upcoming = service.listUpcomingOccurrences(2).block();
+
+        assertThat(upcoming).hasSize(2);
+        assertThat(upcoming)
+            .extracting(ScheduleQueryService.OccurrenceResponse::title)
+            .containsOnly("晨训");
+    }
+
     private ScheduleEntry scheduleEntry(String name, String title, OffsetDateTime startTime,
         OffsetDateTime endTime, ScheduleEntry.Recurrence recurrence) {
         var entry = new ScheduleEntry();

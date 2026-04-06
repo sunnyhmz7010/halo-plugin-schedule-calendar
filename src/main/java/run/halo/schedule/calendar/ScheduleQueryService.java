@@ -62,6 +62,45 @@ public class ScheduleQueryService {
             .map(entries -> toWeekView(entries, weekStart, weekEnd, zoneId));
     }
 
+    Mono<DayView> getDayView(LocalDate requestedDate) {
+        var zoneId = ZoneId.systemDefault();
+        var date = requestedDate == null ? LocalDate.now(zoneId) : requestedDate;
+        return listEntries()
+            .map(entries -> toDayView(entries, date, zoneId));
+    }
+
+    Mono<List<OccurrenceResponse>> listOccurrences(LocalDate requestedStart, LocalDate requestedEnd) {
+        var zoneId = ZoneId.systemDefault();
+        var start = requestedStart == null ? LocalDate.now(zoneId) : requestedStart;
+        var end = requestedEnd == null ? start : requestedEnd;
+        if (end.isBefore(start)) {
+            var swapped = start;
+            start = end;
+            end = swapped;
+        }
+
+        var rangeStart = start;
+        var rangeEnd = end;
+        return listEntries()
+            .map(entries -> expandOccurrences(entries, rangeStart, rangeEnd, zoneId).stream()
+                .map(occurrence -> toOccurrenceResponse(occurrence, zoneId))
+                .toList());
+    }
+
+    Mono<List<OccurrenceResponse>> listUpcomingOccurrences(Integer requestedLimit) {
+        var zoneId = ZoneId.systemDefault();
+        var now = LocalDateTime.now(zoneId);
+        var start = now.toLocalDate();
+        var end = now.plusDays(365).toLocalDate();
+        var limit = normalizeLimit(requestedLimit);
+        return listEntries()
+            .map(entries -> expandOccurrences(entries, start, end, zoneId).stream()
+                .filter(occurrence -> occurrence.end().isAfter(now))
+                .limit(limit)
+                .map(occurrence -> toOccurrenceResponse(occurrence, zoneId))
+                .toList());
+    }
+
     Mono<ScheduleCardResponse> getEntryCard(String name) {
         var zoneId = ZoneId.systemDefault();
         return client.get(ScheduleEntry.class, name)
@@ -932,18 +971,10 @@ public class ScheduleQueryService {
 
     private WeekViewResponse toWeekView(List<ScheduleEntry> entries, LocalDate weekStart, LocalDate weekEnd,
         ZoneId zoneId) {
-        var occurrences = expandOccurrences(entries, weekStart, weekEnd, zoneId);
         var days = new ArrayList<DayView>();
         for (int offset = 0; offset < 7; offset++) {
             var date = weekStart.plusDays(offset);
-            var occupied = toOccupiedBlocks(occurrences, date);
-            var free = toFreeBlocks(occupied);
-            days.add(new DayView(
-                date.toString(),
-                date.getDayOfWeek().getDisplayName(TextStyle.FULL, ZH_CN),
-                occupied,
-                free
-            ));
+            days.add(toDayView(entries, date, zoneId));
         }
         return new WeekViewResponse(
             weekStart.toString(),
@@ -952,6 +983,18 @@ public class ScheduleQueryService {
             weekStart.minusWeeks(1).toString(),
             weekStart.plusWeeks(1).toString(),
             days
+        );
+    }
+
+    private DayView toDayView(List<ScheduleEntry> entries, LocalDate date, ZoneId zoneId) {
+        var occurrences = expandOccurrences(entries, date, date, zoneId);
+        var occupied = toOccupiedBlocks(occurrences, date);
+        var free = toFreeBlocks(occupied);
+        return new DayView(
+            date.toString(),
+            date.getDayOfWeek().getDisplayName(TextStyle.FULL, ZH_CN),
+            occupied,
+            free
         );
     }
 
@@ -1084,6 +1127,13 @@ public class ScheduleQueryService {
 
     private String defaultColor(String color) {
         return color == null || color.isBlank() ? "#0f766e" : color;
+    }
+
+    private int normalizeLimit(Integer requestedLimit) {
+        if (requestedLimit == null || requestedLimit < 1) {
+            return 10;
+        }
+        return Math.min(requestedLimit, 100);
     }
 
     private String formatDuration(LocalDateTime start, LocalDateTime end) {
@@ -1235,6 +1285,26 @@ public class ScheduleQueryService {
             + DATE_TIME_FORMATTER.format(end);
     }
 
+    private OccurrenceResponse toOccurrenceResponse(ScheduleOccurrence occurrence, ZoneId zoneId) {
+        var entry = occurrence.entry();
+        var spec = entry.getSpec();
+        var start = occurrence.start();
+        var end = occurrence.end();
+        return new OccurrenceResponse(
+            entry.getMetadata().getName(),
+            spec.getTitle(),
+            spec.getDescription(),
+            spec.getLocation(),
+            DATE_TIME_FORMATTER.format(start),
+            DATE_TIME_FORMATTER.format(end),
+            start.toLocalDate().toString(),
+            start.getDayOfWeek().getDisplayName(TextStyle.FULL, ZH_CN),
+            recurrenceDescription(spec.getRecurrence()),
+            formatDuration(start, end),
+            defaultColor(spec.getColor())
+        );
+    }
+
     private String escapeHtml(String value) {
         return value == null ? "" : HtmlUtils.htmlEscape(value);
     }
@@ -1253,6 +1323,11 @@ public class ScheduleQueryService {
     }
 
     private record ScheduleOccurrence(ScheduleEntry entry, LocalDateTime start, LocalDateTime end) {
+    }
+
+    public record OccurrenceResponse(String name, String title, String description, String location,
+                                     String startTime, String endTime, String date, String dayLabel,
+                                     String recurrenceDescription, String durationLabel, String color) {
     }
 
     public record ScheduleCardResponse(String name, String title, String description, String location,

@@ -10,18 +10,18 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("/apis/api.console.schedule.calendar.sunny.dev/v1alpha1/backups")
+@RequestMapping("/apis/console.api.schedule.calendar.sunny.dev/v1alpha1")
 @RequiredArgsConstructor
 public class ScheduleBackupController {
     private final ScheduleBackupService scheduleBackupService;
 
-    @GetMapping("/export")
+    @GetMapping("/backupexports")
     @PreAuthorize("hasAuthority('plugin:schedule-calendar:manage')")
     public Mono<ScheduleBackupService.ScheduleBackupPayload> exportBackup() {
         return scheduleBackupService.exportBackup();
     }
 
-    @PostMapping("/import")
+    @PostMapping("/backupimports")
     @PreAuthorize("hasAuthority('plugin:schedule-calendar:manage')")
     public Mono<ScheduleBackupService.ScheduleBackupImportResult> importBackup(
         @RequestBody ScheduleBackupService.ScheduleBackupPayload payload

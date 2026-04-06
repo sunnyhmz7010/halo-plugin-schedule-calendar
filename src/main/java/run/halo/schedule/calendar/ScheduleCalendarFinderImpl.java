@@ -18,6 +18,23 @@ public class ScheduleCalendarFinderImpl implements ScheduleCalendarFinder {
     }
 
     @Override
+    public Mono<ScheduleQueryService.DayView> day(String date) {
+        return scheduleQueryService.getDayView(parseDate(date));
+    }
+
+    @Override
+    public Flux<ScheduleQueryService.OccurrenceResponse> range(String start, String end) {
+        return scheduleQueryService.listOccurrences(parseDate(start), parseDate(end))
+            .flatMapMany(Flux::fromIterable);
+    }
+
+    @Override
+    public Flux<ScheduleQueryService.OccurrenceResponse> upcoming(Integer limit) {
+        return scheduleQueryService.listUpcomingOccurrences(limit)
+            .flatMapMany(Flux::fromIterable);
+    }
+
+    @Override
     public Mono<ScheduleQueryService.ScheduleCardResponse> get(String name) {
         return scheduleQueryService.getEntryCard(name);
     }
