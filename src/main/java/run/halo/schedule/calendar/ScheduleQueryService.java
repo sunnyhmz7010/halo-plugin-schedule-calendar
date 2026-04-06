@@ -233,6 +233,7 @@ public class ScheduleQueryService {
                                 border: 1px solid var(--line);
                                 border-radius: 20px;
                                 background: var(--panel);
+                                overflow: hidden;
                                 backdrop-filter: blur(8px);
                                 box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
                               }
@@ -242,6 +243,7 @@ public class ScheduleQueryService {
                               }
                               .calendar__scroller {
                                 width: 100%%;
+                                border-radius: inherit;
                                 overflow-x: auto;
                                 overflow-y: hidden;
                                 -webkit-overflow-scrolling: touch;
