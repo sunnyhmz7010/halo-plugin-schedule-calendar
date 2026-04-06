@@ -503,14 +503,14 @@ public class ScheduleQueryService {
                               .calendar-block,
                               .calendar-block--split {
                                 justify-content: flex-start;
-                                align-items: flex-start;
-                                padding: 4px 3px;
+                                align-items: center;
+                                padding: 5px 4px;
                                 border-radius: 6px;
-                                text-align: left;
+                                text-align: center;
                               }
                               .calendar-block__title {
-                                font-size: 0.62rem;
-                                line-height: 1.15;
+                                font-size: 0.75rem;
+                                line-height: 1.2;
                               }
                               .calendar-block__time,
                               .calendar-block__meta {

@@ -1999,16 +1999,16 @@ onBeforeUnmount(() => {
 
   .calendar-block,
   .calendar-block--split {
-    align-items: flex-start;
+    align-items: center;
     justify-content: flex-start;
-    padding: 4px 3px;
+    padding: 5px 4px;
     border-radius: 6px;
-    text-align: left;
+    text-align: center;
   }
 
   .calendar-block__title {
-    font-size: 10px;
-    line-height: 1.15;
+    font-size: 12px;
+    line-height: 1.2;
   }
 
   .calendar-block__time,
