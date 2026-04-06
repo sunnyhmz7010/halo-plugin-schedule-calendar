@@ -97,8 +97,24 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - `roleTemplate.yaml` is the source of truth for Halo role aggregation in this repo.
 - The `manage` role must include the real `scheduleentries` read/write verbs it depends on; do not rely only on transitive role assumptions when the UI needs direct resource access.
 - If frontend behavior depends on whether a user can manage schedule entries, prefer probing real `scheduleentries` capability with a no-side-effect request rather than relying only on custom permission endpoints.
+- Do not gate the discoverability of the plugin's main console route, quick action, or plugin self tabs purely on Halo UI permission metadata. If Halo-side UI permission aggregation drifts or fails after upgrade, the whole入口 can disappear even while the plugin is still `STARTED`.
+- For this plugin, prefer keeping console entry points visible and enforce real permissions inside the page with runtime capability probes plus readonly/disabled states.
 - If a custom permission endpoint is kept, its authorization rules and the role template entries for that endpoint must be updated together.
 - Never use an invalid create payload to probe permissions. That can hit Halo validation first and generate misleading 500 logs instead of a clean permission result.
+
+## Console Entry Troubleshooting
+
+- If the console menu item and plugin self tab disappear together after a release, do not assume the release jar is broken first.
+- Check the live plugin state before changing code:
+  - `halo plugin get schedule-calendar --json`
+  - if `status.phase` is `STARTED` and `status.entry` exists, the plugin has started and the console asset is registered
+- If the plugin is `STARTED` but the入口 is still missing, suspect Halo UI permission aggregation or frontend route visibility rules before suspecting missing bundle files.
+- When comparing release artifacts, verify at least:
+  - `console/main.js`
+  - `console/style.css`
+  - `META-INF/plugin-components.idx`
+  - `extensions/roleTemplate.yaml`
+- For authenticated console bundle checks, remember `/apis/api.console.halo.run/v1alpha1/plugins/-/bundle.js` returns the login page when requested without console authentication, so unauthenticated fetch results are not valid evidence.
 
 ## Rendering Conventions
 
