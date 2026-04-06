@@ -26,6 +26,7 @@ import {
   Toast,
 } from '@halo-dev/components'
 import type {
+  ScheduleEntryAttachment,
   ScheduleEntry,
   ScheduleEntryRecurrenceFrequency,
   ScheduleEntrySpec,
@@ -49,6 +50,7 @@ const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
 const dialogVisible = ref(false)
+const attachmentSelectorVisible = ref(false)
 const entries = ref<ScheduleEntry[]>([])
 const entryKeyword = ref('')
 const pageError = ref('')
@@ -62,6 +64,7 @@ const form = reactive({
   title: '',
   description: '',
   location: '',
+  attachments: [] as ScheduleEntryAttachment[],
   startTimeLocal: '',
   endTimeLocal: '',
   color: '#3b82f6',
@@ -110,6 +113,19 @@ interface EntryMetaItem {
   block?: boolean
 }
 
+type AttachmentSelectPayloadItem =
+  | {
+      metadata?: { name?: string }
+      spec?: {
+        displayName?: string
+        mediaType?: string
+        size?: number
+      }
+      status?: { permalink?: string }
+    }
+  | string
+  | { url: string; type: string }
+
 type WeekViewMode = 'calendar' | 'agenda'
 
 const hourLabels = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`)
@@ -131,6 +147,70 @@ const dateTimeInputValue = (value?: string) => {
   const minutes = String(date.getMinutes()).padStart(2, '0')
   return `${year}-${month}-${day}T${hours}:${minutes}`
 }
+
+const normalizeAttachments = (attachments?: ScheduleEntryAttachment[]) => {
+  const normalized: ScheduleEntryAttachment[] = []
+  const seenNames = new Set<string>()
+
+  ;(attachments ?? []).forEach((attachment) => {
+    const name = attachment?.name?.trim()
+    if (!name || seenNames.has(name)) {
+      return
+    }
+
+    seenNames.add(name)
+    normalized.push({
+      name,
+      displayName: attachment.displayName?.trim() || undefined,
+      permalink: attachment.permalink?.trim() || undefined,
+      mediaType: attachment.mediaType?.trim() || undefined,
+      size: typeof attachment.size === 'number' ? attachment.size : undefined,
+    })
+  })
+
+  return normalized
+}
+
+const toScheduleAttachment = (item: AttachmentSelectPayloadItem): ScheduleEntryAttachment | null => {
+  if (!item || typeof item === 'string' || 'url' in item) {
+    return null
+  }
+
+  const name = item.metadata?.name?.trim()
+  if (!name) {
+    return null
+  }
+
+  return {
+    name,
+    displayName: item.spec?.displayName?.trim() || undefined,
+    permalink: item.status?.permalink?.trim() || undefined,
+    mediaType: item.spec?.mediaType?.trim() || undefined,
+    size: typeof item.spec?.size === 'number' ? item.spec.size : undefined,
+  }
+}
+
+const formatAttachmentSize = (size?: number) => {
+  if (!size || Number.isNaN(size) || size <= 0) {
+    return ''
+  }
+
+  if (size < 1024) {
+    return `${size} B`
+  }
+
+  if (size < 1024 * 1024) {
+    return `${(size / 1024).toFixed(size >= 10 * 1024 ? 0 : 1)} KB`
+  }
+
+  if (size < 1024 * 1024 * 1024) {
+    return `${(size / (1024 * 1024)).toFixed(size >= 10 * 1024 * 1024 ? 0 : 1)} MB`
+  }
+
+  return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`
+}
+
+const getAttachmentLabel = (attachment: ScheduleEntryAttachment) => attachment.displayName || attachment.name
 
 const startOfWeek = (source: Date) => {
   const date = new Date(source)
@@ -182,6 +262,7 @@ const resetForm = () => {
   form.title = ''
   form.description = ''
   form.location = ''
+  form.attachments = []
   form.startTimeLocal = ''
   form.endTimeLocal = ''
   form.color = '#3b82f6'
@@ -194,6 +275,7 @@ const fillForm = (entry: ScheduleEntry) => {
   form.title = entry.spec.title
   form.description = entry.spec.description ?? ''
   form.location = entry.spec.location ?? ''
+  form.attachments = normalizeAttachments(entry.spec.attachments)
   form.startTimeLocal = dateTimeInputValue(entry.spec.startTime)
   form.endTimeLocal = dateTimeInputValue(entry.spec.endTime)
   form.color = entry.spec.color || '#3b82f6'
@@ -259,6 +341,10 @@ const buildBlockMetaLines = (entry: ScheduleEntry) => {
 
   if (entry.spec.description) {
     lines.push(`备注：${entry.spec.description}`)
+  }
+
+  if (entry.spec.attachments?.length) {
+    lines.push(`附件：${entry.spec.attachments.length} 个`)
   }
 
   const recurrence = formatRecurrenceDescription(entry.spec.recurrence)
@@ -474,6 +560,7 @@ const buildEntrySearchText = (entry: ScheduleEntry) => {
     entry.spec.title,
     entry.spec.location,
     entry.spec.description,
+    ...(entry.spec.attachments ?? []).flatMap((attachment) => [attachment.displayName, attachment.name]),
     formatEntryScheduleSummary(entry),
     occurrenceSummary?.currentWeekPreview,
     occurrenceSummary?.nextOccurrenceLabel,
@@ -591,6 +678,7 @@ const openEditDialog = (entry: ScheduleEntry) => {
 
 const closeDialog = () => {
   dialogVisible.value = false
+  attachmentSelectorVisible.value = false
   editingEntryName.value = null
   dialogError.value = ''
   resetForm()
@@ -607,6 +695,30 @@ const handleDialogVisibleUpdate = (visible: boolean) => {
 
 const openColorPicker = () => {
   colorInputRef.value?.click()
+}
+
+const openAttachmentSelector = () => {
+  if (!canManageEntries.value) {
+    return
+  }
+
+  attachmentSelectorVisible.value = true
+}
+
+const handleAttachmentSelect = (items: AttachmentSelectPayloadItem[]) => {
+  form.attachments = normalizeAttachments([
+    ...form.attachments,
+    ...items.map((item) => toScheduleAttachment(item)).filter((item): item is ScheduleEntryAttachment => !!item),
+  ])
+  attachmentSelectorVisible.value = false
+}
+
+const removeAttachment = (name: string) => {
+  form.attachments = form.attachments.filter((attachment) => attachment.name !== name)
+}
+
+const clearAttachments = () => {
+  form.attachments = []
 }
 
 const updateViewportWidth = () => {
@@ -662,6 +774,7 @@ const buildEntrySpec = (startDate: Date, endDate: Date): ScheduleEntrySpec => ({
   title: form.title,
   description: form.description || undefined,
   location: form.location || undefined,
+  attachments: form.attachments.length ? normalizeAttachments(form.attachments) : undefined,
   startTime: startDate.toISOString(),
   endTime: endDate.toISOString(),
   color: form.color,
@@ -679,6 +792,9 @@ const normalizeEntrySpec = (spec: ScheduleEntrySpec): ScheduleEntrySpec => ({
   title: spec.title,
   description: spec.description || undefined,
   location: spec.location || undefined,
+  attachments: normalizeAttachments(spec.attachments).length
+    ? normalizeAttachments(spec.attachments)
+    : undefined,
   startTime: new Date(spec.startTime).toISOString(),
   endTime: new Date(spec.endTime).toISOString(),
   color: spec.color || '#3b82f6',
@@ -1151,6 +1267,34 @@ onBeforeUnmount(() => {
                       {{ item.text }}
                     </span>
                   </div>
+                  <div v-if="entry.spec.attachments?.length" class="entry-attachments">
+                    <template v-for="attachment in entry.spec.attachments" :key="`${entry.metadata.name}-${attachment.name}`">
+                      <a
+                        v-if="attachment.permalink"
+                        class="entry-attachment"
+                        :href="attachment.permalink"
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        :title="getAttachmentLabel(attachment)"
+                        @click.stop
+                      >
+                        <span class="entry-attachment__name">{{ getAttachmentLabel(attachment) }}</span>
+                        <span v-if="formatAttachmentSize(attachment.size)" class="entry-attachment__size">
+                          {{ formatAttachmentSize(attachment.size) }}
+                        </span>
+                      </a>
+                      <span
+                        v-else
+                        class="entry-attachment"
+                        :title="getAttachmentLabel(attachment)"
+                      >
+                        <span class="entry-attachment__name">{{ getAttachmentLabel(attachment) }}</span>
+                        <span v-if="formatAttachmentSize(attachment.size)" class="entry-attachment__size">
+                          {{ formatAttachmentSize(attachment.size) }}
+                        </span>
+                      </span>
+                    </template>
+                  </div>
                 </div>
               </div>
             </template>
@@ -1252,6 +1396,46 @@ onBeforeUnmount(() => {
           ></textarea>
         </label>
 
+        <div class="field">
+          <span>附件</span>
+          <div class="attachment-actions">
+            <VButton type="secondary" @click="openAttachmentSelector">添加附件</VButton>
+            <VButton v-if="form.attachments.length" @click="clearAttachments">清空附件</VButton>
+          </div>
+          <div v-if="form.attachments.length" class="attachment-list">
+            <div
+              v-for="attachment in form.attachments"
+              :key="attachment.name"
+              class="attachment-item"
+            >
+              <div class="attachment-item__content">
+                <a
+                  v-if="attachment.permalink"
+                  class="attachment-item__link"
+                  :href="attachment.permalink"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  {{ getAttachmentLabel(attachment) }}
+                </a>
+                <span v-else class="attachment-item__link attachment-item__link--plain">
+                  {{ getAttachmentLabel(attachment) }}
+                </span>
+                <div class="attachment-item__meta">
+                  <span v-if="attachment.mediaType">{{ attachment.mediaType }}</span>
+                  <span v-if="formatAttachmentSize(attachment.size)">
+                    {{ formatAttachmentSize(attachment.size) }}
+                  </span>
+                </div>
+              </div>
+              <VButton ghost @click="removeAttachment(attachment.name)">移除</VButton>
+            </div>
+          </div>
+          <div v-else class="attachment-empty">
+            未选择附件。可从 Halo 原生附件库中选择，或在弹层中上传后再选中。
+          </div>
+        </div>
+
         <label class="field field--compact">
           <span>颜色</span>
           <button type="button" class="color-picker" @click="openColorPicker">
@@ -1270,6 +1454,12 @@ onBeforeUnmount(() => {
         </div>
       </template>
     </VModal>
+
+    <AttachmentSelectorModal
+      v-model:visible="attachmentSelectorVisible"
+      :max="20"
+      @select="handleAttachmentSelect"
+    />
 
   </section>
 </template>
@@ -1654,6 +1844,38 @@ onBeforeUnmount(() => {
   flex-basis: 100%;
 }
 
+.entry-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.entry-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--halo-border-color, #d1d5db);
+  border-radius: 999px;
+  background: var(--halo-bg-color, #fff);
+  color: var(--halo-primary-color, #2563eb);
+  font-size: 12px;
+  line-height: 1.5;
+  text-decoration: none;
+}
+
+.entry-attachment__name {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-attachment__size {
+  color: var(--halo-text-color-secondary, #6b7280);
+}
+
 .entry-actions {
   display: flex;
   align-items: center;
@@ -1778,6 +2000,68 @@ onBeforeUnmount(() => {
 
 .field textarea {
   resize: vertical;
+}
+
+.attachment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.attachment-list {
+  display: grid;
+  gap: 8px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--halo-border-color, #d1d5db);
+  border-radius: 12px;
+  background: var(--halo-bg-color-secondary, #f8fafc);
+}
+
+.attachment-item__content {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attachment-item__link {
+  min-width: 0;
+  color: var(--halo-primary-color, #2563eb);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.attachment-item__link--plain {
+  color: var(--halo-text-color, #111827);
+}
+
+.attachment-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--halo-text-color-secondary, #6b7280);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.attachment-empty {
+  padding: 10px 12px;
+  border: 1px dashed var(--halo-border-color, #d1d5db);
+  border-radius: 12px;
+  color: var(--halo-text-color-secondary, #6b7280);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .field--compact {
@@ -1913,6 +2197,11 @@ onBeforeUnmount(() => {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .attachment-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .card-actions {
     padding-right: 0;
   }
@@ -2024,6 +2313,14 @@ onBeforeUnmount(() => {
 
   .dialog-form {
     gap: 12px;
+  }
+
+  .entry-attachment {
+    max-width: 100%;
+  }
+
+  .entry-attachment__name {
+    max-width: 180px;
   }
 
   .field input,

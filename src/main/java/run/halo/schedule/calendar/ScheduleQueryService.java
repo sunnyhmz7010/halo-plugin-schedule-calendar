@@ -942,6 +942,7 @@ public class ScheduleQueryService {
                 appendCardMetaItem(html, "下一次出现：", card.nextOccurrenceLabel());
                 appendCardMetaItem(html, "地点：", card.location());
                 appendCardMetaItem(html, "备注：", card.description());
+                appendCardAttachmentItems(html, card.attachments());
                 html.append("""
                                 </div>
                               </div>
@@ -965,6 +966,35 @@ public class ScheduleQueryService {
             .append("</span>");
     }
 
+    private void appendCardAttachmentItems(StringBuilder html, List<AttachmentResponse> attachments) {
+        if (attachments == null || attachments.isEmpty()) {
+            return;
+        }
+        html.append("<span class=\"entry-meta__item entry-meta__item--wide entry-meta__item--block\">附件：");
+        for (int index = 0; index < attachments.size(); index++) {
+            var attachment = attachments.get(index);
+            if (attachment == null) {
+                continue;
+            }
+            if (index > 0) {
+                html.append("、");
+            }
+            var displayName = attachment.displayName() == null || attachment.displayName().isBlank()
+                ? attachment.name()
+                : attachment.displayName();
+            if (attachment.permalink() != null && !attachment.permalink().isBlank()) {
+                html.append("<a href=\"")
+                    .append(escapeHtml(attachment.permalink()))
+                    .append("\" target=\"_blank\" rel=\"noreferrer noopener\">")
+                    .append(escapeHtml(displayName))
+                    .append("</a>");
+            } else {
+                html.append(escapeHtml(displayName));
+            }
+        }
+        html.append("</span>");
+    }
+
     private Mono<List<ScheduleEntry>> listEntries() {
         return client.listAll(ScheduleEntry.class, ListOptions.builder().build(), Sort.unsorted())
             .collectList()
@@ -980,6 +1010,7 @@ public class ScheduleQueryService {
             spec.getTitle(),
             spec.getDescription(),
             spec.getLocation(),
+            mapAttachments(spec.getAttachments()),
             formatDateTime(spec.getStartTime()),
             formatDateTime(spec.getEndTime()),
             recurrenceDescription(spec.getRecurrence()),
@@ -1136,6 +1167,9 @@ public class ScheduleQueryService {
         }
         if (spec.getDescription() != null && !spec.getDescription().isBlank()) {
             meta.add("备注：" + spec.getDescription());
+        }
+        if (spec.getAttachments() != null && !spec.getAttachments().isEmpty()) {
+            meta.add("附件：" + spec.getAttachments().size() + " 个");
         }
         var recurrence = recurrenceDescription(spec.getRecurrence());
         if (recurrence != null) {
@@ -1314,6 +1348,7 @@ public class ScheduleQueryService {
             spec.getTitle(),
             spec.getDescription(),
             spec.getLocation(),
+            mapAttachments(spec.getAttachments()),
             DATE_TIME_FORMATTER.format(start),
             DATE_TIME_FORMATTER.format(end),
             start.toLocalDate().toString(),
@@ -1322,6 +1357,23 @@ public class ScheduleQueryService {
             formatDuration(start, end),
             defaultColor(spec.getColor())
         );
+    }
+
+    private List<AttachmentResponse> mapAttachments(List<ScheduleEntry.AttachmentRef> attachments) {
+        if (attachments == null || attachments.isEmpty()) {
+            return List.of();
+        }
+        return attachments.stream()
+            .filter(attachment -> attachment != null && attachment.getName() != null
+                && !attachment.getName().isBlank())
+            .map(attachment -> new AttachmentResponse(
+                attachment.getName(),
+                attachment.getDisplayName(),
+                attachment.getPermalink(),
+                attachment.getMediaType(),
+                attachment.getSize()
+            ))
+            .collect(Collectors.toList());
     }
 
     private String escapeHtml(String value) {
@@ -1345,12 +1397,18 @@ public class ScheduleQueryService {
     }
 
     public record OccurrenceResponse(String name, String title, String description, String location,
+                                     List<AttachmentResponse> attachments,
                                      String startTime, String endTime, String date, String dayLabel,
                                      String recurrenceDescription, String durationLabel, String color) {
     }
 
     public record ScheduleCardResponse(String name, String title, String description, String location,
+                                       List<AttachmentResponse> attachments,
                                        String startTime, String endTime, String recurrenceDescription,
                                        String nextOccurrenceLabel, String color) {
+    }
+
+    public record AttachmentResponse(String name, String displayName, String permalink, String mediaType,
+                                     Long size) {
     }
 }
