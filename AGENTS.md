@@ -66,6 +66,9 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - The plugin backup feature belongs in the plugin settings area, but the page itself should stay visually close to Halo native patterns and avoid extra decorative copy.
 - Do not use invalid create requests to probe permissions. For admin permission checks, prefer no-side-effect probes against real resources.
 - Do not add `@halo-dev/ui-shared` just to read UI permissions in this repo. It pulls extra frontend dependencies such as `pinia`/`vue-router` and can break the current plugin build.
+- For public calendar rendering, do not interpolate schedule data into `innerHTML`. Build DOM nodes with `textContent`/`createElement` so persisted entry data cannot become stored XSS.
+- `unplugin-icons` is not required in this repo. Prefer Halo-provided icons from `@halo-dev/components`; keeping `unplugin-icons` pulls `vue-template-compiler` into the dependency tree and creates avoidable audit noise.
+- When dependency audit is part of the task, `pnpm.overrides` in `ui/package.json` is an acceptable way to pin vulnerable transitive packages to safe versions, as long as `pnpm build`, `pnpm audit`, and Gradle tests still pass afterward.
 
 ## Release Conventions
 

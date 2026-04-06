@@ -1,8 +1,8 @@
 import { ToolboxItem, VueNodeViewRenderer } from '@halo-dev/richtext-editor'
 import { mergeAttributes, Node } from '@tiptap/core'
 import type { Editor, Range } from '@tiptap/core'
+import { IconCalendar } from '@halo-dev/components'
 import { markRaw } from 'vue'
-import MdiCalendarClockOutline from '~icons/mdi/calendar-clock-outline'
 import type { ScheduleCard } from '../types/schedule'
 import ScheduleCardView from './ScheduleCardView.vue'
 
@@ -66,7 +66,7 @@ export const ScheduleCardExtension = Node.create({
             component: markRaw(ToolboxItem),
             props: {
               editor,
-              icon: markRaw(MdiCalendarClockOutline),
+              icon: markRaw(IconCalendar),
               title: '日程卡片',
               action: () => {
                 void insertCard(editor)
@@ -78,7 +78,7 @@ export const ScheduleCardExtension = Node.create({
       getCommandMenuItems() {
         return {
           priority: 140,
-          icon: markRaw(MdiCalendarClockOutline),
+          icon: markRaw(IconCalendar),
           title: '日程卡片',
           keywords: ['schedule', 'calendar', 'rili', '日程', '日历'],
           command: ({ editor, range }: { editor: Editor; range: Range }) => {

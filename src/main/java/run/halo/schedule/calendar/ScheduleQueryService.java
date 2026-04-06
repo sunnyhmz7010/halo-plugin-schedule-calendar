@@ -720,16 +720,21 @@ public class ScheduleQueryService {
                               payload.days.forEach((day) => {
                                 const section = document.createElement("div");
                                 section.className = "day-column";
-                                section.innerHTML = `
-                                  <header class="day-column__header">
-                                    <strong>${day.dayLabel}</strong>
-                                    <span>${day.date}</span>
-                                  </header>
-                                  <div class="day-column__body" style="height:${totalHeight}px;">
-                                    <div class="day-column__lines"></div>
-                                  </div>
-                                `;
-                                const body = section.querySelector(".day-column__body");
+                                const header = document.createElement("header");
+                                header.className = "day-column__header";
+                                const headerTitle = document.createElement("strong");
+                                headerTitle.textContent = day.dayLabel;
+                                const headerDate = document.createElement("span");
+                                headerDate.textContent = day.date;
+                                header.append(headerTitle, headerDate);
+
+                                const body = document.createElement("div");
+                                body.className = "day-column__body";
+                                body.style.height = `${totalHeight}px`;
+                                const lines = document.createElement("div");
+                                lines.className = "day-column__lines";
+                                body.appendChild(lines);
+                                section.append(header, body);
                                 assignColumns(day.occupied).forEach((block) => {
                                   const element = document.createElement("article");
                                   element.className = block.isSplit ? "calendar-block calendar-block--split" : "calendar-block";
@@ -739,18 +744,30 @@ public class ScheduleQueryService {
                                   element.style.width = block.width;
                                   element.style.height = `${block.height}px`;
                                   element.style.background = block.color;
-                                  const metaHtml =
-                                    !block.isSplit && Array.isArray(block.visibleMetaLines)
-                                      ? block.visibleMetaLines
-                                          .map((line) => `<div class="calendar-block__meta">${line}</div>`)
-                                      .join("")
-                                      : "";
-                                  element.innerHTML = `
-                                    <div class="calendar-block__title">${block.title}</div>
-                                    ${block.density !== "minimal" ? `<div class="calendar-block__time">${block.start} - ${block.endLabel}</div>` : ""}
-                                    ${block.density === "full" && !block.isSplit ? `<div class="calendar-block__meta">${block.durationLabel}</div>` : ""}
-                                    ${metaHtml}
-                                  `;
+                                  const blockTitle = document.createElement("div");
+                                  blockTitle.className = "calendar-block__title";
+                                  blockTitle.textContent = block.title;
+                                  element.appendChild(blockTitle);
+                                  if (block.density !== "minimal") {
+                                    const blockTime = document.createElement("div");
+                                    blockTime.className = "calendar-block__time";
+                                    blockTime.textContent = `${block.start} - ${block.endLabel}`;
+                                    element.appendChild(blockTime);
+                                  }
+                                  if (block.density === "full" && !block.isSplit) {
+                                    const duration = document.createElement("div");
+                                    duration.className = "calendar-block__meta";
+                                    duration.textContent = block.durationLabel;
+                                    element.appendChild(duration);
+                                  }
+                                  if (!block.isSplit && Array.isArray(block.visibleMetaLines)) {
+                                    block.visibleMetaLines.forEach((line) => {
+                                      const meta = document.createElement("div");
+                                      meta.className = "calendar-block__meta";
+                                      meta.textContent = line;
+                                      element.appendChild(meta);
+                                    });
+                                  }
                                   body.appendChild(element);
                                 });
                                 grid.appendChild(section);
