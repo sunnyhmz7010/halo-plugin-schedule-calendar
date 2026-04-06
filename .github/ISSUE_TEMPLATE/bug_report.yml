@@ -27,9 +27,6 @@ body:
         - Backup and restore / 备份与恢复
         - Permissions / 权限
         - Other / 其他
-    validations:
-      required: true
-
   - type: textarea
     id: summary
     attributes:
@@ -56,33 +53,21 @@ body:
     attributes:
       label: Expected Behavior / 期望结果
       description: What did you expect to happen? / 你期望发生什么？
-    validations:
-      required: true
-
   - type: textarea
     id: actual
     attributes:
       label: Actual Behavior / 实际结果
       description: What actually happened? / 实际发生了什么？
-    validations:
-      required: true
-
   - type: input
     id: halo-version
     attributes:
       label: Halo Version / Halo 版本
       placeholder: e.g. 2.23.2
-    validations:
-      required: true
-
   - type: input
     id: plugin-version
     attributes:
       label: Plugin Version / 插件版本
       placeholder: e.g. 2.4.0
-    validations:
-      required: true
-
   - type: input
     id: environment
     attributes:
@@ -103,6 +88,4 @@ body:
       label: Checklist / 提交前确认
       options:
         - label: I have searched existing issues before submitting this report. / 我已先搜索过现有 Issue。
-          required: true
         - label: I have removed sensitive information from logs and screenshots. / 我已移除日志和截图中的敏感信息。
-          required: true
