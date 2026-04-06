@@ -2,7 +2,8 @@
 import { axiosInstance } from '@halo-dev/api-client'
 import { Toast, VAlert, VButton, VCard } from '@halo-dev/components'
 import { computed, ref } from 'vue'
-import type { ScheduleEntrySpec } from '../types/schedule'
+import { ENTRY_API, fetchAllScheduleEntries } from '../editor/schedule-card-data'
+import type { ScheduleEntry, ScheduleEntrySpec } from '../types/schedule'
 
 interface ScheduleBackupPayload {
   apiVersion?: string
@@ -23,7 +24,7 @@ interface ScheduleBackupImportResult {
 }
 
 const backupExportApi = '/apis/console.api.schedule.calendar.sunny.dev/v1alpha1/backupexports'
-const backupImportApi = '/apis/console.api.schedule.calendar.sunny.dev/v1alpha1/backupimports'
+const pluginConfigApi = '/apis/api.console.halo.run/v1alpha1/plugins/schedule-calendar/json-config'
 
 const exporting = ref(false)
 const importing = ref(false)
@@ -82,6 +83,81 @@ const downloadJson = (payload: ScheduleBackupPayload) => {
   URL.revokeObjectURL(url)
 }
 
+const toScheduleEntry = (name: string, spec: ScheduleEntrySpec): ScheduleEntry => ({
+  apiVersion: 'schedule.calendar.sunny.dev/v1alpha1',
+  kind: 'ScheduleEntry',
+  metadata: {
+    name,
+  },
+  spec: {
+    title: spec.title,
+    description: spec.description || undefined,
+    location: spec.location || undefined,
+    startTime: spec.startTime,
+    endTime: spec.endTime,
+    color: spec.color || '#3b82f6',
+    recurrence:
+      spec.recurrence?.frequency && spec.recurrence.frequency !== 'NONE'
+        ? {
+            frequency: spec.recurrence.frequency,
+            interval: spec.recurrence.interval ?? 1,
+            until: spec.recurrence.until || undefined,
+          }
+        : undefined,
+  },
+})
+
+const restorePluginSettings = async (settings?: Record<string, unknown>) => {
+  await axiosInstance.put(pluginConfigApi, settings ?? {})
+}
+
+const restoreEntries = async (
+  items: ScheduleBackupPayload['entries'],
+): Promise<ScheduleBackupImportResult> => {
+  const existingEntries = await fetchAllScheduleEntries()
+  const existingByName = new Map(existingEntries.map((entry) => [entry.metadata.name, entry]))
+  const importedEntries = items.map((item) => toScheduleEntry(item.name, item.spec))
+  const importedNames = new Set(importedEntries.map((entry) => entry.metadata.name))
+  let createdEntries = 0
+
+  for (const entry of importedEntries) {
+    const existing = existingByName.get(entry.metadata.name)
+
+    if (existing) {
+      await axiosInstance.put(`${ENTRY_API}/${encodeURIComponent(entry.metadata.name)}`, {
+        apiVersion: existing.apiVersion ?? entry.apiVersion,
+        kind: existing.kind ?? entry.kind,
+        metadata: {
+          ...existing.metadata,
+          name: entry.metadata.name,
+        },
+        spec: entry.spec,
+      })
+      continue
+    }
+
+    await axiosInstance.post(ENTRY_API, entry)
+    createdEntries += 1
+  }
+
+  let deletedEntries = 0
+
+  for (const entry of existingEntries) {
+    if (importedNames.has(entry.metadata.name)) {
+      continue
+    }
+
+    await axiosInstance.delete(`${ENTRY_API}/${encodeURIComponent(entry.metadata.name)}`)
+    deletedEntries += 1
+  }
+
+  return {
+    totalEntries: importedEntries.length,
+    createdEntries,
+    deletedEntries,
+  }
+}
+
 const exportBackup = async () => {
   exporting.value = true
 
@@ -114,7 +190,8 @@ const restoreBackup = async (event: Event) => {
   try {
     const text = await file.text()
     const payload = JSON.parse(text) as ScheduleBackupPayload
-    const { data } = await axiosInstance.post<ScheduleBackupImportResult>(backupImportApi, payload)
+    const data = await restoreEntries(payload.entries ?? [])
+    await restorePluginSettings(payload.settings)
 
     importSummary.value = `已同步 ${data.totalEntries} 条事项，新建 ${data.createdEntries} 条，移除 ${data.deletedEntries} 条。`
     Toast.success('备份已恢复')

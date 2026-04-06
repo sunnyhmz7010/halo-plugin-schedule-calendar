@@ -5,6 +5,7 @@ import { IconCalendar } from '@halo-dev/components'
 import { markRaw } from 'vue'
 import { ScheduleCardExtension } from './editor/schedule-card-extension'
 
+const viewPermissions = ['plugin:schedule-calendar:view']
 const managePermissions = ['plugin:schedule-calendar:manage']
 
 const openScheduleCalendarConsole = () => {
@@ -23,7 +24,7 @@ export default definePlugin({
         meta: {
           title: '日程日历',
           searchable: true,
-          permissions: managePermissions,
+          permissions: viewPermissions,
           menu: {
             name: '日程日历',
             icon: markRaw(IconCalendar),
@@ -49,7 +50,7 @@ export default definePlugin({
         icon: markRaw(IconCalendar),
         title: '日程日历',
         action: openScheduleCalendarConsole,
-        permissions: managePermissions,
+        permissions: viewPermissions,
       },
     ],
   },
