@@ -40,6 +40,8 @@ import {
 import { fetchAllScheduleEntries } from '../editor/schedule-card-data'
 
 const apiBase = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
+const viewPermissionApi = '/apis/console.api.schedule.calendar.sunny.dev/v1alpha1/permissions/view'
+const managePermissionApi = '/apis/console.api.schedule.calendar.sunny.dev/v1alpha1/permissions/manage'
 const hourHeight = 56
 const dayColumnHeight = hourHeight * 24
 const headerHeight = 64
@@ -56,6 +58,7 @@ const colorInputRef = ref<HTMLInputElement | null>(null)
 const editingEntryName = ref<string | null>(null)
 const deleteTarget = ref<ScheduleEntry | null>(null)
 const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
+const permissionLevel = ref<'unknown' | 'view' | 'manage'>('unknown')
 
 const form = reactive({
   title: '',
@@ -532,6 +535,8 @@ const entryOccurrenceSummaryMap = computed(() => {
 const isEditing = computed(() => editingEntryName.value !== null)
 const dialogTitle = computed(() => (isEditing.value ? '编辑事项' : '新增事项'))
 const dialogSubmitLabel = computed(() => (isEditing.value ? '更新事项' : '保存事项'))
+const canManageEntries = computed(() => permissionLevel.value === 'manage')
+const showReadonlyNotice = computed(() => permissionLevel.value === 'view')
 
 const buildEntryMetaItems = (entry: ScheduleEntry): EntryMetaItem[] => {
   const items: EntryMetaItem[] = [{ text: formatEntryScheduleSummary(entry) }]
@@ -565,6 +570,10 @@ const buildEntryMetaItems = (entry: ScheduleEntry): EntryMetaItem[] => {
 }
 
 const openCreateDialog = () => {
+  if (!canManageEntries.value) {
+    return
+  }
+
   editingEntryName.value = null
   resetForm()
   dialogError.value = ''
@@ -572,6 +581,10 @@ const openCreateDialog = () => {
 }
 
 const openEditDialog = (entry: ScheduleEntry) => {
+  if (!canManageEntries.value) {
+    return
+  }
+
   editingEntryName.value = entry.metadata.name
   fillForm(entry)
   dialogError.value = ''
@@ -613,6 +626,37 @@ const fetchEntries = async () => {
     console.error(err)
   } finally {
     loading.value = false
+  }
+}
+
+const isAxiosStatus = (error: unknown, status: number) => {
+  if (typeof error !== 'object' || error === null) {
+    return false
+  }
+
+  const response = (error as { response?: { status?: number } }).response
+  return response?.status === status
+}
+
+const loadPermissionLevel = async () => {
+  try {
+    await axiosInstance.get(managePermissionApi)
+    permissionLevel.value = 'manage'
+    return
+  } catch (error) {
+    if (!isAxiosStatus(error, 401) && !isAxiosStatus(error, 403)) {
+      console.error(error)
+      return
+    }
+  }
+
+  try {
+    await axiosInstance.get(viewPermissionApi)
+    permissionLevel.value = 'view'
+  } catch (error) {
+    if (!isAxiosStatus(error, 401) && !isAxiosStatus(error, 403)) {
+      console.error(error)
+    }
   }
 }
 
@@ -698,6 +742,10 @@ const validateForm = () => {
 }
 
 const createEntry = async () => {
+  if (!canManageEntries.value) {
+    return
+  }
+
   const validated = validateForm()
   if (!validated) {
     return
@@ -731,6 +779,10 @@ const createEntry = async () => {
 }
 
 const updateEntry = async () => {
+  if (!canManageEntries.value) {
+    return
+  }
+
   const validated = validateForm()
   if (!validated || !editingEntryName.value) {
     return
@@ -777,6 +829,10 @@ const updateEntry = async () => {
 }
 
 const submitEntry = async () => {
+  if (!canManageEntries.value) {
+    return
+  }
+
   if (isEditing.value) {
     await updateEntry()
     return
@@ -786,6 +842,10 @@ const submitEntry = async () => {
 }
 
 const removeEntry = async (name: string) => {
+  if (!canManageEntries.value) {
+    return false
+  }
+
   pageError.value = ''
   const previousEntries = [...entries.value]
 
@@ -804,6 +864,10 @@ const removeEntry = async (name: string) => {
 }
 
 const openRemoveDialog = (entry: ScheduleEntry) => {
+  if (!canManageEntries.value) {
+    return
+  }
+
   deleteTarget.value = entry
 }
 
@@ -816,7 +880,7 @@ const closeRemoveDialog = () => {
 }
 
 const confirmRemoveEntry = async () => {
-  if (!deleteTarget.value) {
+  if (!canManageEntries.value || !deleteTarget.value) {
     return
   }
 
@@ -836,6 +900,7 @@ onMounted(() => {
   updateViewportWidth()
   window.addEventListener('resize', updateViewportWidth)
   syncWeekInput()
+  void loadPermissionLevel()
   void fetchEntries()
 })
 
@@ -859,6 +924,15 @@ onBeforeUnmount(() => {
         type="error"
         title="操作失败"
         :description="pageError"
+        :closable="false"
+      />
+
+      <VAlert
+        v-if="showReadonlyNotice"
+        class="page-alert"
+        type="info"
+        title="当前为只读权限"
+        description="你可以查看周历和事项列表；新增、编辑、删除和备份恢复需要“日程日历管理”权限。"
         :closable="false"
       />
 
@@ -1064,7 +1138,7 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
-            <div class="entry-card-header__actions">
+            <div v-if="canManageEntries" class="entry-card-header__actions">
               <VButton type="secondary" @click="openCreateDialog">
                 <template #icon>
                   <IconAddCircle />
@@ -1099,7 +1173,7 @@ onBeforeUnmount(() => {
               </div>
             </template>
             <template #end>
-              <div class="entry-actions">
+              <div v-if="canManageEntries" class="entry-actions">
                 <VButton ghost @click="openEditDialog(entry)">
                   <template #icon>
                     <IconRiPencilFill />
