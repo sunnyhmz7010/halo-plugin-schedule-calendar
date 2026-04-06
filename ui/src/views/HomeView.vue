@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { axiosInstance } from '@halo-dev/api-client'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   IconAddCircle,
   IconArrowLeft,
@@ -239,11 +239,18 @@ const weekRangeLabel = computed(() => {
 })
 
 const dialogWidth = computed(() => Math.min(720, Math.max(280, viewportWidth.value - 24)))
-const weekViewMode = ref<WeekViewMode>(viewportWidth.value <= 768 ? 'agenda' : 'calendar')
+const resolveResponsiveWeekViewMode = (width: number): WeekViewMode => (width <= 768 ? 'agenda' : 'calendar')
+const hasManualWeekViewMode = ref(false)
+const weekViewMode = ref<WeekViewMode>(resolveResponsiveWeekViewMode(viewportWidth.value))
 const weekViewModeItems: Array<{ id: WeekViewMode; label: string }> = [
   { id: 'calendar', label: '日历布局' },
   { id: 'agenda', label: '事项布局' },
 ]
+
+const setWeekViewMode = (mode: WeekViewMode) => {
+  hasManualWeekViewMode.value = true
+  weekViewMode.value = mode
+}
 
 const goToCurrentWeek = () => {
   currentWeekStart.value = startOfWeek(new Date())
@@ -613,6 +620,14 @@ const updateViewportWidth = () => {
   viewportWidth.value = window.innerWidth
 }
 
+watch(viewportWidth, (width) => {
+  if (hasManualWeekViewMode.value) {
+    return
+  }
+
+  weekViewMode.value = resolveResponsiveWeekViewMode(width)
+})
+
 const fetchEntries = async () => {
   loading.value = true
   pageError.value = ''
@@ -968,7 +983,7 @@ onBeforeUnmount(() => {
                 :key="item.id"
                 :type="weekViewMode === item.id ? 'primary' : 'secondary'"
                 class="week-view-mode__button"
-                @click="weekViewMode = item.id"
+                @click="setWeekViewMode(item.id)"
               >
                 {{ item.label }}
               </VButton>
@@ -1007,7 +1022,6 @@ onBeforeUnmount(() => {
                   <div class="calendar-mobile-block__content">
                     <div class="calendar-mobile-block__top">
                       <div class="calendar-mobile-block__title">{{ block.title }}</div>
-                      <VTag v-if="block.isRecurring" theme="default">循环</VTag>
                     </div>
 
                     <div class="calendar-mobile-block__time">
@@ -1379,7 +1393,7 @@ onBeforeUnmount(() => {
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
+  touch-action: pan-x pan-y pinch-zoom;
   padding-bottom: 4px;
 }
 
@@ -1934,6 +1948,62 @@ onBeforeUnmount(() => {
   }
 }
 
+@media (max-width: 768px) {
+  .calendar-grid {
+    grid-template-columns: 48px minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .calendar-grid-scroll {
+    overflow-x: visible;
+  }
+
+  .day-columns {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .day-column__header {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .day-column__header strong {
+    font-size: 11px;
+  }
+
+  .day-column__header span {
+    font-size: 10px;
+  }
+
+  .time-column__header,
+  .time-column__slot {
+    font-size: 10px;
+  }
+
+  .time-column__slot {
+    padding-right: 4px;
+  }
+
+  .calendar-block,
+  .calendar-block--split {
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 4px 3px;
+    border-radius: 6px;
+    text-align: left;
+  }
+
+  .calendar-block__title {
+    font-size: 10px;
+    line-height: 1.15;
+  }
+
+  .calendar-block__time,
+  .calendar-block__meta {
+    display: none;
+  }
+}
+
 @media (max-width: 640px) {
   .entry-card-header {
     grid-template-columns: minmax(0, 1fr);
@@ -1996,12 +2066,10 @@ onBeforeUnmount(() => {
   }
 
   .calendar-grid {
-    grid-template-columns: 52px minmax(0, 1fr);
-    width: max(100%, 892px);
+    grid-template-columns: 44px minmax(0, 1fr);
   }
 
   .calendar-grid-scroll {
-    -webkit-overflow-scrolling: auto;
     padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
 

@@ -247,7 +247,7 @@ public class ScheduleQueryService {
                                 overflow-x: auto;
                                 overflow-y: hidden;
                                 -webkit-overflow-scrolling: touch;
-                                touch-action: pan-x;
+                                touch-action: pan-x pan-y pinch-zoom;
                                 padding-bottom: 4px;
                               }
                               .calendar__grid {
@@ -465,30 +465,71 @@ public class ScheduleQueryService {
                                 .calendar-block__title {
                                   font-size: 0.8rem;
                                 }
-                                .calendar-block__time,
-                                .calendar-block__meta {
-                                  margin-top: 2px;
-                                  font-size: 0.66rem;
-                                  line-height: 1.25;
-                                }
+                              .calendar-block__time,
+                              .calendar-block__meta {
+                                margin-top: 2px;
+                                font-size: 0.66rem;
+                                line-height: 1.25;
                               }
-                              @media (max-width: 640px) {
-                                .calendar__grid {
-                                  grid-template-columns: 52px minmax(0, 1fr);
-                                  width: max(100%%, 892px);
-                                }
-                                .day-column__header strong {
-                                  font-size: 0.75rem;
-                                }
-                                .day-column__header span {
-                                  font-size: 0.65rem;
-                                }
-                                .calendar-block {
-                                  padding: 5px 6px;
-                                }
-                                .agenda-day__header {
-                                  padding: 14px 16px;
-                                }
+                            }
+                            @media (max-width: 768px) {
+                              .calendar__grid {
+                                grid-template-columns: 48px minmax(0, 1fr);
+                                width: 100%%;
+                              }
+                              .calendar__scroller {
+                                overflow-x: visible;
+                              }
+                              .day-columns {
+                                grid-template-columns: repeat(7, minmax(0, 1fr));
+                              }
+                              .day-column__header {
+                                padding-left: 4px;
+                                padding-right: 4px;
+                              }
+                              .day-column__header strong {
+                                font-size: 0.78rem;
+                              }
+                              .day-column__header span {
+                                font-size: 0.68rem;
+                              }
+                              .time-column__header,
+                              .time-column__slot {
+                                font-size: 0.68rem;
+                              }
+                              .time-column__slot {
+                                padding-right: 4px;
+                              }
+                              .calendar-block,
+                              .calendar-block--split {
+                                justify-content: flex-start;
+                                align-items: flex-start;
+                                padding: 4px 3px;
+                                border-radius: 6px;
+                                text-align: left;
+                              }
+                              .calendar-block__title {
+                                font-size: 0.62rem;
+                                line-height: 1.15;
+                              }
+                              .calendar-block__time,
+                              .calendar-block__meta {
+                                display: none;
+                              }
+                            }
+                            @media (max-width: 640px) {
+                              .calendar__grid {
+                                grid-template-columns: 44px minmax(0, 1fr);
+                              }
+                              .day-column__header strong {
+                                font-size: 0.75rem;
+                              }
+                              .day-column__header span {
+                                font-size: 0.65rem;
+                              }
+                              .agenda-day__header {
+                                padding: 14px 16px;
+                              }
                                 .agenda-day__list {
                                   padding: 10px;
                                 }
@@ -535,9 +576,11 @@ public class ScheduleQueryService {
                               const hourHeight = %d;
                               const totalHeight = hourHeight * 24;
                               const searchParams = new URLSearchParams(window.location.search);
+                              const resolveResponsiveView = () => window.innerWidth <= 768 ? "agenda" : "calendar";
+                              let manualViewSelection = searchParams.has("view");
                               let currentView = searchParams.get("view") === "agenda"
                                 ? "agenda"
-                                : (window.innerWidth <= 768 ? "agenda" : "calendar");
+                                : (manualViewSelection ? "calendar" : resolveResponsiveView());
                               const buildWeekUrl = (start) => {
                                 const params = new URLSearchParams(window.location.search);
                                 params.set("start", start);
@@ -810,9 +853,20 @@ public class ScheduleQueryService {
                               });
                               viewModeButtons.forEach((button) => {
                                 button.addEventListener("click", () => {
+                                  manualViewSelection = true;
                                   currentView = button.dataset.viewMode === "agenda" ? "agenda" : "calendar";
                                   syncViewMode();
                                 });
+                              });
+                              window.addEventListener("resize", () => {
+                                if (manualViewSelection) {
+                                  return;
+                                }
+                                const nextView = resolveResponsiveView();
+                                if (nextView !== currentView) {
+                                  currentView = nextView;
+                                  syncViewMode();
+                                }
                               });
                               syncViewMode();
                             </script>
