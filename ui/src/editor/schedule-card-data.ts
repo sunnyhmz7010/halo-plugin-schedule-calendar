@@ -27,7 +27,6 @@ export const toScheduleCard = (entry: ScheduleEntry): ScheduleCard => ({
   title: entry.spec.title,
   description: entry.spec.description ?? '',
   location: entry.spec.location ?? '',
-  attachments: entry.spec.attachments ?? [],
   startTime: formatEntryDateTime(entry.spec.startTime),
   endTime: formatEntryDateTime(entry.spec.endTime),
   recurrenceDescription: formatRecurrenceDescription(entry.spec.recurrence),

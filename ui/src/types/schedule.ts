@@ -6,19 +6,10 @@ export interface ScheduleEntryRecurrence {
   until?: string
 }
 
-export interface ScheduleEntryAttachment {
-  name: string
-  displayName?: string
-  permalink?: string
-  mediaType?: string
-  size?: number
-}
-
 export interface ScheduleEntrySpec {
   title: string
   description?: string
   location?: string
-  attachments?: ScheduleEntryAttachment[]
   startTime: string
   endTime: string
   color?: string
@@ -50,7 +41,6 @@ export interface ScheduleCard {
   title: string
   description?: string
   location?: string
-  attachments?: ScheduleEntryAttachment[]
   startTime: string
   endTime: string
   recurrenceDescription?: string

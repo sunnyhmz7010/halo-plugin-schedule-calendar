@@ -5,7 +5,6 @@ import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.List;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import run.halo.app.extension.AbstractExtension;
@@ -30,9 +29,6 @@ public class ScheduleEntry extends AbstractExtension {
 
         @Schema(description = "Optional place or meeting link.")
         private String location;
-
-        @Schema(description = "Optional Halo attachments bound to this schedule entry.")
-        private List<AttachmentRef> attachments;
 
         @Schema(requiredMode = REQUIRED)
         private OffsetDateTime startTime;
@@ -67,23 +63,5 @@ public class ScheduleEntry extends AbstractExtension {
 
         @Schema(description = "Last occurrence date in local time, inclusive.")
         private LocalDate until;
-    }
-
-    @Data
-    public static class AttachmentRef {
-        @Schema(requiredMode = REQUIRED, minLength = 1)
-        private String name;
-
-        @Schema(description = "Snapshot display name of the attachment when it was selected.")
-        private String displayName;
-
-        @Schema(description = "Snapshot permalink of the attachment when it was selected.")
-        private String permalink;
-
-        @Schema(description = "Snapshot media type of the attachment when it was selected.")
-        private String mediaType;
-
-        @Schema(description = "Snapshot size in bytes of the attachment when it was selected.")
-        private Long size;
     }
 }

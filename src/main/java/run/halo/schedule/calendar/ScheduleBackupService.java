@@ -208,7 +208,6 @@ public class ScheduleBackupService {
         spec.setTitle(source.getTitle());
         spec.setDescription(source.getDescription());
         spec.setLocation(source.getLocation());
-        spec.setAttachments(copyAttachments(source.getAttachments()));
         spec.setStartTime(source.getStartTime());
         spec.setEndTime(source.getEndTime());
         spec.setColor(source.getColor());
@@ -225,28 +224,6 @@ public class ScheduleBackupService {
         recurrence.setInterval(source.getInterval());
         recurrence.setUntil(source.getUntil());
         return recurrence;
-    }
-
-    private java.util.List<ScheduleEntry.AttachmentRef> copyAttachments(
-        java.util.List<ScheduleEntry.AttachmentRef> source
-    ) {
-        if (source == null || source.isEmpty()) {
-            return null;
-        }
-        return source.stream().map(this::copyAttachment).toList();
-    }
-
-    private ScheduleEntry.AttachmentRef copyAttachment(ScheduleEntry.AttachmentRef source) {
-        if (source == null) {
-            return null;
-        }
-        var attachment = new ScheduleEntry.AttachmentRef();
-        attachment.setName(source.getName());
-        attachment.setDisplayName(source.getDisplayName());
-        attachment.setPermalink(source.getPermalink());
-        attachment.setMediaType(source.getMediaType());
-        attachment.setSize(source.getSize());
-        return attachment;
     }
 
     private ResponseStatusException badRequest(String reason) {
