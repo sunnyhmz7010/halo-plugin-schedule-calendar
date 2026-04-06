@@ -629,34 +629,31 @@ const fetchEntries = async () => {
   }
 }
 
-const isAxiosStatus = (error: unknown, status: number) => {
-  if (typeof error !== 'object' || error === null) {
-    return false
-  }
-
-  const response = (error as { response?: { status?: number } }).response
-  return response?.status === status
-}
-
 const loadPermissionLevel = async () => {
   try {
-    await axiosInstance.get(managePermissionApi)
-    permissionLevel.value = 'manage'
-    return
-  } catch (error) {
-    if (!isAxiosStatus(error, 401) && !isAxiosStatus(error, 403)) {
-      console.error(error)
+    const manageResponse = await axiosInstance.get(managePermissionApi, {
+      validateStatus: (status) => status >= 200 && status < 500,
+    })
+
+    if (manageResponse.status >= 200 && manageResponse.status < 300) {
+      permissionLevel.value = 'manage'
       return
     }
+  } catch (error) {
+    console.error(error)
+    return
   }
 
   try {
-    await axiosInstance.get(viewPermissionApi)
-    permissionLevel.value = 'view'
-  } catch (error) {
-    if (!isAxiosStatus(error, 401) && !isAxiosStatus(error, 403)) {
-      console.error(error)
+    const viewResponse = await axiosInstance.get(viewPermissionApi, {
+      validateStatus: (status) => status >= 200 && status < 500,
+    })
+
+    if (viewResponse.status >= 200 && viewResponse.status < 300) {
+      permissionLevel.value = 'view'
     }
+  } catch (error) {
+    console.error(error)
   }
 }
 
