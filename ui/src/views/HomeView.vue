@@ -1976,12 +1976,16 @@ onBeforeUnmount(() => {
   .page-body {
     padding-left: 12px !important;
     padding-right: 12px !important;
-    padding-bottom: 12px !important;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .calendar-grid {
     grid-template-columns: 52px minmax(0, 1fr);
     width: max(100%, 892px);
+  }
+
+  .calendar-grid-scroll {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
 
   .day-column__header strong {
