@@ -9,15 +9,25 @@ import run.halo.app.plugin.PluginContext;
 @Component
 public class ScheduleCalendarPlugin extends BasePlugin {
     private final SchemeManager schemeManager;
+    private boolean schemeRegistered;
 
     public ScheduleCalendarPlugin(PluginContext pluginContext, SchemeManager schemeManager) {
         super(pluginContext);
         this.schemeManager = schemeManager;
+        registerSchemeIfNeeded();
     }
 
     @Override
     public void start() {
+        registerSchemeIfNeeded();
+    }
+
+    private void registerSchemeIfNeeded() {
+        if (schemeRegistered) {
+            return;
+        }
         schemeManager.register(ScheduleEntry.class, this::registerIndices);
+        schemeRegistered = true;
     }
 
     private void registerIndices(IndexSpecs<ScheduleEntry> indexSpecs) {

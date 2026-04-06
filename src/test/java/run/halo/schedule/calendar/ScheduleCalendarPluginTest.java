@@ -3,6 +3,7 @@ package run.halo.schedule.calendar;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
 
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,7 @@ class ScheduleCalendarPluginTest {
     @Test
     void contextLoads() {
         plugin.start();
-        verify(schemeManager).register(eq(ScheduleEntry.class), any());
+        verify(schemeManager, times(1)).register(eq(ScheduleEntry.class), any());
     }
 
     @Test

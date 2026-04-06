@@ -113,31 +113,6 @@
 - `entrycards/{name}`：
   - 返回单个事项卡片详情。
 
-Finder 和公开 REST API 的查询语义保持一致：
-
-- 想在主题模板里直接取值，优先用 Finder。
-- 想在前端应用、脚本或外部系统里取 JSON，优先用 REST API。
-
-### 4. 控制台内部 API 与权限边界
-
-以下能力属于插件管理面，不作为公开集成接口：
-
-- 自定义模型管理：`/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries`
-- 备份导出：`GET /apis/console.api.schedule.calendar.sunny.dev/v1alpha1/backupexports`
-- 备份恢复：`POST /apis/console.api.schedule.calendar.sunny.dev/v1alpha1/backupimports`
-
-权限约定：
-
-- 匿名访问默认只开放前台页面和公开 REST API。
-- 事项的新增、编辑、删除，以及备份导入导出，需要 `plugin:schedule-calendar:manage`。
-- `scheduleentries` 属于插件内部管理数据面，控制台和编辑器能力基于这组接口工作，但不建议将其当作对外集成契约。
-
-参考 Halo 文档：
-
-- Finder API：<https://docs.halo.run/developer-guide/theme/finder-apis/>
-- 为主题提供数据（自定义 Finder）：<https://docs.halo.run/developer-guide/plugin/api-reference/server/finder-for-theme>
-- RESTful API 介绍：<https://docs.halo.run/developer-guide/restful-api/introduction>
-
 ## 开发环境
 
 - JDK 21+
