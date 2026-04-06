@@ -2000,7 +2000,7 @@ onBeforeUnmount(() => {
   .calendar-block,
   .calendar-block--split {
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
     padding: 5px 4px;
     border-radius: 6px;
     text-align: center;

@@ -502,7 +502,7 @@ public class ScheduleQueryService {
                               }
                               .calendar-block,
                               .calendar-block--split {
-                                justify-content: flex-start;
+                                justify-content: center;
                                 align-items: center;
                                 padding: 5px 4px;
                                 border-radius: 6px;
