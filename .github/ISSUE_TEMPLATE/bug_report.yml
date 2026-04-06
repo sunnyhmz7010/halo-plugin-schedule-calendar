@@ -50,5 +50,3 @@ body:
       options:
         - label: I have searched existing issues before submitting this report. / 我已先搜索过现有 Issue。
         - label: I have removed sensitive information from logs and screenshots. / 我已移除日志和截图中的敏感信息。
-      validations:
-        required: true
