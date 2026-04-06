@@ -22,6 +22,7 @@ import {
   VModal,
   VPageHeader,
   VStatusDot,
+  VTabbar,
   VTag,
   Toast,
 } from '@halo-dev/components'
@@ -250,6 +251,12 @@ const weekViewModeItems: Array<{ id: WeekViewMode; label: string }> = [
 const setWeekViewMode = (mode: WeekViewMode) => {
   hasManualWeekViewMode.value = true
   weekViewMode.value = mode
+}
+
+const handleWeekViewModeChange = (value: string | number) => {
+  if (value === 'calendar' || value === 'agenda') {
+    setWeekViewMode(value)
+  }
 }
 
 const goToCurrentWeek = () => {
@@ -978,15 +985,12 @@ onBeforeUnmount(() => {
 
           <div class="week-toolbar__mode">
             <div class="week-view-mode">
-              <VButton
-                v-for="item in weekViewModeItems"
-                :key="item.id"
-                :type="weekViewMode === item.id ? 'primary' : 'secondary'"
-                class="week-view-mode__button"
-                @click="setWeekViewMode(item.id)"
-              >
-                {{ item.label }}
-              </VButton>
+              <VTabbar
+                :items="weekViewModeItems"
+                :active-id="weekViewMode"
+                type="outline"
+                @update:active-id="handleWeekViewModeChange"
+              />
             </div>
           </div>
         </div>
@@ -1342,13 +1346,17 @@ onBeforeUnmount(() => {
 
 .week-view-mode {
   display: flex;
-  flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
 }
 
-.week-view-mode__button {
-  min-width: 92px;
+.week-view-mode :deep(.tabbar-wrapper) {
+  max-width: 100%;
+}
+
+.week-view-mode :deep(.tabbar-items) {
+  max-width: 100%;
 }
 
 .week-toolbar__range {
@@ -1903,6 +1911,11 @@ onBeforeUnmount(() => {
     width: 100%;
   }
 
+  .week-view-mode :deep(.tabbar-wrapper),
+  .week-view-mode :deep(.tabbar-items) {
+    width: 100%;
+  }
+
   .week-picker {
     width: 100%;
     max-width: 320px;
@@ -2046,12 +2059,16 @@ onBeforeUnmount(() => {
   }
 
   .week-view-mode {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
   }
 
-  .week-view-mode__button {
+  .week-view-mode :deep(.tabbar-wrapper),
+  .week-view-mode :deep(.tabbar-items) {
     width: 100%;
+  }
+
+  .week-view-mode :deep(.tabbar-item) {
+    flex: 1 1 0;
     min-width: 0;
   }
 
