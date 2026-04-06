@@ -81,6 +81,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - This repo no longer keeps a committed `CHANGELOG.md`; release history is maintained in GitHub Releases instead.
 - For this repository, release notes should use the heading `## 更新内容`.
 - Release notes should describe concrete 新增功能、修复内容、优化点, and should avoid vague wording such as "收敛".
+- Release notes are user-facing change logs. Do not include internal verification/process statements such as having run `pnpm audit`, `pnpm build`, or `./gradlew.bat test`.
 - Stable release notes must aggregate the effective changes across the whole prerelease cycle since the previous stable release.
 - When converting a beta series into a stable release, do not keep the beta notes verbatim and do not omit beta-only fixes. Rewrite the stable notes in the repo's formal structure.
 - Before editing or publishing release notes, compare the target version against the previous stable tag and review recent GitHub release bodies so repeated items are removed and missing new items, especially permission-control and backup-recovery changes, are not omitted.
