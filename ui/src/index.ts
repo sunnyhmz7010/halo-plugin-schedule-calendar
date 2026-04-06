@@ -1,6 +1,7 @@
 import { definePlugin } from '@halo-dev/console-shared'
 import HomeView from './views/HomeView.vue'
 import BackupTab from './views/BackupTab.vue'
+import SettingsTab from './views/SettingsTab.vue'
 import { IconCalendar } from '@halo-dev/components'
 import { markRaw } from 'vue'
 import { ScheduleCardExtension } from './editor/schedule-card-extension'
@@ -37,6 +38,12 @@ export default definePlugin({
   extensionPoints: {
     'default:editor:extension:create': () => [ScheduleCardExtension],
     'plugin:self:tabs:create': () => [
+      {
+        id: 'schedule-calendar-settings',
+        label: '前台页面',
+        component: markRaw(SettingsTab),
+        permissions: managePermissions,
+      },
       {
         id: 'schedule-calendar-backup',
         label: '数据备份',

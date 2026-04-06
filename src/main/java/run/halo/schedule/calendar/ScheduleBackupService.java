@@ -1,8 +1,6 @@
 package run.halo.schedule.calendar;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -15,37 +13,28 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
-import run.halo.app.plugin.ReactiveSettingFetcher;
 
 @Service
 public class ScheduleBackupService {
     static final String BACKUP_API_VERSION = "schedule.calendar.sunny.dev/v1alpha1";
     static final String BACKUP_KIND = "ScheduleBackup";
     static final int BACKUP_SCHEMA_VERSION = 1;
-    private static final String CORE_API_VERSION = "v1alpha1";
-    private static final String CONFIG_MAP_KIND = "ConfigMap";
-    private static final String CONFIG_MAP_NAME = "schedule-calendar-settings";
 
     private final ReactiveExtensionClient client;
-    private final ReactiveSettingFetcher settingFetcher;
-    private final JsonMapper objectMapper;
+    private final ScheduleSettingsService scheduleSettingsService;
 
-    public ScheduleBackupService(ReactiveExtensionClient client, ReactiveSettingFetcher settingFetcher) {
+    public ScheduleBackupService(ReactiveExtensionClient client, ScheduleSettingsService scheduleSettingsService) {
         this.client = client;
-        this.settingFetcher = settingFetcher;
-        this.objectMapper = JsonMapper.builder()
-            .findAndAddModules()
-            .build();
+        this.scheduleSettingsService = scheduleSettingsService;
     }
 
     Mono<ScheduleBackupPayload> exportBackup() {
         return Mono.zip(
                 listEntries(),
-                settingFetcher.getValues().switchIfEmpty(Mono.just(Map.of()))
+                scheduleSettingsService.getRawSettings().switchIfEmpty(Mono.just(Map.of()))
             )
             .map(tuple -> new ScheduleBackupPayload(
                 BACKUP_API_VERSION,
@@ -149,43 +138,7 @@ public class ScheduleBackupService {
     }
 
     private Mono<Void> importSettings(Map<String, JsonNode> settings) {
-        var data = encodeSettings(settings);
-        return client.fetch(ConfigMap.class, CONFIG_MAP_NAME)
-            .flatMap(configMap -> {
-                configMap.setData(data);
-                return client.update(configMap).then();
-            })
-            .onErrorResume(throwable -> {
-                var configMap = newConfigMap();
-                configMap.setData(data);
-                return client.create(configMap).then();
-            });
-    }
-
-    private ConfigMap newConfigMap() {
-        var metadata = new Metadata();
-        metadata.setName(CONFIG_MAP_NAME);
-
-        var configMap = new ConfigMap();
-        configMap.setApiVersion(CORE_API_VERSION);
-        configMap.setKind(CONFIG_MAP_KIND);
-        configMap.setMetadata(metadata);
-        return configMap;
-    }
-
-    private Map<String, String> encodeSettings(Map<String, JsonNode> settings) {
-        var encoded = new LinkedHashMap<String, String>();
-        settings.forEach((group, value) -> {
-            if (group == null || group.isBlank() || value == null || value.isNull()) {
-                return;
-            }
-            try {
-                encoded.put(group, objectMapper.writeValueAsString(value));
-            } catch (JsonProcessingException exception) {
-                throw badRequest("插件设置无法写入备份。");
-            }
-        });
-        return encoded;
+        return scheduleSettingsService.replaceRawSettings(settings);
     }
 
     private ScheduleEntry toScheduleEntry(ScheduleBackupEntry backupEntry) {

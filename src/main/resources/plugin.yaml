@@ -8,8 +8,6 @@ metadata:
 spec:
   enabled: true
   requires: ">=2.23.0"
-  configMapName: schedule-calendar-settings
-  settingName: schedule-calendar-settings
   author:
     name: Sunny
     website: https://github.com

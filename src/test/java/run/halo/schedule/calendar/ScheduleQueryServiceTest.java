@@ -18,7 +18,6 @@ import reactor.core.publisher.Flux;
 import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
-import run.halo.app.plugin.ReactiveSettingFetcher;
 
 @ExtendWith(MockitoExtension.class)
 class ScheduleQueryServiceTest {
@@ -27,7 +26,7 @@ class ScheduleQueryServiceTest {
     ReactiveExtensionClient client;
 
     @Mock
-    ReactiveSettingFetcher settingFetcher;
+    ScheduleSettingsService scheduleSettingsService;
 
     private TimeZone originalTimeZone;
     private ScheduleQueryService service;
@@ -36,7 +35,7 @@ class ScheduleQueryServiceTest {
     void setUp() {
         originalTimeZone = TimeZone.getDefault();
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Shanghai"));
-        service = new ScheduleQueryService(client, settingFetcher);
+        service = new ScheduleQueryService(client, scheduleSettingsService);
     }
 
     @AfterEach

@@ -24,7 +24,7 @@ interface ScheduleBackupImportResult {
 }
 
 const backupExportApi = '/apis/console.api.schedule.calendar.sunny.dev/v1alpha1/backupexports'
-const pluginConfigApi = '/apis/api.console.halo.run/v1alpha1/plugins/schedule-calendar/json-config'
+const pluginConfigApi = '/apis/console.api.schedule.calendar.sunny.dev/v1alpha1/settings'
 
 const exporting = ref(false)
 const importing = ref(false)
