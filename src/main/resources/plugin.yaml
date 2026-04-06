@@ -11,8 +11,8 @@ spec:
   configMapName: schedule-calendar-settings
   settingName: schedule-calendar-settings
   author:
-    name: Sunny
-    website: https://github.com
+    name: 好名字
+    website: https://sunnyhmz.top
   logo: logo.svg
   homepage: https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar#readme
   repo: https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar

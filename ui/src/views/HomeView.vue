@@ -1276,10 +1276,15 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 .schedule-view {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
   padding: 0;
 }
 
 .page-body {
+  position: relative;
+  z-index: 0;
   padding-left: 20px !important;
   padding-right: 20px !important;
   padding-bottom: 20px !important;
@@ -1288,6 +1293,8 @@ onBeforeUnmount(() => {
 .page-alert,
 .overview-card,
 .section-card {
+  position: relative;
+  z-index: 0;
   margin-top: 16px;
 }
 
@@ -1355,6 +1362,8 @@ onBeforeUnmount(() => {
 }
 
 .calendar-shell {
+  position: relative;
+  z-index: 0;
   overflow-x: auto;
 }
 
@@ -1363,6 +1372,9 @@ onBeforeUnmount(() => {
 }
 
 .calendar-grid-scroll {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
   width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
@@ -1470,6 +1482,8 @@ onBeforeUnmount(() => {
 }
 
 .calendar-grid {
+  position: relative;
+  z-index: 0;
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
   width: max(100%, 1052px);
@@ -1534,6 +1548,8 @@ onBeforeUnmount(() => {
 
 .day-column__body {
   position: relative;
+  z-index: 0;
+  isolation: isolate;
   overflow: hidden;
 }
 
@@ -1551,7 +1567,7 @@ onBeforeUnmount(() => {
 
 .calendar-block {
   position: absolute;
-  z-index: 1;
+  z-index: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1985,6 +2001,7 @@ onBeforeUnmount(() => {
   }
 
   .calendar-grid-scroll {
+    -webkit-overflow-scrolling: auto;
     padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
 
