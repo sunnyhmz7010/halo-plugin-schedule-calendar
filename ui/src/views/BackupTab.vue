@@ -236,13 +236,6 @@ const restoreBackup = (event: Event) => {
     />
 
     <VCard>
-      <template #header>
-        <div class="backup-card-header">
-          <h3>备份与恢复</h3>
-          <p>使用 JSON 文件导出当前插件数据，或在需要时恢复到备份状态。</p>
-        </div>
-      </template>
-
       <VEntityContainer>
         <VEntity>
           <template #start>
@@ -296,26 +289,6 @@ const restoreBackup = (event: Event) => {
 .backup-tab {
   display: grid;
   gap: 16px;
-}
-
-.backup-card-header {
-  display: grid;
-  gap: 6px;
-}
-
-.backup-card-header h3 {
-  margin: 0;
-  color: var(--halo-text-color, #111827);
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.5;
-}
-
-.backup-card-header p {
-  margin: 0;
-  color: var(--halo-text-color-secondary, #6b7280);
-  font-size: 14px;
-  line-height: 1.6;
 }
 
 .backup-entity {
