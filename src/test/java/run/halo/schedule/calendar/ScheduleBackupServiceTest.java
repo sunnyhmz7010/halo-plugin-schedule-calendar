@@ -11,12 +11,15 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.ReactiveExtensionClient;
+import run.halo.app.plugin.ReactiveSettingFetcher;
 
 @ExtendWith(MockitoExtension.class)
 class ScheduleBackupServiceTest {
@@ -25,11 +28,11 @@ class ScheduleBackupServiceTest {
     ReactiveExtensionClient client;
 
     @Mock
-    ScheduleSettingsService scheduleSettingsService;
+    ReactiveSettingFetcher settingFetcher;
 
     @Test
-    void delegatesRawSettingsReplacementWhenImportingBackup() {
-        var service = new ScheduleBackupService(client, scheduleSettingsService);
+    void createsConfigMapWhenImportingSettingsWithoutExistingConfigMap() {
+        var service = new ScheduleBackupService(client, settingFetcher);
         var objectMapper = JsonMapper.builder().findAndAddModules().build();
         var payload = new ScheduleBackupService.ScheduleBackupPayload(
             "schedule.calendar.sunny.dev/v1alpha1",
@@ -42,7 +45,10 @@ class ScheduleBackupServiceTest {
 
         when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
             .thenReturn(Flux.empty());
-        when(scheduleSettingsService.replaceRawSettings(any())).thenReturn(Mono.empty());
+        when(client.fetch(ConfigMap.class, "schedule-calendar-settings"))
+            .thenReturn(Mono.error(new RuntimeException("not found")));
+        when(client.create(any(ConfigMap.class)))
+            .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         var result = service.importBackup(payload).block();
 
@@ -50,6 +56,14 @@ class ScheduleBackupServiceTest {
         assertThat(result.totalEntries()).isZero();
         assertThat(result.createdEntries()).isZero();
         assertThat(result.deletedEntries()).isZero();
-        verify(scheduleSettingsService).replaceRawSettings(any());
+
+        var captor = ArgumentCaptor.forClass(ConfigMap.class);
+        verify(client).create(captor.capture());
+
+        var configMap = captor.getValue();
+        assertThat(configMap.getApiVersion()).isEqualTo("v1alpha1");
+        assertThat(configMap.getKind()).isEqualTo("ConfigMap");
+        assertThat(configMap.getMetadata().getName()).isEqualTo("schedule-calendar-settings");
+        assertThat(configMap.getData()).containsEntry("public_page", "{\"title\":\"测试标题\"}");
     }
 }

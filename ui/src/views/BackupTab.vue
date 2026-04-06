@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { axiosInstance } from '@halo-dev/api-client'
-import { Toast, VAlert, VButton, VCard } from '@halo-dev/components'
-import { computed, ref } from 'vue'
+import {
+  Dialog,
+  Toast,
+  VAlert,
+  VButton,
+  VCard,
+  VEntity,
+  VEntityContainer,
+} from '@halo-dev/components'
+import { ref } from 'vue'
 import { ENTRY_API, fetchAllScheduleEntries } from '../editor/schedule-card-data'
 import type { ScheduleEntry, ScheduleEntrySpec } from '../types/schedule'
 
@@ -24,7 +32,7 @@ interface ScheduleBackupImportResult {
 }
 
 const backupExportApi = '/apis/console.api.schedule.calendar.sunny.dev/v1alpha1/backupexports'
-const pluginConfigApi = '/apis/console.api.schedule.calendar.sunny.dev/v1alpha1/settings'
+const pluginConfigApi = '/apis/api.console.halo.run/v1alpha1/plugins/schedule-calendar/json-config'
 
 const exporting = ref(false)
 const importing = ref(false)
@@ -48,14 +56,6 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 
   return fallback
 }
-
-const exportDescription = computed(() =>
-  '导出当前插件设置和全部事项，生成一份可用于恢复的 JSON 备份文件。'
-)
-
-const importDescription = computed(() =>
-  '导入会覆盖当前插件设置，并按照备份内容同步事项数据，请先确认备份文件来源正确。'
-)
 
 const buildFileName = (exportedAt?: string) => {
   const source = exportedAt ? new Date(exportedAt) : new Date()
@@ -174,17 +174,14 @@ const exportBackup = async () => {
 }
 
 const openImportPicker = () => {
-  importInputRef.value?.click()
-}
-
-const restoreBackup = async (event: Event) => {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-
-  if (!file) {
+  if (importing.value) {
     return
   }
 
+  importInputRef.value?.click()
+}
+
+const importBackupFile = async (file: File, input: HTMLInputElement) => {
   importing.value = true
 
   try {
@@ -203,40 +200,87 @@ const restoreBackup = async (event: Event) => {
     input.value = ''
   }
 }
+
+const restoreBackup = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+
+  if (!file) {
+    return
+  }
+
+  Dialog.warning({
+    title: '确认恢复备份',
+    description: `即将导入 ${file.name}。恢复会覆盖当前插件设置，并按备份内容同步事项数据。`,
+    confirmType: 'danger',
+    confirmText: '确认恢复',
+    cancelText: '取消',
+    showCancel: true,
+    onConfirm: () => {
+      void importBackupFile(file, input)
+    },
+    onCancel: () => {
+      input.value = ''
+    },
+  })
+}
 </script>
 
 <template>
   <div class="backup-tab">
-    <div class="backup-grid">
-      <VCard class="backup-card">
-        <div class="backup-card__body">
-          <div class="backup-card__header">
-            <h3>导出备份</h3>
-            <p>{{ exportDescription }}</p>
-          </div>
+    <VAlert
+      type="info"
+      title="插件数据备份"
+      description="这里仅备份当前插件的设置与事项数据，不影响站点其他内容。"
+      :closable="false"
+    />
 
-          <VButton type="primary" :loading="exporting" @click="exportBackup">下载备份文件</VButton>
+    <VCard>
+      <template #header>
+        <div class="backup-card-header">
+          <h3>备份与恢复</h3>
+          <p>使用 JSON 文件导出当前插件数据，或在需要时恢复到备份状态。</p>
         </div>
-      </VCard>
+      </template>
 
-      <VCard class="backup-card">
-        <div class="backup-card__body">
-          <div class="backup-card__header">
-            <h3>导入恢复</h3>
-            <p>{{ importDescription }}</p>
-          </div>
+      <VEntityContainer>
+        <VEntity>
+          <template #start>
+            <div class="backup-entity">
+              <div class="backup-entity__title">导出备份</div>
+              <div class="backup-entity__description">
+                导出当前插件设置和全部事项，生成一份可用于恢复的 JSON 文件。
+              </div>
+            </div>
+          </template>
+          <template #end>
+            <VButton type="primary" :loading="exporting" @click="exportBackup">下载备份</VButton>
+          </template>
+        </VEntity>
 
-          <VButton :loading="importing" @click="openImportPicker">选择备份文件</VButton>
-          <input
-            ref="importInputRef"
-            class="backup-input"
-            type="file"
-            accept="application/json,.json"
-            @change="restoreBackup"
-          />
-        </div>
-      </VCard>
-    </div>
+        <VEntity>
+          <template #start>
+            <div class="backup-entity">
+              <div class="backup-entity__title">导入恢复</div>
+              <div class="backup-entity__description">
+                导入会覆盖当前插件设置，并按照备份内容同步事项数据。
+              </div>
+            </div>
+          </template>
+          <template #end>
+            <VButton :loading="importing" @click="openImportPicker">选择备份文件</VButton>
+          </template>
+        </VEntity>
+      </VEntityContainer>
+
+      <input
+        ref="importInputRef"
+        class="backup-input"
+        type="file"
+        accept="application/json,.json"
+        @change="restoreBackup"
+      />
+    </VCard>
 
     <VAlert
       v-if="importSummary"
@@ -254,28 +298,12 @@ const restoreBackup = async (event: Event) => {
   gap: 16px;
 }
 
-.backup-grid {
+.backup-card-header {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 6px;
 }
 
-.backup-card {
-  height: 100%;
-}
-
-.backup-card__body {
-  display: grid;
-  gap: 16px;
-  padding: 20px;
-}
-
-.backup-card__header {
-  display: grid;
-  gap: 8px;
-}
-
-.backup-card__header h3 {
+.backup-card-header h3 {
   margin: 0;
   color: var(--halo-text-color, #111827);
   font-size: 16px;
@@ -283,24 +311,33 @@ const restoreBackup = async (event: Event) => {
   line-height: 1.5;
 }
 
-.backup-card__header p {
+.backup-card-header p {
   margin: 0;
   color: var(--halo-text-color-secondary, #6b7280);
   font-size: 14px;
   line-height: 1.6;
 }
 
-.backup-input {
-  display: none;
+.backup-entity {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
-@media (max-width: 960px) {
-  .backup-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.backup-entity__title {
+  color: var(--halo-text-color, #111827);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
 
-  .backup-card__body {
-    padding: 16px;
-  }
+.backup-entity__description {
+  color: var(--halo-text-color-secondary, #6b7280);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.backup-input {
+  display: none;
 }
 </style>

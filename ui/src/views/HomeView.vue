@@ -9,6 +9,7 @@ import {
   IconDeleteBin,
   IconRiPencilFill,
   IconSearch,
+  Dialog,
   VAlert,
   VButton,
   VCard,
@@ -56,7 +57,6 @@ const pageError = ref('')
 const dialogError = ref('')
 const colorInputRef = ref<HTMLInputElement | null>(null)
 const editingEntryName = ref<string | null>(null)
-const deleteTarget = ref<ScheduleEntry | null>(null)
 const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
 const permissionLevel = ref<'unknown' | 'view' | 'manage'>('unknown')
 
@@ -861,36 +861,28 @@ const removeEntry = async (name: string) => {
 }
 
 const openRemoveDialog = (entry: ScheduleEntry) => {
-  if (!canManageEntries.value) {
+  if (!canManageEntries.value || deleting.value) {
     return
   }
 
-  deleteTarget.value = entry
-}
+  Dialog.warning({
+    title: '确认删除事项',
+    description: `删除后将无法恢复，“${entry.spec.title}”会从周历和事项列表中移除。`,
+    confirmType: 'danger',
+    confirmText: '删除',
+    cancelText: '取消',
+    showCancel: true,
+    onConfirm: () => {
+      if (deleting.value) {
+        return
+      }
 
-const closeRemoveDialog = () => {
-  if (deleting.value) {
-    return
-  }
-
-  deleteTarget.value = null
-}
-
-const confirmRemoveEntry = async () => {
-  if (!canManageEntries.value || !deleteTarget.value) {
-    return
-  }
-
-  deleting.value = true
-
-  try {
-    const removed = await removeEntry(deleteTarget.value.metadata.name)
-    if (removed) {
-      deleteTarget.value = null
+      deleting.value = true
+      void removeEntry(entry.metadata.name).finally(() => {
+        deleting.value = false
+      })
     }
-  } finally {
-    deleting.value = false
-  }
+  })
 }
 
 onMounted(() => {
@@ -1286,29 +1278,6 @@ onBeforeUnmount(() => {
       </template>
     </VModal>
 
-    <VModal
-      :visible="Boolean(deleteTarget)"
-      title="确认删除事项"
-      :width="Math.min(520, Math.max(280, viewportWidth - 24))"
-      :layer-closable="!deleting"
-      @update:visible="(visible) => !visible && closeRemoveDialog()"
-    >
-      <div class="delete-dialog">
-        <p class="delete-dialog__text">
-          删除后将无法恢复，
-          <strong>{{ deleteTarget?.spec.title }}</strong>
-          会从周历和事项列表中移除。
-        </p>
-      </div>
-      <template #footer>
-        <div class="modal-footer">
-          <VButton :disabled="deleting" @click="closeRemoveDialog">取消</VButton>
-          <VButton type="danger" :loading="deleting" @click="confirmRemoveEntry">
-            删除
-          </VButton>
-        </div>
-      </template>
-    </VModal>
   </section>
 </template>
 
@@ -1864,17 +1833,6 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-}
-
-.delete-dialog {
-  padding: 8px 0 4px;
-}
-
-.delete-dialog__text {
-  margin: 0;
-  color: var(--halo-text-color-secondary, #4b5563);
-  font-size: 14px;
-  line-height: 1.7;
 }
 
 @media (max-width: 960px) {

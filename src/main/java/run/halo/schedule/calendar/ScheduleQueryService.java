@@ -24,6 +24,7 @@ import org.springframework.web.util.HtmlUtils;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.ReactiveExtensionClient;
+import run.halo.app.plugin.ReactiveSettingFetcher;
 
 @Service
 public class ScheduleQueryService {
@@ -39,13 +40,13 @@ public class ScheduleQueryService {
     private static final String DEFAULT_TITLE = "日程日历";
 
     private final ReactiveExtensionClient client;
-    private final ScheduleSettingsService scheduleSettingsService;
+    private final ReactiveSettingFetcher settingFetcher;
     private final JsonMapper objectMapper;
 
     public ScheduleQueryService(ReactiveExtensionClient client,
-        ScheduleSettingsService scheduleSettingsService) {
+        ReactiveSettingFetcher settingFetcher) {
         this.client = client;
-        this.scheduleSettingsService = scheduleSettingsService;
+        this.settingFetcher = settingFetcher;
         this.objectMapper = JsonMapper.builder()
             .findAndAddModules()
             .build();
@@ -123,7 +124,7 @@ public class ScheduleQueryService {
     Mono<String> buildPublicCalendarPage(LocalDate requestedStart) {
         return Mono.zip(
                 getWeekView(requestedStart),
-                scheduleSettingsService.getPublicPageSetting()
+                settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
                     .defaultIfEmpty(new ScheduleCalendarSetting(DEFAULT_TITLE))
             )
             .map(tuple -> {
