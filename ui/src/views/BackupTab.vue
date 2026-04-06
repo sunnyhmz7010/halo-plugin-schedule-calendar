@@ -9,7 +9,7 @@ import {
   VEntity,
   VEntityContainer,
 } from '@halo-dev/components'
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ENTRY_API, fetchAllScheduleEntries } from '../editor/schedule-card-data'
 import type { ScheduleEntry, ScheduleEntrySpec } from '../types/schedule'
 
@@ -38,6 +38,10 @@ const exporting = ref(false)
 const importing = ref(false)
 const importSummary = ref('')
 const importInputRef = ref<HTMLInputElement | null>(null)
+const permissionLevel = ref<'unknown' | 'view' | 'manage'>('unknown')
+
+const canManageEntries = computed(() => permissionLevel.value === 'manage')
+const showReadonlyNotice = computed(() => permissionLevel.value === 'view')
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (typeof error === 'object' && error !== null) {
@@ -159,6 +163,11 @@ const restoreEntries = async (
 }
 
 const exportBackup = async () => {
+  if (!canManageEntries.value) {
+    Toast.error('当前账号没有数据备份管理权限')
+    return
+  }
+
   exporting.value = true
 
   try {
@@ -174,6 +183,11 @@ const exportBackup = async () => {
 }
 
 const openImportPicker = () => {
+  if (!canManageEntries.value) {
+    Toast.error('当前账号没有数据备份管理权限')
+    return
+  }
+
   if (importing.value) {
     return
   }
@@ -224,10 +238,44 @@ const restoreBackup = (event: Event) => {
     },
   })
 }
+
+const loadPermissionLevel = async () => {
+  permissionLevel.value = 'unknown'
+
+  try {
+    const response = await axiosInstance.delete(
+      `${ENTRY_API}/${encodeURIComponent('__permission_probe__')}`,
+      {
+        validateStatus: (status) => status >= 200 && status < 500,
+      },
+    )
+
+    if (response.status !== 401 && response.status !== 403) {
+      permissionLevel.value = 'manage'
+      return
+    }
+  } catch (error) {
+    console.error(error)
+  }
+
+  permissionLevel.value = 'view'
+}
+
+onMounted(() => {
+  void loadPermissionLevel()
+})
 </script>
 
 <template>
   <div class="backup-tab">
+    <VAlert
+      v-if="showReadonlyNotice"
+      type="info"
+      title="当前为只读权限"
+      description="你可以查看备份入口，但导出备份和导入恢复需要“日程日历管理”权限。"
+      :closable="false"
+    />
+
     <VCard>
       <VEntityContainer>
         <VEntity>
@@ -240,7 +288,7 @@ const restoreBackup = (event: Event) => {
             </div>
           </template>
           <template #end>
-            <VButton type="primary" :loading="exporting" @click="exportBackup">
+            <VButton type="primary" :loading="exporting" :disabled="!canManageEntries" @click="exportBackup">
               下载备份文件
             </VButton>
           </template>
@@ -256,7 +304,9 @@ const restoreBackup = (event: Event) => {
             </div>
           </template>
           <template #end>
-            <VButton :loading="importing" @click="openImportPicker">选择备份文件</VButton>
+            <VButton :loading="importing" :disabled="!canManageEntries" @click="openImportPicker">
+              选择备份文件
+            </VButton>
           </template>
         </VEntity>
       </VEntityContainer>
