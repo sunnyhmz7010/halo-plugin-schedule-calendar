@@ -10,9 +10,6 @@ body:
         Thanks for reporting a bug.
         感谢你反馈问题。
 
-        A short description and simple reproduction steps are enough.
-        简单描述问题，加上复现步骤就可以。
-
   - type: textarea
     id: summary
     attributes:
@@ -21,21 +18,6 @@ body:
       placeholder: What went wrong? / 出现了什么问题？
     validations:
       required: true
-
-  - type: dropdown
-    id: area
-    attributes:
-      label: Affected Area / 影响范围
-      description: Which part of the plugin is affected? / 问题出现在哪一部分？
-      options:
-        - Admin console / 后台控制台
-        - Public page / 前台页面
-        - Editor schedule card / 编辑器日程卡片
-        - Finder API
-        - Public REST API / 公开 REST API
-        - Backup and restore / 备份与恢复
-        - Permissions / 权限
-        - Other / 其他
 
   - type: textarea
     id: steps
@@ -46,12 +28,6 @@ body:
         1. Go to ... / 进入 ...
         2. Click ... / 点击 ...
         3. See error ... / 出现 ...
-
-  - type: textarea
-    id: context
-    attributes:
-      label: Additional Context / 补充信息
-      description: Logs, screenshots, Halo version, plugin version, browser, device, or anything else helpful. / 可补充日志、截图、Halo 版本、插件版本、浏览器、设备等信息。
 
   - type: input
     id: halo-version
@@ -64,6 +40,8 @@ body:
     attributes:
       label: Plugin Version / 插件版本
       placeholder: e.g. 2.4.0
+    validations:
+      required: true
 
   - type: checkboxes
     id: checks
@@ -72,3 +50,5 @@ body:
       options:
         - label: I have searched existing issues before submitting this report. / 我已先搜索过现有 Issue。
         - label: I have removed sensitive information from logs and screenshots. / 我已移除日志和截图中的敏感信息。
+      validations:
+        required: true
