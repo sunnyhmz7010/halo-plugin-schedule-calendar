@@ -6,13 +6,11 @@ import { VButton, VEmpty, Toast } from '@halo-dev/components'
 import { axiosInstance } from '@halo-dev/api-client'
 import type { ScheduleCard, ScheduleEntry } from '../types/schedule'
 import ScheduleCardPickerModal from './ScheduleCardPickerModal.vue'
-import ScheduleEntryCreateModal from './ScheduleEntryCreateModal.vue'
 import { ENTRY_API, fetchAllScheduleEntries, toScheduleCard, toScheduleCards } from './schedule-card-data'
 
 const props = defineProps<NodeViewProps>()
 
 const pickerVisible = ref(false)
-const createVisible = ref(false)
 const pickerItems = ref<ScheduleCard[]>([])
 
 const attrs = computed(() => props.node.attrs as ScheduleCard)
@@ -71,21 +69,10 @@ const openPicker = async () => {
   }
 }
 
-const openCreateModal = () => {
-  pickerVisible.value = false
-  createVisible.value = true
-}
-
 const handleCardSelected = (card: ScheduleCard) => {
   displayCard.value = cloneCard(card)
   props.updateAttributes(card)
   pickerVisible.value = false
-}
-
-const handleCreated = (card: ScheduleCard) => {
-  displayCard.value = cloneCard(card)
-  props.updateAttributes(card)
-  createVisible.value = false
 }
 
 const handleReset = () => {
@@ -161,7 +148,7 @@ const refreshSelectedCard = async (silent = true) => {
 
 const summaryText = computed(() => {
   if (!hasSelectedEntry.value) {
-    return '选择已有事项，或直接在这里新增一个事项。'
+    return '选择已有事项。'
   }
 
   return `${displayCard.value.startTime || ''} - ${displayCard.value.endTime || ''}`.trim()
@@ -234,7 +221,6 @@ onBeforeUnmount(() => {
             <template #actions>
               <div class="schedule-card-node-view__actions schedule-card-node-view__actions--center">
                 <VButton type="secondary" @click="openPicker">选择日程</VButton>
-                <VButton @click="openCreateModal">新增事项</VButton>
               </div>
             </template>
           </VEmpty>
@@ -268,7 +254,6 @@ onBeforeUnmount(() => {
 
             <div class="schedule-card-node-view__entity-actions">
               <VButton size="sm" type="secondary" @click="openPicker">选择日程</VButton>
-              <VButton size="sm" @click="openCreateModal">新增事项</VButton>
               <VButton size="sm" @click="handleReset">清空</VButton>
             </div>
           </div>
@@ -281,13 +266,6 @@ onBeforeUnmount(() => {
       :items="pickerItems"
       @close="pickerVisible = false"
       @select="handleCardSelected"
-      @create="openCreateModal"
-    />
-
-    <ScheduleEntryCreateModal
-      :visible="createVisible"
-      @close="createVisible = false"
-      @created="handleCreated"
     />
   </node-view-wrapper>
 </template>

@@ -131,7 +131,7 @@ export const ScheduleCardExtension = Node.create({
             [
               'div',
               { style: 'margin-top:8px;font-size:13px;color:#6b7280;line-height:1.6;' },
-              '选择已有事项，或直接在这里新增一个事项。',
+              '选择已有事项。',
             ],
           ]),
     ]
