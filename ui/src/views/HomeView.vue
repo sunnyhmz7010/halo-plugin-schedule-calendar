@@ -41,8 +41,6 @@ import {
 import { fetchAllScheduleEntries } from '../editor/schedule-card-data'
 
 const apiBase = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
-const viewPermissionApi = '/apis/console.api.schedule.calendar.sunny.dev/v1alpha1/permissions/view'
-const managePermissionApi = '/apis/console.api.schedule.calendar.sunny.dev/v1alpha1/permissions/manage'
 const hourHeight = 56
 const dayColumnHeight = hourHeight * 24
 const headerHeight = 64
@@ -621,6 +619,9 @@ const fetchEntries = async () => {
 
   try {
     entries.value = await fetchAllScheduleEntries()
+    if (permissionLevel.value === 'unknown') {
+      permissionLevel.value = 'view'
+    }
   } catch (err) {
     pageError.value = '事项加载失败，请检查插件权限或 Halo 运行状态。'
     console.error(err)
@@ -630,27 +631,25 @@ const fetchEntries = async () => {
 }
 
 const loadPermissionLevel = async () => {
-  try {
-    const manageResponse = await axiosInstance.get(managePermissionApi, {
-      validateStatus: (status) => status >= 200 && status < 500,
-    })
+  permissionLevel.value = 'unknown'
 
-    if (manageResponse.status >= 200 && manageResponse.status < 300) {
+  try {
+    const response = await axiosInstance.post(
+      apiBase,
+      {
+        apiVersion: 'schedule.calendar.sunny.dev/v1alpha1',
+        kind: 'ScheduleEntry',
+        metadata: {},
+        spec: {},
+      },
+      {
+        validateStatus: (status) => status >= 200 && status < 500,
+      },
+    )
+
+    if (response.status !== 401 && response.status !== 403) {
       permissionLevel.value = 'manage'
       return
-    }
-  } catch (error) {
-    console.error(error)
-    return
-  }
-
-  try {
-    const viewResponse = await axiosInstance.get(viewPermissionApi, {
-      validateStatus: (status) => status >= 200 && status < 500,
-    })
-
-    if (viewResponse.status >= 200 && viewResponse.status < 300) {
-      permissionLevel.value = 'view'
     }
   } catch (error) {
     console.error(error)
