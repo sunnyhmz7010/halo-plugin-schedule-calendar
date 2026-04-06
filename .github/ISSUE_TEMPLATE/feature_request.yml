@@ -10,9 +10,6 @@ body:
         Thanks for sharing your idea.
         感谢你提出建议。
 
-        A short use case and expected behavior are enough.
-        简单说明场景和期望效果就可以。
-
   - type: textarea
     id: use-case
     attributes:
@@ -30,27 +27,6 @@ body:
       placeholder: Describe the feature or behavior you want. / 描述你希望新增的功能或行为。
     validations:
       required: true
-
-  - type: dropdown
-    id: area
-    attributes:
-      label: Related Area / 相关模块
-      options:
-        - Admin console / 后台控制台
-        - Public page / 前台页面
-        - Editor schedule card / 编辑器日程卡片
-        - Finder API
-        - Public REST API / 公开 REST API
-        - Backup and restore / 备份与恢复
-        - Permissions / 权限
-        - Documentation / 文档
-        - Other / 其他
-
-  - type: textarea
-    id: context
-    attributes:
-      label: Additional Context / 补充信息
-      description: Mockups, screenshots, links, or alternative ideas if helpful. / 可补充示意图、截图、链接或其他想法。
 
   - type: checkboxes
     id: checks
