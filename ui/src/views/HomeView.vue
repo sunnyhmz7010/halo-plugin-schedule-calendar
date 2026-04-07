@@ -58,6 +58,8 @@ const colorInputRef = ref<HTMLInputElement | null>(null)
 const editingEntryName = ref<string | null>(null)
 const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
 const permissionLevel = ref<'unknown' | 'view' | 'manage'>('unknown')
+const nowRef = ref(new Date())
+let nowTimer: ReturnType<typeof setInterval> | null = null
 
 const form = reactive({
   title: '',
@@ -550,6 +552,28 @@ const dialogSubmitLabel = computed(() => (isEditing.value ? '更新事项' : '�
 const canManageEntries = computed(() => permissionLevel.value === 'manage')
 const showReadonlyNotice = computed(() => permissionLevel.value === 'view')
 
+const currentlyActiveOccurrences = computed(() => {
+  const current = nowRef.value
+  const startOfToday = new Date(current)
+  startOfToday.setHours(0, 0, 0, 0)
+  const endOfToday = new Date(startOfToday)
+  endOfToday.setDate(endOfToday.getDate() + 1)
+  return entries.value
+    .flatMap((entry) => expandEntryOccurrences(entry, startOfToday, endOfToday))
+    .filter((occurrence) => occurrence.start <= current && occurrence.end > current)
+})
+
+const nowStatusText = computed(() => {
+  if (!currentlyActiveOccurrences.value.length) {
+    return '当前空闲'
+  }
+  return `进行中：${currentlyActiveOccurrences.value.map((o) => o.entry.spec.title).join('、')}`
+})
+
+const nowStatusState = computed<'success' | 'warning'>(() =>
+  currentlyActiveOccurrences.value.length ? 'warning' : 'success',
+)
+
 const buildEntryMetaItems = (entry: ScheduleEntry): EntryMetaItem[] => {
   const items: EntryMetaItem[] = [{ text: formatEntryScheduleSummary(entry) }]
   const occurrenceSummary = entryOccurrenceSummaryMap.value.get(entry.metadata.name)
@@ -906,10 +930,17 @@ onMounted(() => {
   syncWeekInput()
   void loadPermissionLevel()
   void fetchEntries()
+  nowTimer = setInterval(() => {
+    nowRef.value = new Date()
+  }, 60000)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateViewportWidth)
+  if (nowTimer !== null) {
+    clearInterval(nowTimer)
+    nowTimer = null
+  }
 })
 </script>
 
@@ -948,6 +979,9 @@ onBeforeUnmount(() => {
           </VDescriptionItem>
           <VDescriptionItem label="总占用">
             <VStatusDot state="success" :text="weekOccupiedSummary" />
+          </VDescriptionItem>
+          <VDescriptionItem label="现在">
+            <VStatusDot :state="nowStatusState" :text="nowStatusText" />
           </VDescriptionItem>
         </VDescription>
       </VCard>

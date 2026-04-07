@@ -538,12 +538,65 @@ public class ScheduleQueryService {
                                 }
                               }
                             </style>
+                            <style>
+                              .now-status {
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 8px;
+                                margin-top: 12px;
+                                padding: 8px 16px;
+                                border-radius: 999px;
+                                font-size: 0.9rem;
+                              }
+                              .now-status--free {
+                                background: rgba(5, 150, 105, 0.12);
+                                color: #059669;
+                                border: 1px solid rgba(5, 150, 105, 0.2);
+                              }
+                              .now-status--busy {
+                                background: rgba(245, 158, 11, 0.12);
+                                color: #d97706;
+                                border: 1px solid rgba(245, 158, 11, 0.2);
+                              }
+                              .now-status__dot {
+                                width: 8px;
+                                height: 8px;
+                                border-radius: 50%%;
+                                flex-shrink: 0;
+                              }
+                              .now-status--free .now-status__dot {
+                                background: #10b981;
+                              }
+                              .now-status--busy .now-status__dot {
+                                background: #f59e0b;
+                              }
+                              .now-line {
+                                position: absolute;
+                                left: 0;
+                                right: 0;
+                                height: 2px;
+                                background: #ef4444;
+                                z-index: 2;
+                                pointer-events: none;
+                              }
+                              .now-line::before {
+                                content: '';
+                                position: absolute;
+                                left: 0;
+                                top: -4px;
+                                width: 10px;
+                                height: 10px;
+                                border-radius: 50%%;
+                                background: #ef4444;
+                              }
+                            </style>
                           </head>
                           <body>
                             <main>
                               <section class="hero">
                                 <div>
                                   <h1>%s</h1>
+                                  <div id="now-status-wrap"></div>
                                 </div>
                                 <div class="week-nav">
                                   <a id="prev-week" href="#">上一周</a>
@@ -869,6 +922,54 @@ public class ScheduleQueryService {
                                 }
                               });
                               syncViewMode();
+                              const nowStatusWrap = document.getElementById("now-status-wrap");
+                              const updateNowIndicators = () => {
+                                const now = new Date();
+                                const todayStr = now.toISOString().split("T")[0];
+                                const nowMinutes = now.getHours() * 60 + now.getMinutes();
+                                const todayIndex = payload.days.findIndex((day) => day.date === todayStr);
+                                if (nowStatusWrap) {
+                                  nowStatusWrap.innerHTML = "";
+                                  if (todayIndex >= 0) {
+                                    const todayOccupied = payload.days[todayIndex].occupied;
+                                    const activeTitles = [];
+                                    for (const block of todayOccupied) {
+                                      const blockStartMins = toMinutes(block.start);
+                                      const rawEnd = block.end === "00:00" ? 24 * 60 : toMinutes(block.end);
+                                      const blockEndMins = rawEnd <= blockStartMins ? 24 * 60 : rawEnd;
+                                      if (nowMinutes >= blockStartMins && nowMinutes < blockEndMins) {
+                                        activeTitles.push(block.title);
+                                      }
+                                    }
+                                    const activeLabel = activeTitles.length > 0 ? activeTitles.join("\u3001") : null;
+                                    const badge = document.createElement("div");
+                                    badge.className = activeLabel ? "now-status now-status--busy" : "now-status now-status--free";
+                                    const dot = document.createElement("span");
+                                    dot.className = "now-status__dot";
+                                    const text = document.createElement("span");
+                                    text.textContent = activeLabel ? "\u8fdb\u884c\u4e2d\uff1a" + activeLabel : "\u5f53\u524d\u7a7a\u95f2";
+                                    badge.append(dot, text);
+                                    nowStatusWrap.appendChild(badge);
+                                  }
+                                }
+                                document.querySelectorAll(".now-line").forEach((el) => el.remove());
+                                if (todayIndex >= 0) {
+                                  const columns = grid.querySelectorAll(".day-column");
+                                  const todayColumn = columns[todayIndex];
+                                  if (todayColumn) {
+                                    const body = todayColumn.querySelector(".day-column__body");
+                                    if (body) {
+                                      const nowTop = (nowMinutes / 60) * hourHeight;
+                                      const line = document.createElement("div");
+                                      line.className = "now-line";
+                                      line.style.top = nowTop + "px";
+                                      body.appendChild(line);
+                                    }
+                                  }
+                                }
+                              };
+                              updateNowIndicators();
+                              setInterval(updateNowIndicators, 60000);
                             </script>
                           </body>
                         </html>
