@@ -486,6 +486,12 @@ const currentStatus = computed<{ state: 'warning' | 'success'; text: string }>((
   text: formatCurrentStatusText(currentActiveOccurrences.value.map((occurrence) => occurrence.entry.spec.title)),
 }))
 
+const currentTimeDateKey = computed(() => formatDisplayDate(nowRef.value))
+const currentTimeTop = computed(() => {
+  const now = nowRef.value
+  return ((now.getHours() * 60 + now.getMinutes()) / 60) * hourHeight
+})
+
 const weekOccupiedSummary = computed(() => {
   const totalMinutes = currentWeekOccurrences.value.reduce((sum, occurrence) => {
     const start = occurrence.start
@@ -1127,6 +1133,13 @@ onBeforeUnmount(() => {
                       :style="{ height: `${dayColumnHeight}px` }"
                     >
                       <div class="day-column__lines"></div>
+                      <div
+                        v-if="day.date === currentTimeDateKey"
+                        class="current-time-line"
+                        :style="{ top: `${currentTimeTop}px` }"
+                      >
+                        <span class="current-time-line__dot"></span>
+                      </div>
 
                       <article
                         v-for="block in day.blocks"
@@ -1625,6 +1638,7 @@ onBeforeUnmount(() => {
 .day-column__lines {
   position: absolute;
   inset: 0;
+  z-index: 0;
   background-image: repeating-linear-gradient(
     to bottom,
     transparent,
@@ -1634,9 +1648,32 @@ onBeforeUnmount(() => {
   );
 }
 
+.current-time-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #ef4444;
+  transform: translateY(-1px);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.current-time-line__dot {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+  transform: translate(-50%, -50%);
+}
+
 .calendar-block {
   position: absolute;
-  z-index: 0;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
