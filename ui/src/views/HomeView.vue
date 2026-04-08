@@ -481,10 +481,52 @@ const formatCurrentStatusText = (titles: string[]) => {
   return `进行中：${normalizedTitles.slice(0, 2).join('、')} 等 ${normalizedTitles.length} 项`
 }
 
+const formatCountdownDuration = (target: Date, reference = nowRef.value) => {
+  const totalMinutes = Math.max(Math.ceil((target.getTime() - reference.getTime()) / 60000), 0)
+  const days = Math.floor(totalMinutes / (24 * 60))
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60)
+  const minutes = totalMinutes % 60
+  const parts: string[] = []
+
+  if (days) {
+    parts.push(`${days}天`)
+  }
+
+  if (hours) {
+    parts.push(`${hours}小时`)
+  }
+
+  if (minutes || !parts.length) {
+    parts.push(`${minutes}分钟`)
+  }
+
+  return parts.join(' ')
+}
+
 const currentStatus = computed<{ state: 'warning' | 'success'; text: string }>(() => ({
   state: currentActiveOccurrences.value.length ? 'warning' : 'success',
   text: formatCurrentStatusText(currentActiveOccurrences.value.map((occurrence) => occurrence.entry.spec.title)),
 }))
+
+const nextUpcomingOccurrence = computed(() => {
+  const now = nowRef.value
+  const rangeEnd = new Date(now)
+  rangeEnd.setDate(rangeEnd.getDate() + 90)
+
+  return entries.value
+    .flatMap((entry) => expandEntryOccurrences(entry, now, rangeEnd))
+    .filter((occurrence) => occurrence.start > now)
+    .sort((left, right) => left.start.getTime() - right.start.getTime())[0]
+})
+
+const nextOccurrenceCountdown = computed(() => {
+  const nextOccurrence = nextUpcomingOccurrence.value
+  if (!nextOccurrence) {
+    return ''
+  }
+
+  return `${formatCountdownDuration(nextOccurrence.start)}后开始 · ${nextOccurrence.entry.spec.title}`
+})
 
 const currentTimeDateKey = computed(() => formatDisplayDate(nowRef.value))
 const currentTimeTop = computed(() => {
@@ -1002,6 +1044,7 @@ onBeforeUnmount(() => {
           <VDescriptionItem label="现在">
             <VStatusDot :state="currentStatus.state" :text="currentStatus.text" />
           </VDescriptionItem>
+          <VDescriptionItem v-if="nextOccurrenceCountdown" label="下一个" :content="nextOccurrenceCountdown" />
         </VDescription>
       </VCard>
 
@@ -1145,10 +1188,7 @@ onBeforeUnmount(() => {
                         v-for="block in day.blocks"
                         :key="block.id"
                         class="calendar-block"
-                        :class="{
-                          'calendar-block--split': block.isSplit,
-                          'calendar-block--minimal': block.density === 'minimal',
-                        }"
+                        :class="{ 'calendar-block--split': block.isSplit }"
                         :style="{
                           top: `${block.top}px`,
                           height: `${block.height}px`,
@@ -1158,12 +1198,10 @@ onBeforeUnmount(() => {
                         }"
                         :title="`${block.title} ${block.startLabel} - ${block.endLabel}${block.tooltipMeta ? ` ${block.tooltipMeta}` : ''}`"
                       >
-                        <div class="calendar-block__range">
-                          <span>{{ block.startLabel }}</span>
-                          <span class="calendar-block__range-separator">-</span>
-                          <span>{{ block.endLabel }}</span>
+                        <div class="calendar-block__title">{{ block.title }}</div>
+                        <div v-if="block.density !== 'minimal'" class="calendar-block__time">
+                          {{ block.startLabel }} - {{ block.endLabel }}
                         </div>
-                        <div v-if="block.density !== 'minimal'" class="calendar-block__title">{{ block.title }}</div>
                         <div v-if="block.density === 'full' && !block.isSplit" class="calendar-block__meta">{{ block.duration }}</div>
                         <div
                           v-for="(metaLine, metaIndex) in block.isSplit ? [] : block.visibleMetaLines ?? []"
@@ -1681,8 +1719,8 @@ onBeforeUnmount(() => {
   z-index: 2;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: center;
   box-sizing: border-box;
   min-width: 0;
   border-radius: 10px;
@@ -1690,7 +1728,7 @@ onBeforeUnmount(() => {
   color: #fff;
   box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
   overflow: hidden;
-  text-align: left;
+  text-align: center;
 }
 
 .calendar-block--split {
@@ -1698,36 +1736,7 @@ onBeforeUnmount(() => {
   padding: 6px;
 }
 
-.calendar-block--minimal {
-  justify-content: center;
-}
-
-.calendar-block__range {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 100%;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.calendar-block__range-separator {
-  opacity: 0.82;
-}
-
-.calendar-block--minimal .calendar-block__range {
-  padding: 0;
-  background: transparent;
-  font-size: 10px;
-}
-
 .calendar-block__title {
-  margin-top: 4px;
   font-weight: 700;
   line-height: 1.2;
   width: 100%;
