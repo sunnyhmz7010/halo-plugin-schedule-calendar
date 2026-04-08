@@ -358,7 +358,7 @@ public class ScheduleQueryService {
                                 height: 2px;
                                 background: #ef4444;
                                 transform: translateY(-1px);
-                                z-index: 1;
+                                z-index: 4;
                                 pointer-events: none;
                               }
                               .current-time-line__dot {
@@ -377,8 +377,8 @@ public class ScheduleQueryService {
                                 z-index: 2;
                                 display: flex;
                                 flex-direction: column;
-                                justify-content: center;
-                                align-items: center;
+                                justify-content: flex-start;
+                                align-items: flex-start;
                                 box-sizing: border-box;
                                 min-width: 0;
                                 border-radius: 12px;
@@ -386,13 +386,38 @@ public class ScheduleQueryService {
                                 color: #fff;
                                 box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
                                 overflow: hidden;
-                                text-align: center;
+                                text-align: left;
                               }
                               .calendar-block--split {
                                 border-radius: 8px;
                                 padding: 6px;
                               }
+                              .calendar-block--minimal {
+                                justify-content: center;
+                              }
+                              .calendar-block__range {
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 4px;
+                                max-width: 100%%;
+                                padding: 2px 6px;
+                                border-radius: 999px;
+                                background: rgba(255, 255, 255, 0.18);
+                                font-size: 0.7rem;
+                                font-weight: 700;
+                                line-height: 1.2;
+                                white-space: nowrap;
+                              }
+                              .calendar-block__range-separator {
+                                opacity: 0.82;
+                              }
+                              .calendar-block--minimal .calendar-block__range {
+                                padding: 0;
+                                background: transparent;
+                                font-size: 0.66rem;
+                              }
                               .calendar-block__title {
+                                margin-top: 4px;
                                 font-weight: 700;
                                 line-height: 1.2;
                                 width: 100%%;
@@ -866,21 +891,31 @@ public class ScheduleQueryService {
                                 assignColumns(day.occupied).forEach((block) => {
                                   const element = document.createElement("article");
                                   element.className = block.isSplit ? "calendar-block calendar-block--split" : "calendar-block";
+                                  if (block.density === "minimal") {
+                                    element.classList.add("calendar-block--minimal");
+                                  }
                                   element.title = `${block.title} ${block.start} - ${block.endLabel}${block.tooltipMeta ? ` ${block.tooltipMeta}` : ""}`;
                                   element.style.top = `${block.top}px`;
                                   element.style.left = block.left;
                                   element.style.width = block.width;
                                   element.style.height = `${block.height}px`;
                                   element.style.background = block.color;
+                                  const blockRange = document.createElement("div");
+                                  blockRange.className = "calendar-block__range";
+                                  const blockStart = document.createElement("span");
+                                  blockStart.textContent = block.start;
+                                  const blockSeparator = document.createElement("span");
+                                  blockSeparator.className = "calendar-block__range-separator";
+                                  blockSeparator.textContent = "-";
+                                  const blockEnd = document.createElement("span");
+                                  blockEnd.textContent = block.endLabel;
+                                  blockRange.append(blockStart, blockSeparator, blockEnd);
+                                  element.appendChild(blockRange);
                                   const blockTitle = document.createElement("div");
                                   blockTitle.className = "calendar-block__title";
                                   blockTitle.textContent = block.title;
-                                  element.appendChild(blockTitle);
                                   if (block.density !== "minimal") {
-                                    const blockTime = document.createElement("div");
-                                    blockTime.className = "calendar-block__time";
-                                    blockTime.textContent = `${block.start} - ${block.endLabel}`;
-                                    element.appendChild(blockTime);
+                                    element.appendChild(blockTitle);
                                   }
                                   if (block.density === "full" && !block.isSplit) {
                                     const duration = document.createElement("div");

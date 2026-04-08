@@ -1145,7 +1145,10 @@ onBeforeUnmount(() => {
                         v-for="block in day.blocks"
                         :key="block.id"
                         class="calendar-block"
-                        :class="{ 'calendar-block--split': block.isSplit }"
+                        :class="{
+                          'calendar-block--split': block.isSplit,
+                          'calendar-block--minimal': block.density === 'minimal',
+                        }"
                         :style="{
                           top: `${block.top}px`,
                           height: `${block.height}px`,
@@ -1155,10 +1158,12 @@ onBeforeUnmount(() => {
                         }"
                         :title="`${block.title} ${block.startLabel} - ${block.endLabel}${block.tooltipMeta ? ` ${block.tooltipMeta}` : ''}`"
                       >
-                        <div class="calendar-block__title">{{ block.title }}</div>
-                        <div v-if="block.density !== 'minimal'" class="calendar-block__time">
-                          {{ block.startLabel }} - {{ block.endLabel }}
+                        <div class="calendar-block__range">
+                          <span>{{ block.startLabel }}</span>
+                          <span class="calendar-block__range-separator">-</span>
+                          <span>{{ block.endLabel }}</span>
                         </div>
+                        <div v-if="block.density !== 'minimal'" class="calendar-block__title">{{ block.title }}</div>
                         <div v-if="block.density === 'full' && !block.isSplit" class="calendar-block__meta">{{ block.duration }}</div>
                         <div
                           v-for="(metaLine, metaIndex) in block.isSplit ? [] : block.visibleMetaLines ?? []"
@@ -1655,7 +1660,7 @@ onBeforeUnmount(() => {
   height: 2px;
   background: #ef4444;
   transform: translateY(-1px);
-  z-index: 1;
+  z-index: 4;
   pointer-events: none;
 }
 
@@ -1676,8 +1681,8 @@ onBeforeUnmount(() => {
   z-index: 2;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   box-sizing: border-box;
   min-width: 0;
   border-radius: 10px;
@@ -1685,7 +1690,7 @@ onBeforeUnmount(() => {
   color: #fff;
   box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
   overflow: hidden;
-  text-align: center;
+  text-align: left;
 }
 
 .calendar-block--split {
@@ -1693,7 +1698,36 @@ onBeforeUnmount(() => {
   padding: 6px;
 }
 
+.calendar-block--minimal {
+  justify-content: center;
+}
+
+.calendar-block__range {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.calendar-block__range-separator {
+  opacity: 0.82;
+}
+
+.calendar-block--minimal .calendar-block__range {
+  padding: 0;
+  background: transparent;
+  font-size: 10px;
+}
+
 .calendar-block__title {
+  margin-top: 4px;
   font-weight: 700;
   line-height: 1.2;
   width: 100%;
@@ -2087,7 +2121,7 @@ onBeforeUnmount(() => {
     justify-content: center;
     padding: 5px 4px;
     border-radius: 6px;
-    text-align: center;
+  text-align: center;
   }
 
   .calendar-block__title {
