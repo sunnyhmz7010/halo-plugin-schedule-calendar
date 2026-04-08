@@ -58,6 +58,7 @@ const colorInputRef = ref<HTMLInputElement | null>(null)
 const editingEntryName = ref<string | null>(null)
 const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
 const permissionLevel = ref<'unknown' | 'view' | 'manage'>('unknown')
+const nowRef = ref(new Date())
 
 const form = reactive({
   title: '',
@@ -452,6 +453,38 @@ const currentWeekOccurrences = computed(() => {
     .flatMap((entry) => expandEntryOccurrences(entry, rangeStart, rangeEnd))
     .sort((left, right) => left.start.getTime() - right.start.getTime())
 })
+
+const currentActiveOccurrences = computed(() => {
+  const now = nowRef.value
+  const rangeStart = new Date(now)
+  rangeStart.setHours(0, 0, 0, 0)
+  const rangeEnd = new Date(rangeStart)
+  rangeEnd.setDate(rangeEnd.getDate() + 1)
+
+  return entries.value
+    .flatMap((entry) => expandEntryOccurrences(entry, rangeStart, rangeEnd))
+    .filter((occurrence) => occurrence.start <= now && occurrence.end > now)
+    .sort((left, right) => left.start.getTime() - right.start.getTime())
+})
+
+const formatCurrentStatusText = (titles: string[]) => {
+  const normalizedTitles = [...new Set(titles.map((title) => title.trim()).filter(Boolean))]
+
+  if (!normalizedTitles.length) {
+    return '当前空闲'
+  }
+
+  if (normalizedTitles.length <= 2) {
+    return `进行中：${normalizedTitles.join('、')}`
+  }
+
+  return `进行中：${normalizedTitles.slice(0, 2).join('、')} 等 ${normalizedTitles.length} 项`
+}
+
+const currentStatus = computed<{ state: 'warning' | 'success'; text: string }>(() => ({
+  state: currentActiveOccurrences.value.length ? 'warning' : 'success',
+  text: formatCurrentStatusText(currentActiveOccurrences.value.map((occurrence) => occurrence.entry.spec.title)),
+}))
 
 const weekOccupiedSummary = computed(() => {
   const totalMinutes = currentWeekOccurrences.value.reduce((sum, occurrence) => {
@@ -900,7 +933,15 @@ const openRemoveDialog = (entry: ScheduleEntry) => {
   })
 }
 
+const updateNow = () => {
+  nowRef.value = new Date()
+}
+
+let nowTimer: number | undefined
+
 onMounted(() => {
+  updateNow()
+  nowTimer = window.setInterval(updateNow, 60_000)
   updateViewportWidth()
   window.addEventListener('resize', updateViewportWidth)
   syncWeekInput()
@@ -909,6 +950,9 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (nowTimer) {
+    window.clearInterval(nowTimer)
+  }
   window.removeEventListener('resize', updateViewportWidth)
 })
 </script>
@@ -948,6 +992,9 @@ onBeforeUnmount(() => {
           </VDescriptionItem>
           <VDescriptionItem label="总占用">
             <VStatusDot state="success" :text="weekOccupiedSummary" />
+          </VDescriptionItem>
+          <VDescriptionItem label="现在">
+            <VStatusDot :state="currentStatus.state" :text="currentStatus.text" />
           </VDescriptionItem>
         </VDescription>
       </VCard>

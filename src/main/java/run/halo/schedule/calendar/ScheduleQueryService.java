@@ -171,9 +171,41 @@ public class ScheduleQueryService {
                                 align-items: end;
                                 margin-bottom: 24px;
                               }
+                              .hero__heading {
+                                display: grid;
+                                gap: 12px;
+                              }
                               .hero h1 {
                                 margin: 0;
                                 font-size: clamp(2rem, 4vw, 3.4rem);
+                              }
+                              .current-status {
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 10px;
+                                width: fit-content;
+                                max-width: 100%%;
+                                padding: 10px 14px;
+                                border-radius: 999px;
+                                border: 1px solid rgba(15, 118, 110, 0.14);
+                                background: rgba(15, 118, 110, 0.1);
+                                color: #0f766e;
+                                font-size: 0.95rem;
+                                font-weight: 600;
+                                line-height: 1.4;
+                              }
+                              .current-status::before {
+                                content: "";
+                                width: 10px;
+                                height: 10px;
+                                border-radius: 999px;
+                                background: currentColor;
+                                flex: none;
+                              }
+                              .current-status.is-busy {
+                                border-color: rgba(217, 119, 6, 0.18);
+                                background: rgba(245, 158, 11, 0.12);
+                                color: #b45309;
                               }
                               .week-nav {
                                 display: flex;
@@ -310,6 +342,7 @@ public class ScheduleQueryService {
                               .day-column__lines {
                                 position: absolute;
                                 inset: 0;
+                                z-index: 0;
                                 background-image: repeating-linear-gradient(
                                   to bottom,
                                   transparent,
@@ -318,9 +351,30 @@ public class ScheduleQueryService {
                                   #f3f4f6 56px
                                 );
                               }
+                              .current-time-line {
+                                position: absolute;
+                                left: 0;
+                                right: 0;
+                                height: 2px;
+                                background: #ef4444;
+                                transform: translateY(-1px);
+                                z-index: 1;
+                                pointer-events: none;
+                              }
+                              .current-time-line__dot {
+                                position: absolute;
+                                left: 0;
+                                top: 50%%;
+                                width: 10px;
+                                height: 10px;
+                                border-radius: 999px;
+                                background: #ef4444;
+                                box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+                                transform: translate(-50%%, -50%%);
+                              }
                               .calendar-block {
                                 position: absolute;
-                                z-index: 1;
+                                z-index: 2;
                                 display: flex;
                                 flex-direction: column;
                                 justify-content: center;
@@ -542,8 +596,9 @@ public class ScheduleQueryService {
                           <body>
                             <main>
                               <section class="hero">
-                                <div>
+                                <div class="hero__heading">
                                   <h1>%s</h1>
+                                  <div id="current-status" class="current-status" hidden></div>
                                 </div>
                                 <div class="week-nav">
                                   <a id="prev-week" href="#">上一周</a>
@@ -591,15 +646,42 @@ public class ScheduleQueryService {
                                 }
                                 return `/schedule-calendar?${params.toString()}`;
                               };
+                              const toDateKey = (date) => {
+                                const year = date.getFullYear();
+                                const month = String(date.getMonth() + 1).padStart(2, "0");
+                                const day = String(date.getDate()).padStart(2, "0");
+                                return `${year}-${month}-${day}`;
+                              };
                               const toMinutes = (value) => {
                                 const [hours, minutes] = value.split(":").map(Number);
                                 return hours * 60 + minutes;
+                              };
+                              const normalizeEndMinutes = (block) => {
+                                const startMinutes = toMinutes(block.start);
+                                const endMinutes = toMinutes(block.end);
+                                return endMinutes <= startMinutes ? 24 * 60 : endMinutes;
+                              };
+                              const formatCurrentStatusText = (titles) => {
+                                const normalized = [...new Set(
+                                  titles
+                                    .filter(Boolean)
+                                    .map((title) => title.trim())
+                                    .filter(Boolean)
+                                )];
+                                if (!normalized.length) {
+                                  return "当前空闲";
+                                }
+                                if (normalized.length <= 2) {
+                                  return `进行中：${normalized.join("、")}`;
+                                }
+                                return `进行中：${normalized.slice(0, 2).join("、")} 等 ${normalized.length} 项`;
                               };
                               const calendarView = document.getElementById("calendar-view");
                               const agendaView = document.getElementById("agenda-view");
                               const prevWeekLink = document.getElementById("prev-week");
                               const nextWeekLink = document.getElementById("next-week");
                               const currentWeekLink = document.getElementById("current-week");
+                              const currentStatus = document.getElementById("current-status");
                               const viewModeButtons = Array.from(document.querySelectorAll("[data-view-mode]"));
                               const syncViewMode = () => {
                                 calendarView.hidden = currentView !== "calendar";
@@ -760,9 +842,11 @@ public class ScheduleQueryService {
                               });
                               const agenda = document.getElementById("agenda-view");
                               const grid = document.getElementById("calendar-grid");
+                              let currentTimeLine = null;
                               payload.days.forEach((day) => {
                                 const section = document.createElement("div");
                                 section.className = "day-column";
+                                section.dataset.date = day.date;
                                 const header = document.createElement("header");
                                 header.className = "day-column__header";
                                 const headerTitle = document.createElement("strong");
@@ -773,6 +857,7 @@ public class ScheduleQueryService {
 
                                 const body = document.createElement("div");
                                 body.className = "day-column__body";
+                                body.dataset.date = day.date;
                                 body.style.height = `${totalHeight}px`;
                                 const lines = document.createElement("div");
                                 lines.className = "day-column__lines";
@@ -851,6 +936,59 @@ public class ScheduleQueryService {
 
                                 agenda.appendChild(agendaDay);
                               });
+                              const updateNowIndicators = () => {
+                                const now = new Date();
+                                const todayKey = toDateKey(now);
+                                const today = payload.days.find((day) => day.date === todayKey);
+                                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+                                if (!today) {
+                                  if (currentStatus) {
+                                    currentStatus.hidden = true;
+                                  }
+                                  if (currentTimeLine) {
+                                    currentTimeLine.hidden = true;
+                                  }
+                                  return;
+                                }
+
+                                const activeTitles = (Array.isArray(today.occupied) ? today.occupied : [])
+                                  .filter((block) => {
+                                    const startMinutes = toMinutes(block.start);
+                                    const endMinutes = normalizeEndMinutes(block);
+                                    return startMinutes <= currentMinutes && currentMinutes < endMinutes;
+                                  })
+                                  .map((block) => block.title);
+
+                                if (currentStatus) {
+                                  currentStatus.hidden = false;
+                                  currentStatus.textContent = formatCurrentStatusText(activeTitles);
+                                  currentStatus.classList.toggle("is-busy", activeTitles.length > 0);
+                                }
+
+                                const todayBody = grid.querySelector(`.day-column__body[data-date="${todayKey}"]`);
+                                if (!todayBody) {
+                                  if (currentTimeLine) {
+                                    currentTimeLine.hidden = true;
+                                  }
+                                  return;
+                                }
+
+                                if (!currentTimeLine || currentTimeLine.parentElement !== todayBody) {
+                                  if (currentTimeLine) {
+                                    currentTimeLine.remove();
+                                  }
+                                  currentTimeLine = document.createElement("div");
+                                  currentTimeLine.className = "current-time-line";
+                                  const dot = document.createElement("span");
+                                  dot.className = "current-time-line__dot";
+                                  currentTimeLine.appendChild(dot);
+                                  todayBody.appendChild(currentTimeLine);
+                                }
+
+                                currentTimeLine.hidden = false;
+                                currentTimeLine.style.top = `${(currentMinutes / 60) * hourHeight}px`;
+                              };
                               viewModeButtons.forEach((button) => {
                                 button.addEventListener("click", () => {
                                   manualViewSelection = true;
@@ -868,6 +1006,8 @@ public class ScheduleQueryService {
                                   syncViewMode();
                                 }
                               });
+                              updateNowIndicators();
+                              window.setInterval(updateNowIndicators, 60000);
                               syncViewMode();
                             </script>
                           </body>
