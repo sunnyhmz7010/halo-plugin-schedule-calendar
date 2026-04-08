@@ -201,8 +201,49 @@ class ScheduleQueryServiceTest {
         var view = service.getWeekView(LocalDate.now()).block();
 
         assertThat(view).isNotNull();
+        assertThat(view.serverTime()).isNotBlank();
+        assertThat(view.zoneId()).isEqualTo("Asia/Shanghai");
+        assertThat(view.summary()).isNotNull();
+        assertThat(view.summary().next()).isNotNull();
+        assertThat(view.summary().next().title()).isEqualTo("上课");
         assertThat(view.nextOccurrenceTitle()).isEqualTo("上课");
         assertThat(view.nextOccurrenceStart()).isNotBlank();
+    }
+
+    @Test
+    void returnsStructuredSummaryForCurrentAndNextOccurrences() {
+        var now = OffsetDateTime.now();
+        var activeEntry = scheduleEntry(
+            "writing-now",
+            "写作",
+            now.minusMinutes(20),
+            now.plusMinutes(40),
+            recurrence(ScheduleEntry.RecurrenceFrequency.NONE, 1, null)
+        );
+        var nextEntry = scheduleEntry(
+            "review-next",
+            "复盘会",
+            now.plusHours(2).withSecond(0).withNano(0),
+            now.plusHours(3).withSecond(0).withNano(0),
+            recurrence(ScheduleEntry.RecurrenceFrequency.NONE, 1, null)
+        );
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.just(activeEntry, nextEntry));
+
+        var summary = service.getSummary().block();
+
+        assertThat(summary).isNotNull();
+        assertThat(summary.serverTime()).isNotBlank();
+        assertThat(summary.zoneId()).isEqualTo("Asia/Shanghai");
+        assertThat(summary.current()).isNotNull();
+        assertThat(summary.current().busy()).isTrue();
+        assertThat(summary.current().titles()).containsExactly("写作");
+        assertThat(summary.current().text()).contains("进行中：写作");
+        assertThat(summary.next()).isNotNull();
+        assertThat(summary.next().title()).isEqualTo("复盘会");
+        assertThat(summary.next().startTime()).isNotBlank();
+        assertThat(summary.next().minutesUntilStart()).isPositive();
+        assertThat(summary.next().text()).contains("后开始：复盘会");
     }
 
     private ScheduleEntry scheduleEntry(String name, String title, OffsetDateTime startTime,

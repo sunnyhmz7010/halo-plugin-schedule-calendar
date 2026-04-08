@@ -37,6 +37,7 @@
 主题模板可直接使用以下 Finder：
 
 - `scheduleCalendarFinder.week(start)`
+- `scheduleCalendarFinder.summary()`
 - `scheduleCalendarFinder.day(date)`
 - `scheduleCalendarFinder.range(start, end)`
 - `scheduleCalendarFinder.upcoming(limit)`
@@ -48,8 +49,12 @@
 - `week(start)`：
   - 参数 `start` 使用 `yyyy-MM-dd` 格式。
   - 返回该日期所在周的完整周视图数据。
-  - 额外包含 `nextOccurrenceTitle`、`nextOccurrenceStart`，可直接用于主题侧展示“下一个事项”提示。
+  - 返回值额外包含 `serverTime`、`zoneId`、`summary`，其中 `summary.current` 和 `summary.next` 可直接用于主题侧展示“当前状态”和“下一个事项”。
+  - 为兼容已有主题，仍保留 `nextOccurrenceTitle`、`nextOccurrenceStart` 字段。
   - 传空值时返回当前周。
+- `summary()`：
+  - 返回当前服务端时间、服务端时区、当前状态和下一个事项摘要。
+  - 适合主题页头状态条、首页摘要卡片或需要单独轮询状态的场景。
 - `day(date)`：
   - 参数 `date` 使用 `yyyy-MM-dd` 格式。
   - 返回单日的占用时间块和空闲时间块。
@@ -74,11 +79,16 @@
 ```html
 <div th:with="week=${scheduleCalendarFinder.week('2026-04-01')}">
   <div th:text="${week.weekStart}"></div>
+  <div th:text="${week.summary.current.text}"></div>
 </div>
 
 <div th:each="item : ${scheduleCalendarFinder.upcoming(5)}">
   <span th:text="${item.title}"></span>
   <time th:text="${item.startTime}"></time>
+</div>
+
+<div th:with="summary=${scheduleCalendarFinder.summary()}">
+  <span th:text="${summary.next.text}"></span>
 </div>
 
 <div th:each="entry : ${scheduleCalendarFinder.listAll()}">
@@ -91,6 +101,7 @@
 如果主题、自定义前端或外部脚本更适合消费 JSON，可使用以下公开接口：
 
 - `GET /apis/api.schedule.calendar.sunny.dev/v1alpha1/weeks?start=2026-04-01`
+- `GET /apis/api.schedule.calendar.sunny.dev/v1alpha1/summary`
 - `GET /apis/api.schedule.calendar.sunny.dev/v1alpha1/days?date=2026-04-01`
 - `GET /apis/api.schedule.calendar.sunny.dev/v1alpha1/occurrences?start=2026-04-01&end=2026-04-07`
 - `GET /apis/api.schedule.calendar.sunny.dev/v1alpha1/upcoming?limit=10`
@@ -101,7 +112,11 @@
 
 - `weeks`：
   - 返回指定周的周视图结构，适合自定义前端日历视图。
-  - 返回值包含 `nextOccurrenceTitle`、`nextOccurrenceStart`，可用于渲染下一个事项倒计时或提醒条。
+  - 返回值包含 `serverTime`、`zoneId`、`summary`，可用于统一渲染当前状态、下一个事项和服务端时区对齐的时间线。
+  - 为兼容已有接入，仍保留 `nextOccurrenceTitle`、`nextOccurrenceStart`。
+- `summary`：
+  - 返回当前服务端时间、服务端时区、当前状态摘要和下一个事项摘要。
+  - 适合轻量状态条、独立轮询或首页摘要模块。
 - `days`：
   - 返回单日时间块，适合移动端或详情页单日展示。
 - `occurrences`：

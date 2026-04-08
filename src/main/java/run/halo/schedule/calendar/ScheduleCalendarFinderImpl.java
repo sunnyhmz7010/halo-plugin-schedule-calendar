@@ -18,6 +18,11 @@ public class ScheduleCalendarFinderImpl implements ScheduleCalendarFinder {
     }
 
     @Override
+    public Mono<ScheduleQueryService.SummaryResponse> summary() {
+        return scheduleQueryService.getSummary();
+    }
+
+    @Override
     public Mono<ScheduleQueryService.DayView> day(String date) {
         return scheduleQueryService.getDayView(parseDate(date));
     }

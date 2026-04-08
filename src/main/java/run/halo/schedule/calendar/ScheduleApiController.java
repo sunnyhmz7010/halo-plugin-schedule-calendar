@@ -23,6 +23,11 @@ public class ScheduleApiController {
         return scheduleQueryService.getWeekView(start);
     }
 
+    @GetMapping("/summary")
+    public Mono<ScheduleQueryService.SummaryResponse> summary() {
+        return scheduleQueryService.getSummary();
+    }
+
     @GetMapping("/days")
     public Mono<ScheduleQueryService.DayView> day(
         @RequestParam(name = "date", required = false) LocalDate date

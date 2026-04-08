@@ -54,12 +54,20 @@ public class ScheduleQueryService {
 
     Mono<WeekViewResponse> getWeekView(LocalDate requestedStart) {
         var zoneId = ZoneId.systemDefault();
+        var serverNow = OffsetDateTime.now(zoneId);
         var weekStart = requestedStart == null
             ? LocalDate.now(zoneId).with(DayOfWeek.MONDAY)
             : requestedStart.with(DayOfWeek.MONDAY);
         var weekEnd = weekStart.plusDays(6);
         return listEntries()
-            .map(entries -> toWeekView(entries, weekStart, weekEnd, zoneId));
+            .map(entries -> toWeekView(entries, weekStart, weekEnd, zoneId, serverNow));
+    }
+
+    Mono<SummaryResponse> getSummary() {
+        var zoneId = ZoneId.systemDefault();
+        var serverNow = OffsetDateTime.now(zoneId);
+        return listEntries()
+            .map(entries -> toSummary(entries, zoneId, serverNow));
     }
 
     Mono<DayView> getDayView(LocalDate requestedDate) {
@@ -678,12 +686,19 @@ public class ScheduleQueryService {
                               const payload = %s;
                               const hourHeight = %d;
                               const totalHeight = hourHeight * 24;
+                              const summaryApiUrl = "/apis/api.schedule.calendar.sunny.dev/v1alpha1/summary";
                               const searchParams = new URLSearchParams(window.location.search);
                               const resolveResponsiveView = () => window.innerWidth <= 768 ? "agenda" : "calendar";
                               let manualViewSelection = searchParams.has("view");
                               let currentView = searchParams.get("view") === "agenda"
                                 ? "agenda"
                                 : (manualViewSelection ? "calendar" : resolveResponsiveView());
+                              let liveSummary = payload.summary ?? null;
+                              let serverNowAnchor = payload.serverTime ? new Date(payload.serverTime) : new Date();
+                              if (Number.isNaN(serverNowAnchor.getTime())) {
+                                serverNowAnchor = new Date();
+                              }
+                              let clientNowAnchor = Date.now();
                               const buildWeekUrl = (start) => {
                                 const params = new URLSearchParams(window.location.search);
                                 params.set("start", start);
@@ -700,6 +715,64 @@ public class ScheduleQueryService {
                                 const day = String(date.getDate()).padStart(2, "0");
                                 return `${year}-${month}-${day}`;
                               };
+                              const zonedDateFormatter = payload.zoneId
+                                ? new Intl.DateTimeFormat("en-CA", {
+                                    timeZone: payload.zoneId,
+                                    year: "numeric",
+                                    month: "2-digit",
+                                    day: "2-digit",
+                                  })
+                                : null;
+                              const zonedTimeFormatter = payload.zoneId
+                                ? new Intl.DateTimeFormat("en-GB", {
+                                    timeZone: payload.zoneId,
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: false,
+                                  })
+                                : null;
+                              const partsToRecord = (parts) =>
+                                parts.reduce((record, part) => {
+                                  if (part.type !== "literal") {
+                                    record[part.type] = part.value;
+                                  }
+                                  return record;
+                                }, {});
+                              const toDateKeyInZone = (date) => {
+                                if (!zonedDateFormatter) {
+                                  return toDateKey(date);
+                                }
+                                const parts = partsToRecord(zonedDateFormatter.formatToParts(date));
+                                return `${parts.year}-${parts.month}-${parts.day}`;
+                              };
+                              const getClockPartsInZone = (date) => {
+                                if (!zonedTimeFormatter) {
+                                  return {
+                                    hours: date.getHours(),
+                                    minutes: date.getMinutes(),
+                                  };
+                                }
+                                const parts = partsToRecord(zonedTimeFormatter.formatToParts(date));
+                                return {
+                                  hours: Number(parts.hour ?? 0),
+                                  minutes: Number(parts.minute ?? 0),
+                                };
+                              };
+                              const syncServerClock = (serverTime) => {
+                                if (!serverTime) {
+                                  return;
+                                }
+                                const parsed = new Date(serverTime);
+                                if (Number.isNaN(parsed.getTime())) {
+                                  return;
+                                }
+                                serverNowAnchor = parsed;
+                                clientNowAnchor = Date.now();
+                              };
+                              const getServerNow = () =>
+                                new Date(serverNowAnchor.getTime() + (Date.now() - clientNowAnchor));
                               const toMinutes = (value) => {
                                 const [hours, minutes] = value.split(":").map(Number);
                                 return hours * 60 + minutes;
@@ -749,6 +822,48 @@ public class ScheduleQueryService {
                               const currentStatus = document.getElementById("current-status");
                               const nextStatus = document.getElementById("next-status");
                               const viewModeButtons = Array.from(document.querySelectorAll("[data-view-mode]"));
+                              const renderStatusSummary = (referenceNow = getServerNow()) => {
+                                if (currentStatus) {
+                                  const current = liveSummary?.current;
+                                  if (current?.text) {
+                                    currentStatus.hidden = false;
+                                    currentStatus.textContent = current.text;
+                                    currentStatus.classList.toggle("is-busy", Boolean(current.busy));
+                                  } else {
+                                    currentStatus.hidden = true;
+                                  }
+                                }
+                                if (nextStatus) {
+                                  const next = liveSummary?.next;
+                                  const nextStart = next?.startTime ? new Date(next.startTime) : null;
+                                  if (nextStart && !Number.isNaN(nextStart.getTime()) && nextStart > referenceNow) {
+                                    nextStatus.hidden = false;
+                                    nextStatus.textContent =
+                                      `${formatCountdownDuration(nextStart, referenceNow)}后开始：${next.title}`;
+                                  } else {
+                                    nextStatus.hidden = true;
+                                  }
+                                }
+                              };
+                              const refreshSummary = async () => {
+                                try {
+                                  const response = await fetch(summaryApiUrl, {
+                                    headers: {
+                                      Accept: "application/json",
+                                    },
+                                  });
+                                  if (!response.ok) {
+                                    return;
+                                  }
+                                  const nextSummary = await response.json();
+                                  liveSummary = nextSummary;
+                                  syncServerClock(nextSummary.serverTime);
+                                  renderStatusSummary();
+                                  updateNowIndicators();
+                                } catch (error) {
+                                  console.debug("Failed to refresh schedule summary.", error);
+                                }
+                              };
                               const syncViewMode = () => {
                                 calendarView.hidden = currentView !== "calendar";
                                 agendaView.hidden = currentView !== "agenda";
@@ -1003,46 +1118,19 @@ public class ScheduleQueryService {
                                 agenda.appendChild(agendaDay);
                               });
                               const updateNowIndicators = () => {
-                                const now = new Date();
-                                const todayKey = toDateKey(now);
+                                const now = getServerNow();
+                                const todayKey = toDateKeyInZone(now);
                                 const today = payload.days.find((day) => day.date === todayKey);
-                                const currentMinutes = now.getHours() * 60 + now.getMinutes();
-                                const nextOccurrenceStart = payload.nextOccurrenceStart
-                                  ? new Date(payload.nextOccurrenceStart)
-                                  : null;
+                                const clock = getClockPartsInZone(now);
+                                const currentMinutes = clock.hours * 60 + clock.minutes;
 
-                                if (nextStatus) {
-                                  if (nextOccurrenceStart && !Number.isNaN(nextOccurrenceStart.getTime()) && nextOccurrenceStart > now) {
-                                    nextStatus.hidden = false;
-                                    nextStatus.textContent =
-                                      `${formatCountdownDuration(nextOccurrenceStart, now)}后开始：${payload.nextOccurrenceTitle}`;
-                                  } else {
-                                    nextStatus.hidden = true;
-                                  }
-                                }
+                                renderStatusSummary(now);
 
                                 if (!today) {
-                                  if (currentStatus) {
-                                    currentStatus.hidden = true;
-                                  }
                                   if (currentTimeLine) {
                                     currentTimeLine.hidden = true;
                                   }
                                   return;
-                                }
-
-                                const activeTitles = (Array.isArray(today.occupied) ? today.occupied : [])
-                                  .filter((block) => {
-                                    const startMinutes = toMinutes(block.start);
-                                    const endMinutes = normalizeEndMinutes(block);
-                                    return startMinutes <= currentMinutes && currentMinutes < endMinutes;
-                                  })
-                                  .map((block) => block.title);
-
-                                if (currentStatus) {
-                                  currentStatus.hidden = false;
-                                  currentStatus.textContent = formatCurrentStatusText(activeTitles);
-                                  currentStatus.classList.toggle("is-busy", activeTitles.length > 0);
                                 }
 
                                 const todayBody = grid.querySelector(`.day-column__body[data-date="${todayKey}"]`);
@@ -1085,8 +1173,13 @@ public class ScheduleQueryService {
                                   syncViewMode();
                                 }
                               });
+                              renderStatusSummary();
                               updateNowIndicators();
-                              window.setInterval(updateNowIndicators, 60000);
+                              refreshSummary();
+                              window.setInterval(() => {
+                                updateNowIndicators();
+                                refreshSummary();
+                              }, 60000);
                               syncViewMode();
                             </script>
                           </body>
@@ -1262,13 +1355,14 @@ public class ScheduleQueryService {
     }
 
     private WeekViewResponse toWeekView(List<ScheduleEntry> entries, LocalDate weekStart, LocalDate weekEnd,
-        ZoneId zoneId) {
+        ZoneId zoneId, OffsetDateTime serverNow) {
         var days = new ArrayList<DayView>();
         for (int offset = 0; offset < 7; offset++) {
             var date = weekStart.plusDays(offset);
             days.add(toDayView(entries, date, zoneId));
         }
-        var nextOccurrence = nextUpcomingOccurrence(entries, zoneId);
+        var summary = toSummary(entries, zoneId, serverNow);
+        var nextOccurrence = summary.next();
         return new WeekViewResponse(
             weekStart.toString(),
             weekEnd.toString(),
@@ -1276,9 +1370,33 @@ public class ScheduleQueryService {
             weekStart.minusWeeks(1).toString(),
             weekStart.plusWeeks(1).toString(),
             days,
-            nextOccurrence == null ? null : nextOccurrence.entry().getSpec().getTitle(),
-            nextOccurrence == null ? null : nextOccurrence.start().toString()
+            serverNow.toString(),
+            zoneId.getId(),
+            summary,
+            nextOccurrence == null ? null : nextOccurrence.title(),
+            nextOccurrence == null ? null : nextOccurrence.startTime()
         );
+    }
+
+    private SummaryResponse toSummary(List<ScheduleEntry> entries, ZoneId zoneId, OffsetDateTime serverNow) {
+        var now = serverNow.toLocalDateTime();
+        var activeTitles = currentOccurrenceTitles(entries, zoneId, now);
+        var current = new CurrentStatusSummary(
+            !activeTitles.isEmpty(),
+            formatCurrentStatusText(activeTitles),
+            activeTitles
+        );
+        var nextOccurrence = nextUpcomingOccurrence(entries, zoneId, now);
+        var next = nextOccurrence == null
+            ? null
+            : new NextOccurrenceSummary(
+                nextOccurrence.entry().getSpec().getTitle(),
+                DATE_TIME_FORMATTER.format(nextOccurrence.start()),
+                Duration.between(now, nextOccurrence.start()).toMinutes(),
+                formatCountdownText(Duration.between(now, nextOccurrence.start()),
+                    nextOccurrence.entry().getSpec().getTitle())
+            );
+        return new SummaryResponse(serverNow.toString(), zoneId.getId(), current, next);
     }
 
     private DayView toDayView(List<ScheduleEntry> entries, LocalDate date, ZoneId zoneId) {
@@ -1424,6 +1542,28 @@ public class ScheduleQueryService {
         return color == null || color.isBlank() ? "#0f766e" : color;
     }
 
+    private List<String> currentOccurrenceTitles(List<ScheduleEntry> entries, ZoneId zoneId, LocalDateTime now) {
+        var startOfDay = now.toLocalDate().atStartOfDay();
+        var endOfDay = startOfDay.plusDays(1);
+        return entries.stream()
+            .flatMap(entry -> occurrencesForRange(entry, startOfDay, endOfDay, zoneId).stream())
+            .filter(occurrence -> !occurrence.start().isAfter(now) && occurrence.end().isAfter(now))
+            .map(occurrence -> occurrence.entry().getSpec().getTitle())
+            .filter(title -> title != null && !title.isBlank())
+            .distinct()
+            .toList();
+    }
+
+    private String formatCurrentStatusText(List<String> titles) {
+        if (titles.isEmpty()) {
+            return "当前空闲";
+        }
+        if (titles.size() <= 2) {
+            return "进行中：" + String.join("、", titles);
+        }
+        return "进行中：" + String.join("、", titles.subList(0, 2)) + " 等 " + titles.size() + " 项";
+    }
+
     private int normalizeLimit(Integer requestedLimit) {
         if (requestedLimit == null || requestedLimit < 1) {
             return 10;
@@ -1442,6 +1582,28 @@ public class ScheduleQueryService {
             return hours + " 小时";
         }
         return Math.max(duration.toMinutes(), 0) + " 分钟";
+    }
+
+    private String formatCountdownDuration(Duration duration) {
+        var totalMinutes = Math.max(duration.toMinutes(), 0);
+        var days = totalMinutes / (24 * 60);
+        var hours = (totalMinutes % (24 * 60)) / 60;
+        var minutes = totalMinutes % 60;
+        var parts = new ArrayList<String>();
+        if (days > 0) {
+            parts.add(days + "天");
+        }
+        if (hours > 0) {
+            parts.add(hours + "小时");
+        }
+        if (minutes > 0 || parts.isEmpty()) {
+            parts.add(minutes + "分钟");
+        }
+        return String.join("", parts);
+    }
+
+    private String formatCountdownText(Duration duration, String title) {
+        return formatCountdownDuration(duration) + "后开始：" + title;
     }
 
     private String formatDateTime(OffsetDateTime value) {
@@ -1568,7 +1730,10 @@ public class ScheduleQueryService {
     }
 
     private ScheduleOccurrence nextUpcomingOccurrence(List<ScheduleEntry> entries, ZoneId zoneId) {
-        var now = LocalDateTime.now(zoneId);
+        return nextUpcomingOccurrence(entries, zoneId, LocalDateTime.now(zoneId));
+    }
+
+    private ScheduleOccurrence nextUpcomingOccurrence(List<ScheduleEntry> entries, ZoneId zoneId, LocalDateTime now) {
         var rangeEnd = now.plusDays(90);
         return entries.stream()
             .flatMap(entry -> occurrencesForRange(entry, now, rangeEnd, zoneId).stream())
@@ -1618,8 +1783,21 @@ public class ScheduleQueryService {
                                    String previousWeekStart,
                                    String nextWeekStart,
                                    List<DayView> days,
+                                   String serverTime,
+                                   String zoneId,
+                                   SummaryResponse summary,
                                    String nextOccurrenceTitle,
                                    String nextOccurrenceStart) {
+    }
+
+    public record SummaryResponse(String serverTime, String zoneId, CurrentStatusSummary current,
+                                  NextOccurrenceSummary next) {
+    }
+
+    public record CurrentStatusSummary(boolean busy, String text, List<String> titles) {
+    }
+
+    public record NextOccurrenceSummary(String title, String startTime, long minutesUntilStart, String text) {
     }
 
     public record DayView(String date, String dayLabel, List<TimeBlock> occupied, List<TimeBlock> free) {

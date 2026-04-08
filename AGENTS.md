@@ -8,7 +8,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Public route: `/schedule-calendar`
 - Admin capability: create, view, edit, and delete schedule entries in a weekly calendar view.
 - Editor capability: insert a schedule card for a single entry.
-- Current stable version: `v2.2.0`
+- Current stable version: `v2.6.0`
 
 ## Tech Stack
 
@@ -79,6 +79,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
   - update `gradle.properties`
   - keep `README.md` current if screenshots, URLs, or capability descriptions change
 - If `WeekViewResponse`, Finder 返回结构, or public `weeks` API fields change, update both the Finder section and the REST API section in `README.md`; do not document only one side.
+- If `SummaryResponse` or week-page summary fields change, update the server-rendered public page script to consume the new structure and keep README examples aligned with both Finder and REST usage.
 - When public-page UX adds user-visible capabilities such as 当前状态、下一个事项倒计时、当前时间线, reflect them in `README.md` 功能概览 and 对外能力说明.
 - This repo no longer keeps a committed `CHANGELOG.md`; release history is maintained in GitHub Releases instead.
 - For this repository, release notes should use the heading `## 更新内容`.
