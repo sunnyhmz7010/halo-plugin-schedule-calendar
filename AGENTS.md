@@ -78,6 +78,8 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - When releasing:
   - update `gradle.properties`
   - keep `README.md` current if screenshots, URLs, or capability descriptions change
+- If `WeekViewResponse`, Finder 返回结构, or public `weeks` API fields change, update both the Finder section and the REST API section in `README.md`; do not document only one side.
+- When public-page UX adds user-visible capabilities such as 当前状态、下一个事项倒计时、当前时间线, reflect them in `README.md` 功能概览 and 对外能力说明.
 - This repo no longer keeps a committed `CHANGELOG.md`; release history is maintained in GitHub Releases instead.
 - For this repository, release notes should use the heading `## 更新内容`.
 - Release notes should describe concrete 新增功能、修复内容、优化点, and should avoid vague wording such as "收敛".

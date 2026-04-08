@@ -165,15 +165,22 @@ public class ScheduleQueryService {
                                 padding: 40px 20px 80px;
                               }
                               .hero {
-                                display: flex;
-                                justify-content: space-between;
-                                gap: 16px;
-                                align-items: end;
+                                display: grid;
+                                grid-template-columns: minmax(0, 1fr) auto;
+                                gap: 24px;
+                                align-items: start;
                                 margin-bottom: 24px;
                               }
                               .hero__heading {
                                 display: grid;
                                 gap: 12px;
+                              }
+                              .hero__controls {
+                                display: grid;
+                                gap: 14px;
+                                justify-items: end;
+                                align-content: end;
+                                padding-top: 10px;
                               }
                               .hero h1 {
                                 margin: 0;
@@ -236,6 +243,7 @@ public class ScheduleQueryService {
                                 justify-content: flex-end;
                                 align-items: center;
                                 gap: 10px;
+                                width: fit-content;
                               }
                               .week-nav a {
                                 display: inline-flex;
@@ -260,11 +268,11 @@ public class ScheduleQueryService {
                                 display: inline-flex;
                                 gap: 8px;
                                 padding: 6px;
-                                margin-bottom: 16px;
                                 border: 1px solid var(--line);
                                 border-radius: 16px;
                                 background: rgba(255,255,255,0.72);
                                 backdrop-filter: blur(8px);
+                                justify-self: end;
                               }
                               .view-mode__button {
                                 border: 0;
@@ -550,6 +558,20 @@ public class ScheduleQueryService {
                               }
                             }
                             @media (max-width: 768px) {
+                              .hero {
+                                grid-template-columns: minmax(0, 1fr);
+                                gap: 18px;
+                              }
+                              .hero__controls {
+                                justify-items: stretch;
+                                padding-top: 0;
+                              }
+                              .week-nav {
+                                justify-content: flex-start;
+                              }
+                              .view-mode {
+                                justify-self: start;
+                              }
                               .calendar__grid {
                                 grid-template-columns: 48px minmax(0, 1fr);
                                 width: 100%%;
@@ -624,16 +646,18 @@ public class ScheduleQueryService {
                                   <div id="current-status" class="current-status" hidden></div>
                                   <div id="next-status" class="next-status" hidden></div>
                                 </div>
-                                <div class="week-nav">
-                                  <a id="prev-week" href="#">上一周</a>
-                                  <input id="week-picker" type="date" />
-                                  <a id="next-week" href="#">下一周</a>
-                                  <a id="current-week" href="#">回到本周</a>
+                                <div class="hero__controls">
+                                  <div class="week-nav">
+                                    <a id="prev-week" href="#">上一周</a>
+                                    <input id="week-picker" type="date" />
+                                    <a id="next-week" href="#">下一周</a>
+                                    <a id="current-week" href="#">回到本周</a>
+                                  </div>
+                                  <section class="view-mode" aria-label="视图切换">
+                                    <button type="button" class="view-mode__button" data-view-mode="calendar">日历布局</button>
+                                    <button type="button" class="view-mode__button" data-view-mode="agenda">事项布局</button>
+                                  </section>
                                 </div>
-                              </section>
-                              <section class="view-mode" aria-label="视图切换">
-                                <button type="button" class="view-mode__button" data-view-mode="calendar">日历布局</button>
-                                <button type="button" class="view-mode__button" data-view-mode="agenda">事项布局</button>
                               </section>
                               <section class="calendar-wrap">
                                 <section class="calendar" id="calendar-view">
@@ -715,7 +739,7 @@ public class ScheduleQueryService {
                                 if (minutes || !parts.length) {
                                   parts.push(`${minutes}分钟`);
                                 }
-                                return parts.join(" ");
+                                return parts.join("");
                               };
                               const calendarView = document.getElementById("calendar-view");
                               const agendaView = document.getElementById("agenda-view");
@@ -991,7 +1015,7 @@ public class ScheduleQueryService {
                                   if (nextOccurrenceStart && !Number.isNaN(nextOccurrenceStart.getTime()) && nextOccurrenceStart > now) {
                                     nextStatus.hidden = false;
                                     nextStatus.textContent =
-                                      `${formatCountdownDuration(nextOccurrenceStart, now)}后开始 · ${payload.nextOccurrenceTitle}`;
+                                      `${formatCountdownDuration(nextOccurrenceStart, now)}后开始：${payload.nextOccurrenceTitle}`;
                                   } else {
                                     nextStatus.hidden = true;
                                   }

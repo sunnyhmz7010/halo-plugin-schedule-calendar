@@ -500,7 +500,7 @@ const formatCountdownDuration = (target: Date, reference = nowRef.value) => {
     parts.push(`${minutes}分钟`)
   }
 
-  return parts.join(' ')
+  return parts.join('')
 }
 
 const currentStatus = computed<{ state: 'warning' | 'success'; text: string }>(() => ({
@@ -525,7 +525,7 @@ const nextOccurrenceCountdown = computed(() => {
     return ''
   }
 
-  return `${formatCountdownDuration(nextOccurrence.start)}后开始 · ${nextOccurrence.entry.spec.title}`
+  return `${formatCountdownDuration(nextOccurrence.start)}后开始：${nextOccurrence.entry.spec.title}`
 })
 
 const currentTimeDateKey = computed(() => formatDisplayDate(nowRef.value))

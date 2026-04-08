@@ -178,6 +178,33 @@ class ScheduleQueryServiceTest {
             .containsOnly("晨训");
     }
 
+    @Test
+    void includesNextOccurrenceFieldsInWeekView() {
+        var now = OffsetDateTime.now();
+        var nearEntry = scheduleEntry(
+            "class-soon",
+            "上课",
+            now.plusHours(2).withMinute(0).withSecond(0).withNano(0),
+            now.plusHours(3).withMinute(0).withSecond(0).withNano(0),
+            recurrence(ScheduleEntry.RecurrenceFrequency.NONE, 1, null)
+        );
+        var laterEntry = scheduleEntry(
+            "class-later",
+            "晚自习",
+            now.plusDays(1).withHour(19).withMinute(0).withSecond(0).withNano(0),
+            now.plusDays(1).withHour(21).withMinute(0).withSecond(0).withNano(0),
+            recurrence(ScheduleEntry.RecurrenceFrequency.NONE, 1, null)
+        );
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.just(nearEntry, laterEntry));
+
+        var view = service.getWeekView(LocalDate.now()).block();
+
+        assertThat(view).isNotNull();
+        assertThat(view.nextOccurrenceTitle()).isEqualTo("上课");
+        assertThat(view.nextOccurrenceStart()).isNotBlank();
+    }
+
     private ScheduleEntry scheduleEntry(String name, String title, OffsetDateTime startTime,
         OffsetDateTime endTime, ScheduleEntry.Recurrence recurrence) {
         var entry = new ScheduleEntry();
