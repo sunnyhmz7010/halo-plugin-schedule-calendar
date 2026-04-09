@@ -1,6 +1,6 @@
 import { ToolboxItem, VueNodeViewRenderer } from '@halo-dev/richtext-editor'
-import { mergeAttributes, Node } from '@tiptap/core'
-import type { Editor, Range } from '@tiptap/core'
+import { mergeAttributes, Node } from '@halo-dev/richtext-editor'
+import type { Editor, Range } from '@halo-dev/richtext-editor'
 import { IconCalendar } from '@halo-dev/components'
 import { markRaw } from 'vue'
 import type { ScheduleCard } from '../types/schedule'
