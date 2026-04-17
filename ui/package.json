@@ -16,7 +16,6 @@
     "@halo-dev/components": "^2.21.0",
     "@halo-dev/console-shared": "^2.21.0",
     "@halo-dev/richtext-editor": "2.21.0",
-    "@tiptap/core": "^2.26.4",
     "axios": "^1.13.5",
     "vue": "^3.5.17"
   },
