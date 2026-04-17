@@ -139,6 +139,7 @@ public class ScheduleQueryService {
                 var view = tuple.getT1();
                 var setting = tuple.getT2();
                 var pageTitle = setting.effectiveTitle();
+                var escapedPageTitle = escapeHtml(pageTitle);
                 try {
                     return """
                         <!DOCTYPE html>
@@ -1184,7 +1185,7 @@ public class ScheduleQueryService {
                             </script>
                           </body>
                         </html>
-                        """.formatted(pageTitle, CALENDAR_HEADER_HEIGHT, HOUR_HEIGHT, pageTitle,
+                        """.formatted(escapedPageTitle, CALENDAR_HEADER_HEIGHT, HOUR_HEIGHT, escapedPageTitle,
                         objectMapper.writeValueAsString(view), HOUR_HEIGHT);
                 } catch (JsonProcessingException ex) {
                     throw new IllegalStateException("Failed to render schedule calendar page.", ex);

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
@@ -244,6 +245,22 @@ class ScheduleQueryServiceTest {
         assertThat(summary.next().startTime()).isNotBlank();
         assertThat(summary.next().minutesUntilStart()).isPositive();
         assertThat(summary.next().text()).contains("后开始：复盘会");
+    }
+
+    @Test
+    void escapesConfiguredPageTitleInPublicCalendarPage() {
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.empty());
+        when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
+            .thenReturn(Mono.just(new ScheduleCalendarSetting("<script>alert('xss')</script>")));
+
+        var html = service.buildPublicCalendarPage(LocalDate.of(2026, 4, 13)).block();
+
+        assertThat(html).isNotNull();
+        assertThat(html).contains("<title>&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;</title>");
+        assertThat(html).contains("<h1>&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;</h1>");
+        assertThat(html).doesNotContain("<title><script>alert('xss')</script></title>");
+        assertThat(html).doesNotContain("<h1><script>alert('xss')</script></h1>");
     }
 
     private ScheduleEntry scheduleEntry(String name, String title, OffsetDateTime startTime,
