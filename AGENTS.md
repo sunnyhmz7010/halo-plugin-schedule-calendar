@@ -8,7 +8,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Public route: `/schedule-calendar`
 - Admin capability: create, view, edit, and delete schedule entries in a weekly calendar view.
 - Editor capability: insert a schedule card for a single entry.
-- Current stable version: `v2.6.1`
+- Current stable version: `v2.7.0`
 
 ## Tech Stack
 
