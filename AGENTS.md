@@ -67,8 +67,10 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Do not use invalid create requests to probe permissions. For admin permission checks, prefer no-side-effect probes against real resources.
 - Do not add `@halo-dev/ui-shared` just to read UI permissions in this repo. It pulls extra frontend dependencies such as `pinia`/`vue-router` and can break the current plugin build.
 - For public calendar rendering, do not interpolate schedule data into `innerHTML`. Build DOM nodes with `textContent`/`createElement` so persisted entry data cannot become stored XSS.
+- If the backend returns `text/html` built from Java string templates, HTML-escape all text fields from plugin settings, persisted data, and user-controlled inputs before interpolating them into tags such as `<title>` and headings. Do not assume only `innerHTML` paths are XSS-relevant in this repo.
 - `unplugin-icons` is not required in this repo. Prefer Halo-provided icons from `@halo-dev/components`; keeping `unplugin-icons` pulls `vue-template-compiler` into the dependency tree and creates avoidable audit noise.
 - When dependency audit is part of the task, `pnpm.overrides` in `ui/package.json` is an acceptable way to pin vulnerable transitive packages to safe versions, as long as `pnpm build`, `pnpm audit`, and Gradle tests still pass afterward.
+- For build-tool upgrades such as `vite`, `@halo-dev/ui-plugin-bundler-kit`, and editor-related packages, do not merge version bumps just to clear Dependabot alerts. Confirm the current repo config is compatible and CI stays green first; if the upgrade breaks the plugin build, close or defer the bump instead of merging it.
 
 ## Release Conventions
 
@@ -94,6 +96,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - A local full Gradle build is optional before release if the user does not need local verification.
 - If the user asks to "覆盖" an existing release version, it is acceptable to delete and recreate the GitHub Release/tag at the latest commit, then rerun the release workflow if needed.
 - If the user asks to delete a whole beta series before a stable release, remove both the GitHub prereleases and their tags before creating the stable tag.
+- If an older stable release is deleted and replaced by a newer stable version, rewrite the new release notes from the commits actually included by the new tag. Do not mix in changes that landed only on `main` after the replaced tag, and do not carry over superseded release notes verbatim.
 
 ## Permission Rules
 
