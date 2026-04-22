@@ -16,6 +16,7 @@ These rules are intentionally written in a reusable way so they can be copied in
 - For the project's leading one-sentence summary in README or similar public-facing docs, prefer a direct product-description sentence instead of starting with the repository name or "This project is ...", unless the user explicitly asks for that phrasing.
 - Do not add README sections framed as internal progress tracking or roadmap bookkeeping, such as “当前已实现”, “当前缺失”, “后续里程碑”, “未来计划”, or similar wording.
 - Do not use “当前…” style internal status phrasing in README copy unless the user explicitly requests it. README should read like a polished public-facing project page, not an internal handoff note.
+- In public-facing docs such as `README.md`, write commands using standard upstream tooling, not local wrappers, aliases, shell functions, or private helper commands. Keep local convenience commands in contributor-only docs such as `AGENTS.md`.
 - For searches, prefer `rg`.
 - Use `apply_patch` for manual edits when the environment is stable.
 - Do not run destructive git commands unless explicitly requested.
