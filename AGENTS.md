@@ -4,6 +4,8 @@
 
 These rules are intentionally written in a reusable way so they can be copied into other repositories as a starting point.
 
+- This repository's `Reusable Rules` section is intended to be the shared baseline across projects. By default, other project `AGENTS.md` files should keep these reusable rules identical unless the user explicitly asks for a deliberate deviation.
+
 ### General Working Style
 
 - Prefer minimal, targeted changes over broad refactors.
