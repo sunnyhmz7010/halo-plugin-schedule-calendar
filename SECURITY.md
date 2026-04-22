@@ -6,8 +6,8 @@ Security fixes are provided for the latest stable release line only.
 
 | Version | Supported |
 | --- | --- |
-| `2.4.x` | Yes |
-| `< 2.4.0` | No |
+| latest stable release line | Yes |
+| older stable releases | No |
 | `beta` / `alpha` / `snapshot` | No |
 
 ## Reporting a Vulnerability
@@ -29,7 +29,7 @@ When possible, include:
 ## Response Process
 
 - Reports will be reviewed and validated as soon as possible.
-- Confirmed security issues will be prioritized for a fix.
+- Confirmed security issues will be prioritized for a fix on the latest stable release line.
 - Exploitable technical details will not be disclosed publicly before a fix is available.
 - Once a fix is released, the relevant release notes will document the security-related changes when appropriate.
 
