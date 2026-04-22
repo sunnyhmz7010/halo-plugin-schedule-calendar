@@ -1,23 +1,73 @@
 # AGENTS.md
 
+## Reusable Rules
+
+These rules are intentionally written in a reusable way so they can be copied into other repositories as a starting point.
+
+### General Working Style
+
+- Prefer minimal, targeted changes over broad refactors.
+- Preserve existing product copy unless the task requires rewriting it.
+- Keep user-facing docs concise and practical; avoid adding AI collaboration notes or marketing filler unless explicitly requested.
+- Keep `README.md` user-facing. Contributor rules, operational constraints, release-process conventions, and collaboration guidance belong in `AGENTS.md`.
+- For searches, prefer `rg`.
+- Use `apply_patch` for manual edits when the environment is stable.
+- Do not run destructive git commands unless explicitly requested.
+
+### Validation And Hygiene
+
+- Keep the working tree clean before handoff: do not leave local build outputs, dependency caches, screenshots for debugging, or temporary troubleshooting files committed or untracked.
+- When the environment lacks the required toolchain and the user does not need full local verification, it is acceptable to skip heavy verification, but say so explicitly.
+- Release notes are user-facing change logs. Do not include internal verification/process statements such as having run tests, builds, audits, or CI checks unless explicitly requested.
+- When repository structure, commands, external capabilities, release process, or recurring engineering pitfalls change, update `AGENTS.md` in the same task. Keeping this file current is required, not optional.
+- If newly learned guidance appears to be reusable across repositories rather than specific to the current project, ask whether to automatically scan other project `AGENTS.md` files, apply the shared rule where appropriate, and push those updates to their remotes.
+
+### Security And Review
+
+- Review code with a bug-risk mindset first. Prioritize functional regressions, security issues, breaking changes, and missing tests before style or cleanup suggestions.
+- If code returns `text/html` built from server-side string templates, HTML-escape all text fields from settings, persisted data, and user-controlled input before interpolating them into tags such as `<title>`, headings, attributes, or inline scripts.
+- Do not assume only frontend `innerHTML` paths are XSS-relevant. Also inspect backend-rendered HTML, email templates, CMS fragments, and any raw string formatting that bypasses auto-escaping.
+- For admin permission checks, prefer no-side-effect probes against real resources.
+- Do not use invalid create requests to probe permissions; validation failures can mask the real authorization result and create misleading server logs.
+
+### Dependency And Upgrade Rules
+
+- Do not merge dependency or toolchain bumps just to clear security alerts or Dependabot PRs. First confirm the repo's current config is compatible and all required CI/build/test steps stay green.
+- Treat build-tool upgrades such as `vite`, bundlers, editors, framework compilers, and test runners as compatibility work, not routine version bumps. If the upgrade breaks the build, defer it or patch it properly instead of merging a red PR.
+- When a security alert applies only to dev tooling or to a runtime mode the project does not use, verify the real exposure before escalating. Distinguish "reported in the dependency graph" from "actually exploitable in this repo."
+
+### Release Rules
+
+- Rewrite stable release notes from the commits actually included by the published tag. Do not mix in changes that landed only on `main` after that tag.
+- When converting prereleases into a stable release, aggregate the effective user-visible changes across the prerelease cycle instead of copying beta notes verbatim.
+- If replacing or deleting an older release in favor of a newer one, compare the old tag, the new tag, and the default branch separately so unreleased work is not accidentally documented.
+
+## Repository-Specific Rules
+
 This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 
-## Project Summary
+### Project Summary
 
-- Purpose: provide a schedule calendar plugin for Halo.
+- This project is a Halo schedule calendar plugin, not a generic calendar library.
+- Goal: provide a single plugin that covers public calendar viewing, console-side schedule management, editor schedule cards, and theme/API integration for Halo sites.
 - Public route: `/schedule-calendar`
+- Public card route: `/schedule-calendar/cards/{name}`
+- Theme integration surface: Finder API via `scheduleCalendarFinder`
+- Public JSON integration surface: REST API under `/apis/api.schedule.calendar.sunny.dev/v1alpha1`
 - Admin capability: create, view, edit, and delete schedule entries in a weekly calendar view.
 - Editor capability: insert a schedule card for a single entry.
 - Current stable version: `v2.7.0`
 
-## Tech Stack
+Keep `README.md` user-facing. AI/collaboration rules, release process, troubleshooting knowledge, and repository-specific engineering constraints belong in this file.
+
+### Tech Stack
 
 - Backend: Java 21, Gradle, Halo plugin API
 - Frontend: Vue 3, TypeScript, Vite
 - UI location: `ui/`
 - Backend source: `src/main/java/run/halo/schedule/calendar/`
 
-## Important Files
+### Important Files
 
 - Version: `gradle.properties`
 - Plugin metadata: `src/main/resources/plugin.yaml`
@@ -31,7 +81,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Editor card extension: `ui/src/editor/schedule-card-extension.ts`
 - README screenshot asset: `docs/images/schedule-calendar-home.png`
 
-## Schedule Entry Rules
+### Schedule Entry Rules
 
 - Base data model stores a single source entry.
 - Repeating entries are not duplicated in storage.
@@ -47,7 +97,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
   - `until`
 - Cross-day recurring entries are not allowed from the admin form.
 
-## Development Notes
+### Repository Development Notes
 
 - Frontend validation command:
   - `npm run build` in `ui/`
@@ -57,22 +107,17 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Important environment constraint:
   - this project requires Java 21 toolchain for Gradle tasks
   - if the machine only has Java 8 or Java 25, Gradle verification may fail before tests run
-- In this repo, it is acceptable to skip Gradle verification if the environment does not have JDK 21 and the user does not want Gradle-based validation.
-- README must stay user-facing. AI/collaboration rules and release-process conventions belong in `AGENTS.md`, not `README.md`.
 - Do not keep local-only Gradle workarounds in `ui/build.gradle` after troubleshooting; restore the committed repo version unless the user explicitly wants the workaround merged.
-- Keep the working tree clean before handoff: do not leave local build outputs, dependency caches, screenshots for debugging, or temporary troubleshooting files committed or untracked.
 - `gradle/wrapper/` is normal committed project infrastructure for this repo; do not treat it as garbage when cleaning the repository.
 - For this project, Halo-native plugin settings must be preferred over custom settings pages. Do not reintroduce a custom settings tab unless the user explicitly asks for it.
 - The plugin backup feature belongs in the plugin settings area, but the page itself should stay visually close to Halo native patterns and avoid extra decorative copy.
-- Do not use invalid create requests to probe permissions. For admin permission checks, prefer no-side-effect probes against real resources.
 - Do not add `@halo-dev/ui-shared` just to read UI permissions in this repo. It pulls extra frontend dependencies such as `pinia`/`vue-router` and can break the current plugin build.
 - For public calendar rendering, do not interpolate schedule data into `innerHTML`. Build DOM nodes with `textContent`/`createElement` so persisted entry data cannot become stored XSS.
-- If the backend returns `text/html` built from Java string templates, HTML-escape all text fields from plugin settings, persisted data, and user-controlled inputs before interpolating them into tags such as `<title>` and headings. Do not assume only `innerHTML` paths are XSS-relevant in this repo.
 - `unplugin-icons` is not required in this repo. Prefer Halo-provided icons from `@halo-dev/components`; keeping `unplugin-icons` pulls `vue-template-compiler` into the dependency tree and creates avoidable audit noise.
 - When dependency audit is part of the task, `pnpm.overrides` in `ui/package.json` is an acceptable way to pin vulnerable transitive packages to safe versions, as long as `pnpm build`, `pnpm audit`, and Gradle tests still pass afterward.
-- For build-tool upgrades such as `vite`, `@halo-dev/ui-plugin-bundler-kit`, and editor-related packages, do not merge version bumps just to clear Dependabot alerts. Confirm the current repo config is compatible and CI stays green first; if the upgrade breaks the plugin build, close or defer the bump instead of merging it.
+- When this repository's structure, commands, Finder/REST capabilities, release conventions, or known pitfalls change, update this file before handoff so a new session can recover project context quickly.
 
-## Release Conventions
+### Repository Release Conventions
 
 - Version tags follow this style:
   - stable: `v1.2.0`
@@ -86,19 +131,16 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - This repo no longer keeps a committed `CHANGELOG.md`; release history is maintained in GitHub Releases instead.
 - For this repository, release notes should use the heading `## 更新内容`.
 - Release notes should describe concrete 新增功能、修复内容、优化点, and should avoid vague wording such as "收敛".
-- Release notes are user-facing change logs. Do not include internal verification/process statements such as having run `pnpm audit`, `pnpm build`, or `./gradlew.bat test`.
 - Do not include plugin metadata-only edits in release notes, such as author name, author website, or similar manifest/profile adjustments, unless the user explicitly wants those noted.
 - Stable release notes must aggregate the effective changes across the whole prerelease cycle since the previous stable release.
-- When converting a beta series into a stable release, do not keep the beta notes verbatim and do not omit beta-only fixes. Rewrite the stable notes in the repo's formal structure.
 - Before editing or publishing release notes, compare the target version against the previous stable tag and review recent GitHub release bodies so repeated items are removed and missing new items, especially permission-control and backup-recovery changes, are not omitted.
 - GitHub Actions release build is triggered by the `Release published` event.
 - For prereleases, prefer creating a GitHub prerelease and let CI build and upload the jar.
 - A local full Gradle build is optional before release if the user does not need local verification.
 - If the user asks to "覆盖" an existing release version, it is acceptable to delete and recreate the GitHub Release/tag at the latest commit, then rerun the release workflow if needed.
 - If the user asks to delete a whole beta series before a stable release, remove both the GitHub prereleases and their tags before creating the stable tag.
-- If an older stable release is deleted and replaced by a newer stable version, rewrite the new release notes from the commits actually included by the new tag. Do not mix in changes that landed only on `main` after the replaced tag, and do not carry over superseded release notes verbatim.
 
-## Permission Rules
+### Permission Rules
 
 - `roleTemplate.yaml` is the source of truth for Halo role aggregation in this repo.
 - The `manage` role must include the real `scheduleentries` read/write verbs it depends on; do not rely only on transitive role assumptions when the UI needs direct resource access.
@@ -106,9 +148,8 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Do not gate the discoverability of the plugin's main console route, quick action, or plugin self tabs purely on Halo UI permission metadata. If Halo-side UI permission aggregation drifts or fails after upgrade, the whole入口 can disappear even while the plugin is still `STARTED`.
 - For this plugin, prefer keeping console entry points visible and enforce real permissions inside the page with runtime capability probes plus readonly/disabled states.
 - If a custom permission endpoint is kept, its authorization rules and the role template entries for that endpoint must be updated together.
-- Never use an invalid create payload to probe permissions. That can hit Halo validation first and generate misleading 500 logs instead of a clean permission result.
 
-## Console Entry Troubleshooting
+### Console Entry Troubleshooting
 
 - If the console menu item and plugin self tab disappear together after a release, do not assume the release jar is broken first.
 - Check the live plugin state before changing code:
@@ -122,7 +163,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
   - `extensions/roleTemplate.yaml`
 - For authenticated console bundle checks, remember `/apis/api.console.halo.run/v1alpha1/plugins/-/bundle.js` returns the login page when requested without console authentication, so unauthenticated fetch results are not valid evidence.
 
-## Rendering Conventions
+### Rendering Conventions
 
 - When both location and note are shown, always render location first and note second.
 - Visible calendar block meta uses labeled multiline text: `地点：...` then `备注：...`.
@@ -132,7 +173,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Calendar blocks should prefer top-aligned content instead of vertical centering when text may overflow.
 - For short calendar blocks, use conservative visible-line calculation: keep title, time, and duration readable first; hide extra meta lines rather than showing half-clipped text.
 
-## Stable Feature Set
+### Stable Feature Set
 
 - Supports recurring schedule entries with dynamic weekly expansion.
 - Supports admin-side entry editing, deletion, and recurrence configuration.
@@ -140,13 +181,3 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Blocks cross-day recurring entries in the admin form and stabilizes 24-hour public rendering.
 - Uses unified admin/public meta ordering for location, note, and recurrence text.
 - Uses adaptive calendar-block text rendering to reduce clipping in short blocks.
-
-## Working Style For Future Sessions
-
-- Prefer minimal, targeted changes over broad refactors.
-- Preserve existing Chinese product copy unless the task requires rewriting it.
-- For searches, prefer `rg`.
-- Use `apply_patch` for manual edits when the environment is stable.
-- Do not run destructive git commands unless explicitly requested.
-- The current preferred README summary sentence is: `提供前台日历页面、控制台事项管理和编辑器日程卡片的 Halo 插件。`
-- Keep the README product description concise and user-facing; do not add AI collaboration notes or extra marketing filler unless the user asks for it.
