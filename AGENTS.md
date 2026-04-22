@@ -9,7 +9,10 @@ These rules are intentionally written in a reusable way so they can be copied in
 - Prefer minimal, targeted changes over broad refactors.
 - Preserve existing product copy unless the task requires rewriting it.
 - Keep user-facing docs concise and practical; avoid adding AI collaboration notes or marketing filler unless explicitly requested.
-- Keep `README.md` user-facing. Contributor rules, operational constraints, release-process conventions, and collaboration guidance belong in `AGENTS.md`.
+- Keep `README.md` user-facing and promotional for external readers. Contributor rules, operational constraints, missing-work notes, AI guidance, release-process conventions, and collaboration guidance belong in `AGENTS.md`, not `README.md`.
+- When updating `README.md`, follow the style of strong, high-star GitHub project READMEs: lead with clear value, polished feature framing, concise usage/integration guidance, and externally useful examples.
+- Do not add README sections framed as internal progress tracking or roadmap bookkeeping, such as “当前已实现”, “当前缺失”, “后续里程碑”, “未来计划”, or similar wording.
+- Do not use “当前…” style internal status phrasing in README copy unless the user explicitly requests it. README should read like a polished public-facing project page, not an internal handoff note.
 - For searches, prefer `rg`.
 - Use `apply_patch` for manual edits when the environment is stable.
 - Do not run destructive git commands unless explicitly requested.
@@ -57,8 +60,6 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Admin capability: create, view, edit, and delete schedule entries in a weekly calendar view.
 - Editor capability: insert a schedule card for a single entry.
 - Current stable version: `v2.7.0`
-
-Keep `README.md` user-facing. AI/collaboration rules, release process, troubleshooting knowledge, and repository-specific engineering constraints belong in this file.
 
 ### Tech Stack
 
