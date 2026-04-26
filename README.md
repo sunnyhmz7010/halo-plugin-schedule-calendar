@@ -14,10 +14,6 @@
 
 - 演示地址：<https://sunnyhmz.top/schedule-calendar>
 
-## 效果截图
-
-![日程日历前台页面截图](https://raw.githubusercontent.com/sunnyhmz7010/halo-plugin-schedule-calendar/refs/heads/main/docs/images/schedule-calendar-home.png)
-
 ## 对外能力说明
 
 插件当前提供四类能力：
