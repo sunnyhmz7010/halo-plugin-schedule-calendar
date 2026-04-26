@@ -12,6 +12,7 @@ These rules are intentionally written in a reusable way so they can be copied in
 - Preserve existing product copy unless the task requires rewriting it.
 - Keep user-facing docs concise and practical; avoid adding AI collaboration notes or marketing filler unless explicitly requested.
 - Keep `README.md` user-facing and promotional for external readers. Contributor rules, operational constraints, missing-work notes, AI guidance, release-process conventions, and collaboration guidance belong in `AGENTS.md`, not `README.md`.
+- Do not create repository subdirectories such as `docs/`, `notes/`, `tmp/`, or similar just to store AI handoff notes, internal architecture summaries, release drafting scratch files, or collaboration-only guidance. Put that material in `AGENTS.md` unless the user explicitly asks for a separate file or directory.
 - When updating `README.md`, follow the style of strong, high-star GitHub project READMEs: lead with clear value, polished feature framing, concise usage/integration guidance, and externally useful examples.
 - For the project's leading one-sentence summary in README or similar public-facing docs, prefer a direct product-description sentence instead of starting with the repository name or "This project is ...", unless the user explicitly asks for that phrasing.
 - Do not add README sections framed as internal progress tracking or roadmap bookkeeping, such as “当前已实现”, “当前缺失”, “后续里程碑”, “未来计划”, or similar wording.
