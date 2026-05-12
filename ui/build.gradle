@@ -5,6 +5,10 @@ plugins {
 
 group 'run.halo.schedule.calendar.ui'
 
+tasks.named('pnpmInstall') {
+    doNotTrackState('pnpm creates symlink-heavy node_modules trees that Gradle 9.4 cannot snapshot reliably.')
+}
+
 tasks.register('buildFrontend', PnpmTask) {
     group = 'build'
     description = 'Builds the UI project using pnpm.'
