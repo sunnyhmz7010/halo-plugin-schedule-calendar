@@ -344,6 +344,20 @@ const sanitizeExternalCalendarsForSave = (items: ExternalCalendarFormItem[]) =>
     }))
     .filter((item) => item.icsUrl)
 
+const normalizeExternalCalendarForCompare = (item: ExternalCalendarFormItem) => ({
+  name: item.name.trim(),
+  icsUrl: item.icsUrl.trim(),
+  enabled: item.enabled,
+  color: item.color.trim() || '#4285f4',
+})
+
+const hasExternalCalendarChanged = (
+  currentItem: ExternalCalendarFormItem,
+  nextItem: ExternalCalendarFormItem,
+) =>
+  JSON.stringify(normalizeExternalCalendarForCompare(currentItem)) !==
+  JSON.stringify(normalizeExternalCalendarForCompare(nextItem))
+
 const openPublicPage = () => {
   window.open(publicPageUrl.value, '_blank', 'noopener')
 }
@@ -941,6 +955,19 @@ const submitExternalCalendar = async () => {
       icsUrl,
       enabled: externalCalendarForm.enabled,
       color: externalCalendarForm.color.trim() || '#4285f4',
+    }
+
+    if (isExternalCalendarEditing.value) {
+      const currentCalendar = externalCalendars.value.find((item) => item.id === editingExternalCalendarId.value)
+      if (!currentCalendar) {
+        externalCalendarDialogError.value = '未找到要编辑的订阅，请刷新后重试。'
+        return
+      }
+
+      if (!hasExternalCalendarChanged(currentCalendar, nextCalendar)) {
+        Toast.success('没有变化')
+        return
+      }
     }
 
     const nextCalendars = isExternalCalendarEditing.value
@@ -1756,7 +1783,7 @@ onBeforeUnmount(() => {
 
         <label class="field">
           <span>日历名称</span>
-          <input v-model="externalCalendarForm.name" type="text" placeholder="例如：Google Calendar" />
+          <input v-model="externalCalendarForm.name" type="text" placeholder="例如：Google Calendar / Apple 日历 / 节假日安排" />
         </label>
 
         <label class="field">
@@ -1764,7 +1791,7 @@ onBeforeUnmount(() => {
           <input
             v-model="externalCalendarForm.icsUrl"
             type="url"
-            placeholder="填写 Google Calendar 导出的 iCal / ICS 订阅地址"
+            placeholder="填写 Google Calendar 等日历服务导出的 iCal / ICS 订阅地址"
           />
         </label>
 
@@ -1774,13 +1801,13 @@ onBeforeUnmount(() => {
             <input v-model="externalCalendarForm.color" type="color" class="external-calendar-color" />
           </label>
 
-          <div class="field field--checkbox">
+          <label class="field">
             <span>状态</span>
-            <label class="external-calendar-toggle">
+            <span class="external-calendar-toggle">
               <input v-model="externalCalendarForm.enabled" type="checkbox" />
               <span>启用该订阅</span>
-            </label>
-          </div>
+            </span>
+          </label>
         </div>
       </div>
       <template #footer>
@@ -2199,6 +2226,7 @@ onBeforeUnmount(() => {
   align-items: center;
   flex: 0 1 auto;
   max-width: 100%;
+  width: fit-content;
   min-width: 0;
   padding: 4px 10px;
   border-radius: 999px;
@@ -2210,14 +2238,15 @@ onBeforeUnmount(() => {
 }
 
 .entry-meta__item--wide {
-  flex: 1 1 320px;
+  flex: 0 1 auto;
   max-width: 100%;
   border-radius: 12px;
   white-space: normal;
 }
 
 .entry-meta__item--block {
-  flex-basis: 100%;
+  flex: 0 0 100%;
+  width: fit-content;
 }
 
 .entry-actions {
@@ -2257,6 +2286,7 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  width: fit-content;
   color: var(--halo-text-color-secondary, #6b7280);
   font-size: 13px;
 }
@@ -2269,7 +2299,7 @@ onBeforeUnmount(() => {
 }
 
 .field--checkbox {
-  justify-content: flex-end;
+  width: fit-content;
 }
 
 .entry-search {
