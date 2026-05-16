@@ -7,6 +7,7 @@ import {
 } from '../utils/recurrence'
 
 export const ENTRY_API = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
+export const CARD_API = '/apis/api.schedule.calendar.sunny.dev/v1alpha1/entrycards'
 const ENTRY_PAGE_SIZE = 200
 
 const formatEntryDateTime = (value?: string) => {
@@ -36,6 +37,24 @@ export const toScheduleCard = (entry: ScheduleEntry): ScheduleCard => ({
 
 export const toScheduleCards = (result?: ExtensionListResult<ScheduleEntry>) =>
   (result?.items ?? []).map((entry) => toScheduleCard(entry))
+
+export const normalizeScheduleCard = (card: ScheduleCard): ScheduleCard => ({
+  name: card.name || '',
+  title: card.title || '',
+  description: card.description || '',
+  location: card.location || '',
+  startTime: card.startTime || '',
+  endTime: card.endTime || '',
+  recurrenceDescription: card.recurrenceDescription || '',
+  nextOccurrenceLabel: card.nextOccurrenceLabel || '',
+  color: card.color || '#3b82f6',
+  sourceLabel: card.sourceLabel || '',
+})
+
+export const fetchScheduleCards = async () => {
+  const { data } = await axiosInstance.get<ScheduleCard[]>(CARD_API)
+  return Array.isArray(data) ? data.map((card) => normalizeScheduleCard(card)) : []
+}
 
 export const fetchAllScheduleEntries = async () => {
   const entries: ScheduleEntry[] = []

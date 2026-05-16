@@ -89,6 +89,7 @@ const form = reactive({
   startTimeLocal: '',
   endTimeLocal: '',
   color: '#3b82f6',
+  enabled: true,
   recurrenceFrequency: 'NONE' as ScheduleEntryRecurrenceFrequency,
   recurrenceInterval: 1,
   recurrenceUntil: '',
@@ -260,6 +261,7 @@ const resetForm = () => {
   form.startTimeLocal = ''
   form.endTimeLocal = ''
   form.color = '#3b82f6'
+  form.enabled = true
   form.recurrenceFrequency = 'NONE'
   form.recurrenceInterval = 1
   form.recurrenceUntil = ''
@@ -279,6 +281,7 @@ const fillForm = (entry: ScheduleEntry) => {
   form.startTimeLocal = dateTimeInputValue(entry.spec.startTime)
   form.endTimeLocal = dateTimeInputValue(entry.spec.endTime)
   form.color = entry.spec.color || '#3b82f6'
+  form.enabled = entry.spec.enabled ?? true
   form.recurrenceFrequency = entry.spec.recurrence?.frequency ?? 'NONE'
   form.recurrenceInterval = entry.spec.recurrence?.interval ?? 1
   form.recurrenceUntil = entry.spec.recurrence?.until ?? ''
@@ -387,6 +390,21 @@ const hasExternalCalendarChanged = (
   JSON.stringify(normalizeExternalCalendarForCompare(currentItem)) !==
   JSON.stringify(normalizeExternalCalendarForCompare(nextItem))
 
+const normalizeSourceLabel = (value?: string) => value?.trim().toLocaleLowerCase() || ''
+
+const enabledExternalCalendarLabelSet = () =>
+  new Set(
+    externalCalendars.value
+      .filter((item) => item.enabled !== false)
+      .map((item) => normalizeSourceLabel(item.name))
+      .filter(Boolean),
+  )
+
+const shouldShowOccurrence = (occurrence: ApiOccurrenceResponse, enabledSourceLabels: Set<string>) => {
+  const sourceLabel = normalizeSourceLabel(occurrence.sourceLabel)
+  return !sourceLabel || enabledSourceLabels.has(sourceLabel)
+}
+
 const openPublicPage = () => {
   window.open(publicPageUrl.value, '_blank', 'noopener')
 }
@@ -435,6 +453,7 @@ const buildOccurrenceEntry = (occurrence: ApiOccurrenceResponse): ScheduleEntry 
     startTime: occurrence.startTime,
     endTime: occurrence.endTime,
     color: occurrence.color || '#4285f4',
+    enabled: true,
     recurrence: undefined,
   },
 })
@@ -451,8 +470,10 @@ const loadWeekOccurrences = async () => {
     },
   })
 
+  const enabledSourceLabels = enabledExternalCalendarLabelSet()
   weekOccurrences.value = Array.isArray(data)
     ? data
+        .filter((occurrence) => shouldShowOccurrence(occurrence, enabledSourceLabels))
         .map((occurrence) => {
           const start = new Date(occurrence.startTime)
           const end = new Date(occurrence.endTime)
@@ -641,6 +662,7 @@ const currentActiveOccurrences = computed(() => {
   rangeEnd.setDate(rangeEnd.getDate() + 1)
 
   return entries.value
+    .filter((entry) => entry.spec.enabled !== false)
     .flatMap((entry) => expandEntryOccurrences(entry, rangeStart, rangeEnd))
     .filter((occurrence) => occurrence.start <= now && occurrence.end > now)
     .sort((left, right) => left.start.getTime() - right.start.getTime())
@@ -722,6 +744,7 @@ const nextUpcomingOccurrence = computed(() => {
   rangeEnd.setDate(rangeEnd.getDate() + 90)
 
   return entries.value
+    .filter((entry) => entry.spec.enabled !== false)
     .flatMap((entry) => expandEntryOccurrences(entry, now, rangeEnd))
     .filter((occurrence) => occurrence.start > now)
     .sort((left, right) => left.start.getTime() - right.start.getTime())[0]
@@ -777,6 +800,7 @@ const buildEntrySearchText = (entry: ScheduleEntry) => {
     entry.spec.title,
     entry.spec.location,
     entry.spec.description,
+    entry.spec.enabled === false ? '停用' : '启用',
     formatEntryScheduleSummary(entry),
     occurrenceSummary?.currentWeekPreview,
     occurrenceSummary?.nextOccurrenceLabel,
@@ -807,6 +831,17 @@ const entryOccurrenceSummaryMap = computed(() => {
 
   return new Map<string, EntryOccurrenceSummary>(
     entries.value.map((entry) => {
+      if (entry.spec.enabled === false) {
+        return [
+          entry.metadata.name,
+          {
+            currentWeekCount: 0,
+            currentWeekPreview: '',
+            nextOccurrenceLabel: '',
+          },
+        ]
+      }
+
       const currentWeekOccurrences = expandEntryOccurrences(entry, weekRangeStart, weekRangeEnd)
       const upcomingOccurrences = expandEntryOccurrences(entry, upcomingStart, upcomingEnd).filter(
         (occurrence) => occurrence.end > upcomingStart,
@@ -847,7 +882,10 @@ const canManageEntries = computed(() => permissionLevel.value === 'manage')
 const showReadonlyNotice = computed(() => permissionLevel.value === 'view')
 
 const buildEntryMetaItems = (entry: ScheduleEntry): EntryMetaItem[] => {
-  const items: EntryMetaItem[] = [{ text: formatEntryScheduleSummary(entry) }]
+  const items: EntryMetaItem[] = [
+    { text: formatEntryScheduleSummary(entry) },
+    { text: entry.spec.enabled === false ? '状态：已停用' : '状态：已启用' },
+  ]
   const occurrenceSummary = entryOccurrenceSummaryMap.value.get(entry.metadata.name)
 
   if (occurrenceSummary?.currentWeekCount) {
@@ -1018,10 +1056,6 @@ const loadPluginConfig = async () => {
           normalizeExternalCalendar(item, item?.name?.trim() || `外部日历 ${index + 1}`),
         )
       : []
-
-    if (!Array.isArray(data.public_page?.externalCalendars) && Array.isArray(data.externalCalendars)) {
-      await persistExternalCalendars(externalCalendars.value)
-    }
   } catch (error) {
     console.error(error)
     Toast.error('外部日历订阅加载失败')
@@ -1083,6 +1117,7 @@ const submitExternalCalendar = async () => {
   externalCalendarSaving.value = true
 
   try {
+    const wasEditing = isExternalCalendarEditing.value
     const nextCalendar: ExternalCalendarFormItem = {
       id: editingExternalCalendarId.value ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name,
@@ -1112,7 +1147,7 @@ const submitExternalCalendar = async () => {
 
     await persistExternalCalendars(nextCalendars)
     closeExternalCalendarDialog()
-    Toast.success(isExternalCalendarEditing.value ? '外部日历订阅已更新' : '外部日历订阅已添加')
+    Toast.success(wasEditing ? '外部日历订阅已更新' : '外部日历订阅已添加')
   } catch (error) {
     console.error(error)
     externalCalendarDialogError.value = '外部日历订阅保存失败。'
@@ -1193,6 +1228,7 @@ const buildEntrySpec = (startDate: Date, endDate: Date): ScheduleEntrySpec => ({
   startTime: startDate.toISOString(),
   endTime: endDate.toISOString(),
   color: form.color,
+  enabled: form.enabled,
   recurrence:
     form.recurrenceFrequency === 'NONE'
       ? undefined
@@ -1210,6 +1246,7 @@ const normalizeEntrySpec = (spec: ScheduleEntrySpec): ScheduleEntrySpec => ({
   startTime: new Date(spec.startTime).toISOString(),
   endTime: new Date(spec.endTime).toISOString(),
   color: spec.color || '#3b82f6',
+  enabled: spec.enabled ?? true,
   recurrence:
     spec.recurrence?.frequency && spec.recurrence.frequency !== 'NONE'
       ? {
@@ -1952,14 +1989,24 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
           ></textarea>
         </label>
 
-        <label class="field field--compact">
-          <span>颜色</span>
-          <button type="button" class="color-picker" @click="openColorPicker">
-            <span class="color-picker__preview" :style="{ background: form.color }"></span>
-            <span class="color-picker__value">{{ form.color }}</span>
-          </button>
-          <input ref="colorInputRef" v-model="form.color" type="color" class="field__color" />
-        </label>
+        <div class="field-row">
+          <label class="field field--compact">
+            <span>颜色</span>
+            <button type="button" class="color-picker" @click="openColorPicker">
+              <span class="color-picker__preview" :style="{ background: form.color }"></span>
+              <span class="color-picker__value">{{ form.color }}</span>
+            </button>
+            <input ref="colorInputRef" v-model="form.color" type="color" class="field__color" />
+          </label>
+
+          <label class="field">
+            <span>状态</span>
+            <select v-model="form.enabled">
+              <option :value="true">启用</option>
+              <option :value="false">停用</option>
+            </select>
+          </label>
+        </div>
       </div>
       <template #footer>
         <div class="modal-footer">
@@ -2026,10 +2073,6 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
           </label>
         </div>
 
-        <div class="field">
-          <span>说明</span>
-          <input type="text" value="外部订阅仅用于周历与前台展示，不包含在公开 iCal 订阅中" disabled />
-        </div>
       </div>
       <template #footer>
         <div class="modal-footer">

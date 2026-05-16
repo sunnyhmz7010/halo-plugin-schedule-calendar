@@ -16,6 +16,7 @@ const createEmptyCard = (): ScheduleCard => ({
   recurrenceDescription: '',
   nextOccurrenceLabel: '',
   color: '#0f766e',
+  sourceLabel: '',
 })
 
 const insertCard = (editor: Editor, range?: Range) => {
@@ -53,6 +54,7 @@ export const ScheduleCardExtension = Node.create({
       recurrenceDescription: { default: '' },
       nextOccurrenceLabel: { default: '' },
       color: { default: '#0f766e' },
+      sourceLabel: { default: '' },
     }
   },
 

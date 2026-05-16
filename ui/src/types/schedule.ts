@@ -13,6 +13,7 @@ export interface ScheduleEntrySpec {
   startTime: string
   endTime: string
   color?: string
+  enabled?: boolean
   recurrence?: ScheduleEntryRecurrence
 }
 
@@ -46,4 +47,5 @@ export interface ScheduleCard {
   recurrenceDescription?: string
   nextOccurrenceLabel?: string
   color: string
+  sourceLabel?: string
 }

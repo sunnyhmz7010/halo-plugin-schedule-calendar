@@ -39,6 +39,9 @@ public class ScheduleEntry extends AbstractExtension {
         @Schema(description = "Hex color used to render this entry.")
         private String color;
 
+        @Schema(description = "Whether this entry is shown in public and weekly schedule views.")
+        private Boolean enabled;
+
         @Schema(description = "Optional recurrence rule used to create repeating schedule entries.")
         private Recurrence recurrence;
     }

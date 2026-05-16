@@ -16,6 +16,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -43,6 +44,9 @@ public class ScheduleQueryService {
     private static final int CALENDAR_HEADER_HEIGHT = 64;
     private static final int HOUR_HEIGHT = 56;
     private static final Locale ZH_CN = Locale.SIMPLIFIED_CHINESE;
+    private static final String EXTERNAL_CARD_NAME_PREFIX = "external-calendar:";
+    private static final int EDITOR_EXTERNAL_CARD_LOOKBACK_DAYS = 30;
+    private static final int EDITOR_EXTERNAL_CARD_LOOKAHEAD_DAYS = 365;
 
     private final ReactiveExtensionClient client;
     private final ScheduleCalendarSettingService settingService;
@@ -120,6 +124,9 @@ public class ScheduleQueryService {
 
     Mono<ScheduleCardResponse> getEntryCard(String name) {
         var zoneId = ZoneId.systemDefault();
+        if (isExternalCardName(name)) {
+            return getExternalEntryCard(name, zoneId);
+        }
         return client.get(ScheduleEntry.class, name)
             .map(entry -> toScheduleCardResponse(entry, zoneId))
             .onErrorResume(throwable -> listEntries()
@@ -132,10 +139,23 @@ public class ScheduleQueryService {
 
     Mono<List<ScheduleCardResponse>> listEntryCards() {
         var zoneId = ZoneId.systemDefault();
-        return listEntries()
-            .map(entries -> entries.stream()
-                .map(entry -> toScheduleCardResponse(entry, zoneId))
-                .toList());
+        var today = LocalDate.now(zoneId);
+        var rangeStart = today.minusDays(EDITOR_EXTERNAL_CARD_LOOKBACK_DAYS);
+        var rangeEnd = today.plusDays(EDITOR_EXTERNAL_CARD_LOOKAHEAD_DAYS);
+        return Mono.zip(listEntries(), settingService.getSetting())
+            .flatMap(tuple -> externalCalendarService.listOccurrences(tuple.getT2(), rangeStart, rangeEnd, zoneId)
+                .map(externalOccurrences -> {
+                    var cards = new ArrayList<ScheduleCardResponse>();
+                    tuple.getT1().stream()
+                        .filter(this::isEntryEnabled)
+                        .map(entry -> toScheduleCardResponse(entry, zoneId))
+                        .forEach(cards::add);
+                    externalOccurrences.stream()
+                        .map(occurrence -> toExternalScheduleCardResponse(occurrence, zoneId))
+                        .forEach(cards::add);
+                    cards.sort(Comparator.comparing(ScheduleCardResponse::startTime));
+                    return cards;
+                }));
     }
 
     Mono<String> exportPublicIcal() {
@@ -162,6 +182,8 @@ public class ScheduleQueryService {
                           <head>
                             <meta charset="UTF-8" />
                             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                            <link rel="icon" href="/favicon.ico" />
+                            <link rel="shortcut icon" href="/favicon.ico" />
                             <title>%s</title>
                             <style>
                               :root {
@@ -1395,6 +1417,7 @@ public class ScheduleQueryService {
                 html.append(summary);
                 html.append("</span>");
                 appendCardMetaItem(html, "下一次出现：", card.nextOccurrenceLabel());
+                appendCardMetaItem(html, "来源：", card.sourceLabel());
                 appendCardMetaItem(html, "地点：", card.location());
                 appendCardMetaItem(html, "备注：", card.description());
                 html.append("""
@@ -1445,7 +1468,7 @@ public class ScheduleQueryService {
 
         appendVTimeZone(builder, zoneId);
 
-        for (var entry : entries) {
+        for (var entry : entries.stream().filter(this::isEntryEnabled).toList()) {
             appendIcalEvent(builder, entry, zoneId);
         }
 
@@ -1616,8 +1639,93 @@ public class ScheduleQueryService {
             formatDateTime(spec.getEndTime()),
             recurrenceDescription(spec.getRecurrence()),
             nextOccurrenceLabel(entry, zoneId),
-            defaultColor(spec.getColor())
+            defaultColor(spec.getColor()),
+            null
         );
+    }
+
+    private ScheduleCardResponse toExternalScheduleCardResponse(ScheduleEventOccurrence occurrence, ZoneId zoneId) {
+        var nextOccurrenceLabel = occurrence.start().isAfter(LocalDateTime.now(zoneId))
+            ? DATE_TIME_FORMATTER.format(occurrence.start())
+            : null;
+        return new ScheduleCardResponse(
+            externalCardName(occurrence),
+            occurrence.title(),
+            occurrence.description(),
+            occurrence.location(),
+            DATE_TIME_FORMATTER.format(occurrence.start()),
+            DATE_TIME_FORMATTER.format(occurrence.end()),
+            occurrence.recurrenceDescription(),
+            nextOccurrenceLabel,
+            defaultColor(occurrence.color()),
+            occurrence.sourceLabel()
+        );
+    }
+
+    private Mono<ScheduleCardResponse> getExternalEntryCard(String name, ZoneId zoneId) {
+        var key = parseExternalCardKey(name);
+        if (key == null) {
+            return Mono.empty();
+        }
+        return settingService.getSetting()
+            .flatMap(setting -> externalCalendarService.listOccurrences(
+                    setting,
+                    key.start().toLocalDate(),
+                    key.end().toLocalDate(),
+                    zoneId
+                )
+                .flatMapIterable(occurrences -> occurrences)
+                .filter(occurrence -> externalCardKeyMatches(key, occurrence))
+                .next()
+                .map(occurrence -> toExternalScheduleCardResponse(occurrence, zoneId)));
+    }
+
+    private boolean isExternalCardName(String name) {
+        return name != null && name.startsWith(EXTERNAL_CARD_NAME_PREFIX);
+    }
+
+    private String externalCardName(ScheduleEventOccurrence occurrence) {
+        var payload = String.join("\n",
+            nullToEmpty(occurrence.sourceLabel()),
+            nullToEmpty(occurrence.name()),
+            occurrence.start().toString(),
+            occurrence.end().toString()
+        );
+        return EXTERNAL_CARD_NAME_PREFIX + Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private ExternalCardKey parseExternalCardKey(String name) {
+        if (!isExternalCardName(name)) {
+            return null;
+        }
+        try {
+            var encoded = name.substring(EXTERNAL_CARD_NAME_PREFIX.length());
+            var payload = new String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8);
+            var parts = payload.split("\n", -1);
+            if (parts.length != 4) {
+                return null;
+            }
+            return new ExternalCardKey(
+                parts[0],
+                parts[1],
+                LocalDateTime.parse(parts[2]),
+                LocalDateTime.parse(parts[3])
+            );
+        } catch (RuntimeException ex) {
+            return null;
+        }
+    }
+
+    private boolean externalCardKeyMatches(ExternalCardKey key, ScheduleEventOccurrence occurrence) {
+        return key.sourceLabel().equals(nullToEmpty(occurrence.sourceLabel()))
+            && key.uid().equals(nullToEmpty(occurrence.name()))
+            && key.start().equals(occurrence.start())
+            && key.end().equals(occurrence.end());
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private WeekViewResponse toWeekView(CalendarContext context, LocalDate weekStart, LocalDate weekEnd,
@@ -1686,6 +1794,7 @@ public class ScheduleQueryService {
         var rangeStart = weekStart.atStartOfDay();
         var rangeEnd = weekEnd.plusDays(1).atStartOfDay();
         return entries.stream()
+            .filter(this::isEntryEnabled)
             .flatMap(entry -> occurrencesForRange(entry, rangeStart, rangeEnd, zoneId).stream())
             .sorted(comparing(ScheduleEventOccurrence::start))
             .collect(Collectors.toList());
@@ -1902,6 +2011,12 @@ public class ScheduleQueryService {
             && spec.getRecurrence().getFrequency() != ScheduleEntry.RecurrenceFrequency.NONE;
     }
 
+    private boolean isEntryEnabled(ScheduleEntry entry) {
+        return entry != null
+            && entry.getSpec() != null
+            && !Boolean.FALSE.equals(entry.getSpec().getEnabled());
+    }
+
     private int normalizeInterval(Integer interval) {
         return interval == null || interval < 1 ? 1 : interval;
     }
@@ -2049,7 +2164,8 @@ public class ScheduleQueryService {
             start.getDayOfWeek().getDisplayName(TextStyle.FULL, ZH_CN),
             occurrence.recurrenceDescription(),
             formatDuration(start, end),
-            occurrence.color()
+            occurrence.color(),
+            occurrence.sourceLabel()
         );
     }
 
@@ -2089,13 +2205,17 @@ public class ScheduleQueryService {
                                    ScheduleCalendarSetting setting) {
     }
 
+    private record ExternalCardKey(String sourceLabel, String uid, LocalDateTime start, LocalDateTime end) {
+    }
+
     public record OccurrenceResponse(String name, String title, String description, String location,
                                      String startTime, String endTime, String date, String dayLabel,
-                                     String recurrenceDescription, String durationLabel, String color) {
+                                     String recurrenceDescription, String durationLabel, String color,
+                                     String sourceLabel) {
     }
 
     public record ScheduleCardResponse(String name, String title, String description, String location,
                                        String startTime, String endTime, String recurrenceDescription,
-                                       String nextOccurrenceLabel, String color) {
+                                       String nextOccurrenceLabel, String color, String sourceLabel) {
     }
 }

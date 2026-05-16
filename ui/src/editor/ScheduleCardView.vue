@@ -4,9 +4,9 @@ import type { NodeViewProps } from '@halo-dev/richtext-editor'
 import { NodeViewWrapper } from '@halo-dev/richtext-editor'
 import { VButton, VEmpty, Toast } from '@halo-dev/components'
 import { axiosInstance } from '@halo-dev/api-client'
-import type { ScheduleCard, ScheduleEntry } from '../types/schedule'
+import type { ScheduleCard } from '../types/schedule'
 import ScheduleCardPickerModal from './ScheduleCardPickerModal.vue'
-import { ENTRY_API, fetchAllScheduleEntries, toScheduleCard, toScheduleCards } from './schedule-card-data'
+import { CARD_API, fetchScheduleCards, normalizeScheduleCard } from './schedule-card-data'
 
 const props = defineProps<NodeViewProps>()
 
@@ -33,6 +33,7 @@ const cloneCard = (value: ScheduleCard): ScheduleCard => ({
   recurrenceDescription: value.recurrenceDescription || '',
   nextOccurrenceLabel: value.nextOccurrenceLabel || '',
   color: value.color || '#0f766e',
+  sourceLabel: value.sourceLabel || '',
 })
 
 const isSameCard = (left: ScheduleCard, right: ScheduleCard) =>
@@ -44,7 +45,8 @@ const isSameCard = (left: ScheduleCard, right: ScheduleCard) =>
   left.endTime === right.endTime &&
   left.recurrenceDescription === right.recurrenceDescription &&
   left.nextOccurrenceLabel === right.nextOccurrenceLabel &&
-  left.color === right.color
+  left.color === right.color &&
+  left.sourceLabel === right.sourceLabel
 
 const syncDisplayFromAttrs = () => {
   displayCard.value = cloneCard(attrs.value)
@@ -52,9 +54,7 @@ const syncDisplayFromAttrs = () => {
 
 const fetchCards = async () => {
   try {
-    pickerItems.value = toScheduleCards({
-      items: await fetchAllScheduleEntries(),
-    })
+    pickerItems.value = await fetchScheduleCards()
     return true
   } catch (error) {
     console.error(error)
@@ -86,6 +86,7 @@ const handleReset = () => {
     recurrenceDescription: '',
     nextOccurrenceLabel: '',
     color: '#0f766e',
+    sourceLabel: '',
   }
   displayCard.value = emptyCard
   props.updateAttributes(emptyCard)
@@ -112,6 +113,10 @@ const selectedMetaItems = computed<CardMetaItem[]>(() => {
     items.push({ text: `下一次出现：${displayCard.value.nextOccurrenceLabel}`, wide: true, block: true })
   }
 
+  if (displayCard.value.sourceLabel) {
+    items.push({ text: `来源：${displayCard.value.sourceLabel}`, wide: true, block: true })
+  }
+
   if (displayCard.value.location) {
     items.push({ text: `地点：${displayCard.value.location}`, wide: true, block: true })
   }
@@ -130,8 +135,8 @@ const refreshSelectedCard = async (silent = true) => {
   }
 
   try {
-    const { data } = await axiosInstance.get<ScheduleEntry>(`${ENTRY_API}/${encodeURIComponent(attrs.value.name)}`)
-    const latestCard = toScheduleCard(data)
+    const { data } = await axiosInstance.get<ScheduleCard>(`${CARD_API}/${encodeURIComponent(attrs.value.name)}`)
+    const latestCard = normalizeScheduleCard(data)
     displayCard.value = latestCard
 
     if (!isSameCard(attrs.value, latestCard)) {

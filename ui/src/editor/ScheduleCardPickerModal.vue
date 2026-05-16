@@ -28,6 +28,10 @@ const buildDetailLines = (card: ScheduleCard) => {
     items.push(`下一次出现：${card.nextOccurrenceLabel}`)
   }
 
+  if (card.sourceLabel) {
+    items.push(`来源：${card.sourceLabel}`)
+  }
+
   if (card.location) {
     items.push(`地点：${card.location}`)
   }
@@ -49,6 +53,7 @@ const buildCardSearchText = (card: ScheduleCard) =>
     card.endTime,
     card.recurrenceDescription,
     card.nextOccurrenceLabel,
+    card.sourceLabel,
   ]
     .filter(Boolean)
     .join(' ')

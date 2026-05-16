@@ -93,6 +93,27 @@ class ScheduleQueryServiceTest {
     }
 
     @Test
+    void excludesDisabledLocalEntriesFromPublicWeekView() {
+        var entry = scheduleEntry(
+            "disabled-class",
+            "停用课程",
+            OffsetDateTime.parse("2026-03-30T09:00:00+08:00"),
+            OffsetDateTime.parse("2026-03-30T10:00:00+08:00"),
+            recurrence(ScheduleEntry.RecurrenceFrequency.WEEKLY, 1, null)
+        );
+        entry.getSpec().setEnabled(false);
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.just(entry));
+
+        var view = service.getWeekView(LocalDate.of(2026, 3, 30)).block();
+
+        assertThat(view).isNotNull();
+        assertThat(view.days().stream()
+            .flatMap(day -> day.occupied().stream())
+            .map(ScheduleQueryService.TimeBlock::title)).doesNotContain("停用课程");
+    }
+
+    @Test
     void stopsRecurringEntriesAfterUntilDate() {
         var entry = scheduleEntry(
             "daily-standup",
@@ -135,6 +156,33 @@ class ScheduleQueryServiceTest {
             assertThat(card.location()).isEqualTo("会议室 A");
             assertThat(card.description()).isEqualTo("同步版本计划");
             assertThat(card.recurrenceDescription()).isEqualTo("重复：每月");
+        });
+    }
+
+    @Test
+    void listsExternalOccurrencesAsEditorScheduleCards() {
+        var occurrence = new ScheduleEventOccurrence(
+            "holiday-2026-05-25",
+            "Memorial Day",
+            "",
+            "",
+            null,
+            "#4285f4",
+            LocalDateTime.of(2026, 5, 25, 0, 0),
+            LocalDateTime.of(2026, 5, 26, 0, 0),
+            "美国节假日"
+        );
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.empty());
+        when(externalCalendarService.listOccurrences(any(), any(), any(), any()))
+            .thenReturn(Mono.just(List.of(occurrence)));
+
+        var cards = service.listEntryCards().block();
+
+        assertThat(cards).singleElement().satisfies(card -> {
+            assertThat(card.name()).startsWith("external-calendar:");
+            assertThat(card.title()).isEqualTo("Memorial Day");
+            assertThat(card.sourceLabel()).isEqualTo("美国节假日");
         });
     }
 

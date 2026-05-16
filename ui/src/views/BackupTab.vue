@@ -92,6 +92,7 @@ const toScheduleEntry = (name: string, spec: ScheduleEntrySpec): ScheduleEntry =
     startTime: spec.startTime,
     endTime: spec.endTime,
     color: spec.color || '#3b82f6',
+    enabled: spec.enabled ?? true,
     recurrence:
       spec.recurrence?.frequency && spec.recurrence.frequency !== 'NONE'
         ? {
@@ -105,6 +106,17 @@ const toScheduleEntry = (name: string, spec: ScheduleEntrySpec): ScheduleEntry =
 
 const restorePluginSettings = async (settings?: Record<string, unknown>) => {
   await axiosInstance.put(pluginConfigApi, settings ?? {})
+}
+
+const restoredExternalCalendarCount = (settings?: Record<string, unknown>) => {
+  const publicPage = settings?.public_page
+  const publicPageExternalCalendars =
+    typeof publicPage === 'object' && publicPage !== null && 'externalCalendars' in publicPage
+      ? (publicPage as { externalCalendars?: unknown }).externalCalendars
+      : undefined
+  const externalCalendars = publicPageExternalCalendars ?? settings?.externalCalendars
+
+  return Array.isArray(externalCalendars) ? externalCalendars.length : 0
 }
 
 const restoreEntries = async (
@@ -196,7 +208,10 @@ const importBackupFile = async (file: File, input: HTMLInputElement) => {
     const data = await restoreEntries(payload.entries ?? [])
     await restorePluginSettings(payload.settings)
 
-    importSummary.value = `已同步 ${data.totalEntries} 条事项，新建 ${data.createdEntries} 条，移除 ${data.deletedEntries} 条。`
+    const externalCalendarCount = restoredExternalCalendarCount(payload.settings)
+    importSummary.value =
+      `已同步 ${data.totalEntries} 条事项，新建 ${data.createdEntries} 条，移除 ${data.deletedEntries} 条，` +
+      `恢复 ${externalCalendarCount} 条外部日历订阅。`
     Toast.success('备份已恢复')
   } catch (error) {
     console.error(error)

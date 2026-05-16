@@ -293,6 +293,7 @@ public class ScheduleBackupService {
         spec.setStartTime(source.getStartTime());
         spec.setEndTime(source.getEndTime());
         spec.setColor(source.getColor());
+        spec.setEnabled(source.getEnabled());
         spec.setRecurrence(copyRecurrence(source.getRecurrence()));
         return spec;
     }
