@@ -109,8 +109,8 @@ public class ExternalCalendarService {
     private List<ScheduleEventOccurrence> expandEvent(ExternalCalendarEvent event,
         ScheduleCalendarSetting.ExternalCalendarSource source, LocalDateTime rangeStart, LocalDateTime rangeEnd,
         ZoneId zoneId) {
-        var start = event.start().withZoneSameInstant(zoneId).toLocalDateTime();
-        var end = event.end().withZoneSameInstant(zoneId).toLocalDateTime();
+        var start = toOccurrenceDateTime(event.start(), event.allDay(), zoneId);
+        var end = toOccurrenceDateTime(event.end(), event.allDay(), zoneId);
         if (!end.isAfter(start)) {
             return List.of();
         }
@@ -279,6 +279,7 @@ public class ExternalCalendarService {
             unescapeText(valueOf(values, "LOCATION", null)),
             start.value(),
             end.value(),
+            start.allDay(),
             recurrence,
             excludedStarts,
             valueOf(values, "COLOR", null)
@@ -365,7 +366,9 @@ public class ExternalCalendarService {
         if (fields.containsKey("UNTIL")) {
             var temporal = parseTemporal(new PropertyValue(fields.get("UNTIL"), Map.of()));
             if (temporal != null) {
-                until = temporal.value().withZoneSameInstant(zoneId).toLocalDate();
+                until = temporal.allDay()
+                    ? temporal.value().toLocalDate()
+                    : temporal.value().withZoneSameInstant(zoneId).toLocalDate();
             }
         }
 
@@ -387,14 +390,22 @@ public class ExternalCalendarService {
             for (var raw : exDate.value().split(",")) {
                 var temporal = parseTemporal(new PropertyValue(raw, exDate.params()));
                 if (temporal != null) {
-                    excluded.add(temporal.value().withZoneSameInstant(zoneId).toLocalDateTime()
-                        .truncatedTo(ChronoUnit.SECONDS));
-                    excluded.add(temporal.value().withZoneSameInstant(zoneId).toLocalDateTime()
-                        .truncatedTo(ChronoUnit.MINUTES));
+                    var start = temporal.allDay()
+                        ? temporal.value().toLocalDate().atStartOfDay()
+                        : temporal.value().withZoneSameInstant(zoneId).toLocalDateTime();
+                    excluded.add(start.truncatedTo(ChronoUnit.SECONDS));
+                    excluded.add(start.truncatedTo(ChronoUnit.MINUTES));
                 }
             }
         }
         return excluded;
+    }
+
+    private LocalDateTime toOccurrenceDateTime(ZonedDateTime value, boolean allDay, ZoneId zoneId) {
+        if (allDay) {
+            return value.toLocalDate().atStartOfDay();
+        }
+        return value.withZoneSameInstant(zoneId).toLocalDateTime();
     }
 
     private LocalDateTime advance(LocalDateTime source, ScheduleEntry.RecurrenceFrequency frequency, int interval) {
@@ -444,8 +455,9 @@ public class ExternalCalendarService {
     }
 
     private record ExternalCalendarEvent(String uid, String title, String description, String location,
-                                         ZonedDateTime start, ZonedDateTime end, ExternalRecurrence recurrence,
-                                         Set<LocalDateTime> excludedStarts, String color) {
+                                         ZonedDateTime start, ZonedDateTime end, boolean allDay,
+                                         ExternalRecurrence recurrence, Set<LocalDateTime> excludedStarts,
+                                         String color) {
         private String effectiveColor(String fallback) {
             return color == null || color.isBlank() ? fallback : color;
         }

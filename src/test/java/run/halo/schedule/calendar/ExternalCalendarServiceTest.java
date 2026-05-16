@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -71,8 +72,8 @@ class ExternalCalendarServiceTest {
         assertThat(occurrences).isNotNull();
         assertThat(occurrences).singleElement().satisfies(occurrence -> {
             assertThat(occurrence.title()).isEqualTo("Memorial Day");
-            assertThat(occurrence.start()).isEqualTo(LocalDate.of(2026, 5, 25).atStartOfDay());
-            assertThat(occurrence.end()).isEqualTo(LocalDate.of(2026, 5, 26).atStartOfDay());
+            assertThat(occurrence.start()).isEqualTo(LocalDateTime.of(2026, 5, 25, 0, 0));
+            assertThat(occurrence.end()).isEqualTo(LocalDateTime.of(2026, 5, 26, 0, 0));
             assertThat(occurrence.sourceLabel()).isEqualTo("美国节假日");
         });
     }
