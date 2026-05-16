@@ -2,7 +2,7 @@
 import { axiosInstance } from '@halo-dev/api-client'
 import { Dialog, Toast, VAlert, VButton, VCard, VEntity, VEntityContainer, VEntityField } from '@halo-dev/components'
 import { computed, onMounted, ref } from 'vue'
-import { ENTRY_API, fetchAllScheduleEntries } from '../editor/schedule-card-data'
+import { ENTRY_API, ENTRY_ENABLED_ANNOTATION, fetchAllScheduleEntries } from '../editor/schedule-card-data'
 import type { ScheduleEntry, ScheduleEntrySpec } from '../types/schedule'
 
 interface ScheduleBackupPayload {
@@ -79,36 +79,46 @@ const downloadJson = (payload: ScheduleBackupPayload) => {
   URL.revokeObjectURL(url)
 }
 
+const normalizeEntrySpec = (spec: ScheduleEntrySpec): ScheduleEntrySpec => ({
+  title: spec.title,
+  description: spec.description || undefined,
+  location: spec.location || undefined,
+  startTime: spec.startTime,
+  endTime: spec.endTime,
+  color: spec.color || '#3b82f6',
+  enabled: spec.enabled ?? true,
+  recurrence:
+    spec.recurrence?.frequency && spec.recurrence.frequency !== 'NONE'
+      ? {
+          frequency: spec.recurrence.frequency,
+          interval: spec.recurrence.interval ?? 1,
+          until: spec.recurrence.until || undefined,
+        }
+      : undefined,
+})
+
 const toScheduleEntry = (name: string, spec: ScheduleEntrySpec): ScheduleEntry => ({
   apiVersion: 'schedule.calendar.sunny.dev/v1alpha1',
   kind: 'ScheduleEntry',
   metadata: {
     name,
+    annotations: {
+      [ENTRY_ENABLED_ANNOTATION]: String(spec.enabled ?? true),
+    },
   },
-  spec: {
-    title: spec.title,
-    description: spec.description || undefined,
-    location: spec.location || undefined,
-    startTime: spec.startTime,
-    endTime: spec.endTime,
-    color: spec.color || '#3b82f6',
-    enabled: spec.enabled ?? true,
-    recurrence:
-      spec.recurrence?.frequency && spec.recurrence.frequency !== 'NONE'
-        ? {
-            frequency: spec.recurrence.frequency,
-            interval: spec.recurrence.interval ?? 1,
-            until: spec.recurrence.until || undefined,
-          }
-        : undefined,
-  },
+  spec: normalizeEntrySpec(spec),
 })
 
 const restorePluginSettings = async (settings?: Record<string, unknown>) => {
   await axiosInstance.put(pluginConfigApi, settings ?? {})
 }
 
-const restoredExternalCalendarCount = (settings?: Record<string, unknown>) => {
+const fetchPluginSettings = async () => {
+  const { data } = await axiosInstance.get<Record<string, unknown>>(pluginConfigApi)
+  return data
+}
+
+const externalCalendarsFromSettings = (settings?: Record<string, unknown>) => {
   const publicPage = settings?.public_page
   const publicPageExternalCalendars =
     typeof publicPage === 'object' && publicPage !== null && 'externalCalendars' in publicPage
@@ -116,7 +126,31 @@ const restoredExternalCalendarCount = (settings?: Record<string, unknown>) => {
       : undefined
   const externalCalendars = publicPageExternalCalendars ?? settings?.externalCalendars
 
-  return Array.isArray(externalCalendars) ? externalCalendars.length : 0
+  return Array.isArray(externalCalendars) ? externalCalendars : []
+}
+
+const externalCalendarKey = (item: unknown) => {
+  if (typeof item !== 'object' || item === null) {
+    return ''
+  }
+
+  const calendar = item as { name?: unknown; icsUrl?: unknown }
+  const icsUrl = typeof calendar.icsUrl === 'string' ? calendar.icsUrl.trim() : ''
+  const name = typeof calendar.name === 'string' ? calendar.name.trim() : ''
+  return icsUrl ? `${icsUrl}\n${name}` : ''
+}
+
+const countExternalCalendarChanges = (
+  beforeSettings?: Record<string, unknown>,
+  afterSettings?: Record<string, unknown>,
+) => {
+  const beforeKeys = new Set(externalCalendarsFromSettings(beforeSettings).map(externalCalendarKey).filter(Boolean))
+  const afterKeys = new Set(externalCalendarsFromSettings(afterSettings).map(externalCalendarKey).filter(Boolean))
+
+  return {
+    createdExternalCalendars: [...afterKeys].filter((key) => !beforeKeys.has(key)).length,
+    deletedExternalCalendars: [...beforeKeys].filter((key) => !afterKeys.has(key)).length,
+  }
 }
 
 const restoreEntries = async (
@@ -138,6 +172,10 @@ const restoreEntries = async (
         metadata: {
           ...existing.metadata,
           name: entry.metadata.name,
+          annotations: {
+            ...(existing.metadata.annotations ?? {}),
+            ...(entry.metadata.annotations ?? {}),
+          },
         },
         spec: entry.spec,
       })
@@ -205,13 +243,15 @@ const importBackupFile = async (file: File, input: HTMLInputElement) => {
   try {
     const text = await file.text()
     const payload = JSON.parse(text) as ScheduleBackupPayload
+    const existingSettings = await fetchPluginSettings()
     const data = await restoreEntries(payload.entries ?? [])
     await restorePluginSettings(payload.settings)
+    const externalCalendarChanges = countExternalCalendarChanges(existingSettings, payload.settings)
 
-    const externalCalendarCount = restoredExternalCalendarCount(payload.settings)
     importSummary.value =
-      `已同步 ${data.totalEntries} 条事项，新建 ${data.createdEntries} 条，移除 ${data.deletedEntries} 条，` +
-      `恢复 ${externalCalendarCount} 条外部日历订阅。`
+      `已新增 ${data.createdEntries} 条本地事项、删除 ${data.deletedEntries} 条本地事项、` +
+      `新增 ${externalCalendarChanges.createdExternalCalendars} 条外部日历订阅、` +
+      `删除 ${externalCalendarChanges.deletedExternalCalendars} 条外部日历订阅。`
     Toast.success('备份已恢复')
   } catch (error) {
     console.error(error)
