@@ -1018,6 +1018,10 @@ const loadPluginConfig = async () => {
           normalizeExternalCalendar(item, item?.name?.trim() || `外部日历 ${index + 1}`),
         )
       : []
+
+    if (!Array.isArray(data.public_page?.externalCalendars) && Array.isArray(data.externalCalendars)) {
+      await persistExternalCalendars(externalCalendars.value)
+    }
   } catch (error) {
     console.error(error)
     Toast.error('外部日历订阅加载失败')
