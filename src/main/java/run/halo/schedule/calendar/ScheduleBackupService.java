@@ -2,6 +2,8 @@ package run.halo.schedule.calendar;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -26,6 +28,8 @@ public class ScheduleBackupService {
     static final String BACKUP_API_VERSION = "schedule.calendar.sunny.dev/v1alpha1";
     static final String BACKUP_KIND = "ScheduleBackup";
     static final int BACKUP_SCHEMA_VERSION = 1;
+    private static final java.util.Set<String> DISPLAY_ONLY_SETTING_KEYS =
+        java.util.Set.of(SchedulePublicUrlService.DISPLAY_ONLY_PUBLIC_ICAL_URL_KEY);
     private static final String CONFIG_MAP_NAME = "schedule-calendar-settings";
     private static final String CORE_API_VERSION = "v1alpha1";
     private static final String CONFIG_MAP_KIND = "ConfigMap";
@@ -52,7 +56,7 @@ public class ScheduleBackupService {
                 BACKUP_KIND,
                 BACKUP_SCHEMA_VERSION,
                 OffsetDateTime.now(),
-                tuple.getT2(),
+                sanitizeSettings(tuple.getT2()),
                 tuple.getT1().stream()
                     .map(this::toBackupEntry)
                     .toList()
@@ -175,6 +179,72 @@ public class ScheduleBackupService {
             }
         });
         return encoded;
+    }
+
+    private Map<String, JsonNode> sanitizeSettings(Map<String, JsonNode> settings) {
+        var sanitized = new LinkedHashMap<String, JsonNode>();
+        settings.forEach((group, value) -> {
+            var cleaned = sanitizeNode(value);
+            if (group == null || group.isBlank() || cleaned == null || cleaned.isNull()) {
+                return;
+            }
+            if (cleaned.isObject() && cleaned.isEmpty()) {
+                return;
+            }
+            if (cleaned.isArray() && cleaned.isEmpty()) {
+                return;
+            }
+            sanitized.put(group, cleaned);
+        });
+        return sanitized;
+    }
+
+    private JsonNode sanitizeNode(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+
+        if (node.isObject()) {
+            var source = (ObjectNode) node;
+            var cleaned = objectMapper.createObjectNode();
+            source.fields().forEachRemaining(entry -> {
+                if (DISPLAY_ONLY_SETTING_KEYS.contains(entry.getKey())) {
+                    return;
+                }
+                var value = sanitizeNode(entry.getValue());
+                if (value == null || value.isNull()) {
+                    return;
+                }
+                if (value.isObject() && value.isEmpty()) {
+                    return;
+                }
+                if (value.isArray() && value.isEmpty()) {
+                    return;
+                }
+                cleaned.set(entry.getKey(), value);
+            });
+            return cleaned;
+        }
+
+        if (node.isArray()) {
+            var cleaned = objectMapper.createArrayNode();
+            for (var item : (ArrayNode) node) {
+                var value = sanitizeNode(item);
+                if (value == null || value.isNull()) {
+                    continue;
+                }
+                if (value.isObject() && value.isEmpty()) {
+                    continue;
+                }
+                if (value.isArray() && value.isEmpty()) {
+                    continue;
+                }
+                cleaned.add(value);
+            }
+            return cleaned;
+        }
+
+        return node;
     }
 
     private ConfigMap newConfigMap() {

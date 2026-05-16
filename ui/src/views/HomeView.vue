@@ -35,6 +35,7 @@ import type {
 import {
   expandEntryOccurrences,
   formatDisplayDate,
+  formatDisplayDateWithWeekday,
   formatEntryScheduleSummary,
   formatRecurrenceDescription,
   isRecurringEntry,
@@ -44,7 +45,7 @@ import { fetchAllScheduleEntries } from '../editor/schedule-card-data'
 
 const apiBase = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
 const pluginConfigApi = '/apis/api.console.halo.run/v1alpha1/plugins/schedule-calendar/json-config'
-const publicPagePath = '/schedule-calendar'
+const publicMetaApi = '/apis/api.schedule.calendar.sunny.dev/v1alpha1/public-meta'
 const hourHeight = 56
 const dayColumnHeight = hourHeight * 24
 const headerHeight = 64
@@ -69,6 +70,7 @@ const permissionLevel = ref<'unknown' | 'view' | 'manage'>('unknown')
 const nowRef = ref(new Date())
 const pluginTitle = ref('日程日历')
 const externalCalendars = ref<ExternalCalendarFormItem[]>([])
+const publicPageUrl = ref('/schedule-calendar')
 
 const form = reactive({
   title: '',
@@ -132,6 +134,11 @@ interface EntryMetaItem {
 interface PluginConfigResponse {
   title?: string
   externalCalendars?: ExternalCalendarConfigItem[]
+}
+
+interface PublicMetaResponse {
+  publicPagePath: string
+  publicIcalPath: string
 }
 
 interface ExternalCalendarConfigItem {
@@ -280,8 +287,8 @@ const formatClock = (date: Date) =>
 
 const formatOccurrenceLabel = (occurrence: CalendarOccurrence) => {
   return spansMultipleLocalDates(occurrence.start, occurrence.end)
-    ? `${formatDisplayDate(occurrence.start)} ${formatClock(occurrence.start)} - ${formatDisplayDate(occurrence.end)} ${formatClock(occurrence.end)}`
-    : `${formatDisplayDate(occurrence.start)} ${formatClock(occurrence.start)}-${formatClock(occurrence.end)}`
+    ? `${formatDisplayDateWithWeekday(occurrence.start)} ${formatClock(occurrence.start)} - ${formatDisplayDateWithWeekday(occurrence.end)} ${formatClock(occurrence.end)}`
+    : `${formatDisplayDateWithWeekday(occurrence.start)} ${formatClock(occurrence.start)}-${formatClock(occurrence.end)}`
 }
 
 const weekRangeLabel = computed(() => {
@@ -338,7 +345,7 @@ const sanitizeExternalCalendarsForSave = (items: ExternalCalendarFormItem[]) =>
     .filter((item) => item.icsUrl)
 
 const openPublicPage = () => {
-  window.open(new URL(publicPagePath, window.location.origin).toString(), '_blank', 'noopener')
+  window.open(publicPageUrl.value, '_blank', 'noopener')
 }
 
 const buildBlockMetaLines = (entry: ScheduleEntry) => {
@@ -880,6 +887,16 @@ const loadPluginConfig = async () => {
   }
 }
 
+const loadPublicMeta = async () => {
+  try {
+    const { data } = await axiosInstance.get<PublicMetaResponse>(publicMetaApi)
+    publicPageUrl.value = data.publicPagePath || '/schedule-calendar'
+  } catch (error) {
+    console.error(error)
+    publicPageUrl.value = '/schedule-calendar'
+  }
+}
+
 const persistExternalCalendars = async (items: ExternalCalendarFormItem[]) => {
   await axiosInstance.put(pluginConfigApi, {
     title: pluginTitle.value,
@@ -1240,6 +1257,7 @@ onMounted(() => {
   updateViewportWidth()
   window.addEventListener('resize', updateViewportWidth)
   syncWeekInput()
+  void loadPublicMeta()
   void loadPluginConfig()
   void loadPermissionLevel()
   void fetchEntries()
