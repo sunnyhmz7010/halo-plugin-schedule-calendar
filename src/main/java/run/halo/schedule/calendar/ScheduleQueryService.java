@@ -4,12 +4,14 @@ import static java.util.Comparator.comparing;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
@@ -35,6 +37,8 @@ public class ScheduleQueryService {
         DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMATTER =
         DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter ICAL_DATE_TIME_FORMATTER =
+        DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'");
     private static final int CALENDAR_HEADER_HEIGHT = 64;
     private static final int HOUR_HEIGHT = 56;
     private static final Locale ZH_CN = Locale.SIMPLIFIED_CHINESE;
@@ -133,20 +137,19 @@ public class ScheduleQueryService {
                 .toList());
     }
 
+    Mono<String> exportPublicIcal() {
+        return listEntries().map(this::toIcalContent);
+    }
+
     Mono<String> buildPublicCalendarPage(LocalDate requestedStart) {
         return Mono.zip(
                 getWeekView(requestedStart),
                 settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
-                    .defaultIfEmpty(new ScheduleCalendarSetting(
-                        ScheduleCalendarSetting.DEFAULT_TITLE,
-                        ScheduleCalendarSetting.DEFAULT_PUBLIC_PATH,
-                        null
-                    ))
+                    .defaultIfEmpty(new ScheduleCalendarSetting(null, null))
             )
             .map(tuple -> {
                 var view = tuple.getT1();
-                var setting = tuple.getT2();
-                var pageTitle = setting.effectiveTitle();
+                var pageTitle = tuple.getT2().effectiveTitle();
                 var escapedPageTitle = escapeHtml(pageTitle);
                 try {
                     return """
@@ -1348,15 +1351,130 @@ public class ScheduleQueryService {
                 .collect(Collectors.toList()));
     }
 
+    private String toIcalContent(List<ScheduleEntry> entries) {
+        var builder = new StringBuilder()
+            .append("BEGIN:VCALENDAR\r\n")
+            .append("VERSION:2.0\r\n")
+            .append("PRODID:-//sunnyhmz7010//Halo Schedule Calendar//CN\r\n")
+            .append("CALSCALE:GREGORIAN\r\n")
+            .append("METHOD:PUBLISH\r\n")
+            .append("X-WR-CALNAME:")
+            .append(escapeIcalText(ScheduleCalendarSetting.DEFAULT_TITLE))
+            .append("\r\n");
+
+        for (var entry : entries) {
+            appendIcalEvent(builder, entry);
+        }
+
+        builder.append("END:VCALENDAR\r\n");
+        return foldIcalLines(builder.toString());
+    }
+
+    private void appendIcalEvent(StringBuilder builder, ScheduleEntry entry) {
+        if (entry == null || entry.getSpec() == null || entry.getMetadata() == null) {
+            return;
+        }
+
+        var spec = entry.getSpec();
+        if (spec.getTitle() == null || spec.getStartTime() == null || spec.getEndTime() == null) {
+            return;
+        }
+
+        builder.append("BEGIN:VEVENT\r\n");
+        builder.append("UID:")
+            .append(escapeIcalText(entry.getMetadata().getName()))
+            .append("@schedule-calendar.halo\r\n");
+        builder.append("DTSTAMP:")
+            .append(toIcalDateTime(OffsetDateTime.now(ZoneOffset.UTC)))
+            .append("\r\n");
+        builder.append("DTSTART:")
+            .append(toIcalDateTime(spec.getStartTime()))
+            .append("\r\n");
+        builder.append("DTEND:")
+            .append(toIcalDateTime(spec.getEndTime()))
+            .append("\r\n");
+        builder.append("SUMMARY:")
+            .append(escapeIcalText(spec.getTitle()))
+            .append("\r\n");
+
+        if (spec.getDescription() != null && !spec.getDescription().isBlank()) {
+            builder.append("DESCRIPTION:")
+                .append(escapeIcalText(spec.getDescription()))
+                .append("\r\n");
+        }
+
+        if (spec.getLocation() != null && !spec.getLocation().isBlank()) {
+            builder.append("LOCATION:")
+                .append(escapeIcalText(spec.getLocation()))
+                .append("\r\n");
+        }
+
+        var recurrence = spec.getRecurrence();
+        if (recurrence != null && recurrence.getFrequency() != null
+            && recurrence.getFrequency() != ScheduleEntry.RecurrenceFrequency.NONE) {
+            builder.append("RRULE:FREQ=").append(recurrence.getFrequency().name());
+
+            if (recurrence.getInterval() != null && recurrence.getInterval() > 1) {
+                builder.append(";INTERVAL=").append(recurrence.getInterval());
+            }
+
+            if (recurrence.getUntil() != null) {
+                var untilDateTime = recurrence.getUntil().atTime(LocalTime.MAX)
+                    .atOffset(spec.getStartTime().getOffset())
+                    .withOffsetSameInstant(ZoneOffset.UTC);
+                builder.append(";UNTIL=").append(toIcalDateTime(untilDateTime));
+            }
+
+            builder.append("\r\n");
+        }
+
+        builder.append("END:VEVENT\r\n");
+    }
+
+    private String toIcalDateTime(OffsetDateTime value) {
+        return value.withOffsetSameInstant(ZoneOffset.UTC).format(ICAL_DATE_TIME_FORMATTER);
+    }
+
+    private String escapeIcalText(String value) {
+        return value
+            .replace("\\", "\\\\")
+            .replace(";", "\\;")
+            .replace(",", "\\,")
+            .replace("\r\n", "\\n")
+            .replace("\n", "\\n");
+    }
+
+    private String foldIcalLines(String value) {
+        var result = new StringBuilder();
+        for (var line : value.split("\r\n")) {
+            if (line.isEmpty()) {
+                result.append("\r\n");
+                continue;
+            }
+
+            var current = new StringBuilder();
+            var currentBytes = 0;
+            for (var i = 0; i < line.length(); i++) {
+                var ch = line.charAt(i);
+                var charBytes = String.valueOf(ch).getBytes(StandardCharsets.UTF_8).length;
+                if (currentBytes + charBytes > 75) {
+                    result.append(current).append("\r\n ");
+                    current.setLength(0);
+                    currentBytes = 1;
+                }
+                current.append(ch);
+                currentBytes += charBytes;
+            }
+            result.append(current).append("\r\n");
+        }
+        return result.toString();
+    }
+
     private Mono<CalendarContext> loadCalendarContext(LocalDate rangeStart, LocalDate rangeEnd, ZoneId zoneId) {
         return Mono.zip(
                 listEntries(),
                 settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
-                    .defaultIfEmpty(new ScheduleCalendarSetting(
-                        ScheduleCalendarSetting.DEFAULT_TITLE,
-                        ScheduleCalendarSetting.DEFAULT_PUBLIC_PATH,
-                        null
-                    ))
+                    .defaultIfEmpty(new ScheduleCalendarSetting(null, null))
             )
             .flatMap(tuple -> {
                 var entries = tuple.getT1();

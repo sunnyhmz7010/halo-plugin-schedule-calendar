@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { axiosInstance } from '@halo-dev/api-client'
 import {
+  IconAddCircle,
+  IconExternalLinkLine,
   Dialog,
   Toast,
   VAlert,
@@ -33,6 +35,7 @@ interface ScheduleBackupImportResult {
 
 const backupExportApi = '/apis/console.api.schedule.calendar.sunny.dev/v1alpha1/backupexports'
 const pluginConfigApi = '/apis/api.console.halo.run/v1alpha1/plugins/schedule-calendar/json-config'
+const publicIcalPath = '/schedule-calendar.ics'
 
 const exporting = ref(false)
 const importing = ref(false)
@@ -42,6 +45,7 @@ const permissionLevel = ref<'unknown' | 'view' | 'manage'>('unknown')
 
 const canManageEntries = computed(() => permissionLevel.value === 'manage')
 const showReadonlyNotice = computed(() => permissionLevel.value === 'view')
+const publicIcalUrl = computed(() => new URL(publicIcalPath, window.location.origin).toString())
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (typeof error === 'object' && error !== null) {
@@ -239,6 +243,20 @@ const restoreBackup = (event: Event) => {
   })
 }
 
+const openPublicIcal = () => {
+  window.open(publicIcalUrl.value, '_blank', 'noopener')
+}
+
+const copyPublicIcalUrl = async () => {
+  try {
+    await navigator.clipboard.writeText(publicIcalUrl.value)
+    Toast.success('iCal 订阅地址已复制')
+  } catch (error) {
+    console.error(error)
+    Toast.error('复制 iCal 订阅地址失败')
+  }
+}
+
 const loadPermissionLevel = async () => {
   permissionLevel.value = 'unknown'
 
@@ -291,6 +309,34 @@ onMounted(() => {
             <VButton type="primary" :loading="exporting" :disabled="!canManageEntries" @click="exportBackup">
               下载备份文件
             </VButton>
+          </template>
+        </VEntity>
+
+        <VEntity>
+          <template #start>
+            <div class="backup-entity">
+              <div class="backup-entity__title">公开 iCal 订阅</div>
+              <div class="backup-entity__description">
+                提供以 iCal / ICS 格式输出的公开网址，可被 Google Calendar、Apple Calendar 等外部日历直接订阅。
+              </div>
+              <code class="backup-code">{{ publicIcalUrl }}</code>
+            </div>
+          </template>
+          <template #end>
+            <div class="backup-actions">
+              <VButton @click="copyPublicIcalUrl">
+                <template #icon>
+                  <IconAddCircle />
+                </template>
+                复制地址
+              </VButton>
+              <VButton type="primary" @click="openPublicIcal">
+                <template #icon>
+                  <IconExternalLinkLine />
+                </template>
+                打开订阅地址
+              </VButton>
+            </div>
           </template>
         </VEntity>
 
@@ -357,5 +403,26 @@ onMounted(() => {
 
 .backup-input {
   display: none;
+}
+
+.backup-code {
+  display: block;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--halo-bg-color-secondary, #f8fafc);
+  color: var(--halo-text-color, #111827);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.backup-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 </style>

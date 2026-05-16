@@ -12,32 +12,3 @@ spec:
           label: 页面标题
           value: 日程日历
           help: 用于前台 /schedule-calendar 路由页面的标题和页头文案
-        - $formkit: text
-          name: publicPath
-          label: 前台访问路径
-          value: /schedule-calendar
-          help: 用于前台页面访问和控制台快捷跳转，例如 /schedule-calendar
-        - $formkit: repeater
-          name: externalCalendars
-          label: 外部日历订阅
-          help: 可添加 Google Calendar 等支持 iCal / ICS 订阅地址的只读外部日历源
-          value: []
-          children:
-            - $formkit: text
-              name: name
-              label: 日历名称
-              value: Google Calendar
-              help: 用于前台和摘要中的来源标识
-            - $formkit: url
-              name: icsUrl
-              label: ICS 订阅地址
-              help: 填写 Google Calendar 导出的 iCal / ICS 订阅地址
-            - $formkit: text
-              name: color
-              label: 默认颜色
-              value: "#4285f4"
-              help: 可选，外部日历事项未自带颜色时使用
-            - $formkit: checkbox
-              name: enabled
-              label: 启用
-              value: true

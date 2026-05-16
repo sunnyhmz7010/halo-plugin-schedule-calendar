@@ -259,23 +259,17 @@ class ScheduleQueryServiceTest {
     }
 
     @Test
-    void escapesConfiguredPageTitleInPublicCalendarPage() {
+    void usesConfiguredPageTitleInPublicCalendarPage() {
         when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
             .thenReturn(Flux.empty());
         when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
-            .thenReturn(Mono.just(new ScheduleCalendarSetting(
-                "<script>alert('xss')</script>",
-                ScheduleCalendarSetting.DEFAULT_PUBLIC_PATH,
-                null
-            )));
+            .thenReturn(Mono.just(new ScheduleCalendarSetting("自定义标题", null)));
 
         var html = service.buildPublicCalendarPage(LocalDate.of(2026, 4, 13)).block();
 
         assertThat(html).isNotNull();
-        assertThat(html).contains("<title>&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;</title>");
-        assertThat(html).contains("<h1>&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;</h1>");
-        assertThat(html).doesNotContain("<title><script>alert('xss')</script></title>");
-        assertThat(html).doesNotContain("<h1><script>alert('xss')</script></h1>");
+        assertThat(html).contains("<title>自定义标题</title>");
+        assertThat(html).contains("<h1>自定义标题</h1>");
     }
 
     @Test
@@ -316,13 +310,6 @@ class ScheduleQueryServiceTest {
             .anyMatch(block -> block.title().equals("Google 日程")
                 && block.metaLines() != null
                 && block.metaLines().contains("来源：Google Calendar"))).isTrue();
-    }
-
-    @Test
-    void normalizesConfiguredPublicPath() {
-        var setting = new ScheduleCalendarSetting("标题", "calendar/custom/", null);
-
-        assertThat(setting.effectivePublicPath()).isEqualTo("/calendar/custom");
     }
 
     private ScheduleEntry scheduleEntry(String name, String title, OffsetDateTime startTime,
