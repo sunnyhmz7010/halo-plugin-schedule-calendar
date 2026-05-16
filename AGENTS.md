@@ -130,6 +130,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
   - use Halo-native plugin settings to configure Google Calendar or other ICS/iCal subscription sources
   - external calendar events are read-only and merge into public page, Finder, and REST query results
   - do not mix external ICS events into local schedule-entry CRUD or editor-card selection unless the user explicitly asks for that broader scope
+  - when reading external calendar sources on the server side, do not rely only on typed `public_page` schema fields; preserve compatibility with raw plugin `json-config` so saved `externalCalendars` are actually visible to public APIs and pages
 - Important environment constraint:
   - this project requires Java 21 toolchain for Gradle tasks
   - if the machine only has Java 8 or Java 25, Gradle verification may fail before tests run

@@ -6,11 +6,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,14 +41,21 @@ class ScheduleQueryServiceTest {
 
     private TimeZone originalTimeZone;
     private ScheduleQueryService service;
+    private JsonMapper objectMapper;
 
     @BeforeEach
     void setUp() {
         originalTimeZone = TimeZone.getDefault();
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Shanghai"));
-        service = new ScheduleQueryService(client, settingFetcher, externalCalendarService);
+        objectMapper = JsonMapper.builder().findAndAddModules().build();
+        service = new ScheduleQueryService(
+            client,
+            new ScheduleCalendarSettingService(settingFetcher),
+            externalCalendarService
+        );
         lenient().when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
             .thenReturn(Mono.empty());
+        lenient().when(settingFetcher.getValues()).thenReturn(Mono.just(Map.of()));
         lenient().when(externalCalendarService.listOccurrences(any(), any(), any(), any()))
             .thenReturn(Mono.just(List.of()));
     }
@@ -336,6 +345,49 @@ class ScheduleQueryServiceTest {
             .anyMatch(block -> block.title().equals("Google 日程")
                 && block.metaLines() != null
                 && block.metaLines().contains("来源：Google Calendar"))).isTrue();
+    }
+
+    @Test
+    void fallsBackToRawPluginConfigForExternalCalendars() {
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.empty());
+        when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
+            .thenReturn(Mono.just(new ScheduleCalendarSetting("日程日历", null)));
+
+        var publicPage = objectMapper.createObjectNode();
+        publicPage.put("title", "日程日历");
+        publicPage.set("externalCalendars", objectMapper.createArrayNode()
+            .add(objectMapper.createObjectNode()
+                .put("name", "美国节假日")
+                .put("icsUrl", "https://calendar.example/holiday.ics")
+                .put("enabled", true)
+                .put("color", "#4285f4")));
+        when(settingFetcher.getValues()).thenReturn(Mono.just(Map.of(
+            ScheduleCalendarSetting.GROUP, publicPage
+        )));
+
+        var externalOccurrence = new ScheduleEventOccurrence(
+            "holiday-1",
+            "Memorial Day",
+            "Public holiday",
+            null,
+            null,
+            "#4285f4",
+            LocalDateTime.of(2026, 5, 25, 0, 0),
+            LocalDateTime.of(2026, 5, 26, 0, 0),
+            "美国节假日"
+        );
+        when(externalCalendarService.listOccurrences(any(), any(), any(), any()))
+            .thenReturn(Mono.just(List.of(externalOccurrence)));
+
+        var view = service.getWeekView(LocalDate.of(2026, 5, 25)).block();
+
+        assertThat(view).isNotNull();
+        assertThat(view.days().stream()
+            .flatMap(day -> day.occupied().stream())
+            .anyMatch(block -> block.title().equals("Memorial Day")
+                && block.metaLines() != null
+                && block.metaLines().contains("来源：美国节假日"))).isTrue();
     }
 
     private ScheduleEntry scheduleEntry(String name, String title, OffsetDateTime startTime,

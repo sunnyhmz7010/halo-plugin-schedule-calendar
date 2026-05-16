@@ -27,7 +27,6 @@ import org.springframework.web.util.HtmlUtils;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.ReactiveExtensionClient;
-import run.halo.app.plugin.ReactiveSettingFetcher;
 
 @Service
 public class ScheduleQueryService {
@@ -46,15 +45,15 @@ public class ScheduleQueryService {
     private static final Locale ZH_CN = Locale.SIMPLIFIED_CHINESE;
 
     private final ReactiveExtensionClient client;
-    private final ReactiveSettingFetcher settingFetcher;
+    private final ScheduleCalendarSettingService settingService;
     private final ExternalCalendarService externalCalendarService;
     private final JsonMapper objectMapper;
 
     public ScheduleQueryService(ReactiveExtensionClient client,
-        ReactiveSettingFetcher settingFetcher,
+        ScheduleCalendarSettingService settingService,
         ExternalCalendarService externalCalendarService) {
         this.client = client;
-        this.settingFetcher = settingFetcher;
+        this.settingService = settingService;
         this.externalCalendarService = externalCalendarService;
         this.objectMapper = JsonMapper.builder()
             .findAndAddModules()
@@ -142,8 +141,7 @@ public class ScheduleQueryService {
     Mono<String> exportPublicIcal() {
         return Mono.zip(
                 listEntries(),
-                settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
-                    .defaultIfEmpty(new ScheduleCalendarSetting(null, null))
+                settingService.getSetting()
             )
             .map(tuple -> toIcalContent(tuple.getT1(), tuple.getT2()));
     }
@@ -151,8 +149,7 @@ public class ScheduleQueryService {
     Mono<String> buildPublicCalendarPage(LocalDate requestedStart) {
         return Mono.zip(
                 getWeekView(requestedStart),
-                settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
-                    .defaultIfEmpty(new ScheduleCalendarSetting(null, null))
+                settingService.getSetting()
             )
             .map(tuple -> {
                 var view = tuple.getT1();
@@ -1590,8 +1587,7 @@ public class ScheduleQueryService {
     private Mono<CalendarContext> loadCalendarContext(LocalDate rangeStart, LocalDate rangeEnd, ZoneId zoneId) {
         return Mono.zip(
                 listEntries(),
-                settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
-                    .defaultIfEmpty(new ScheduleCalendarSetting(null, null))
+                settingService.getSetting()
             )
             .flatMap(tuple -> {
                 var entries = tuple.getT1();

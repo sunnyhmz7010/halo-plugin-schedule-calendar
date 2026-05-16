@@ -16,7 +16,7 @@ import reactor.core.publisher.Mono;
 public class ScheduleApiController {
     private final ScheduleQueryService scheduleQueryService;
     private final ExternalCalendarService externalCalendarService;
-    private final run.halo.app.plugin.ReactiveSettingFetcher settingFetcher;
+    private final ScheduleCalendarSettingService settingService;
 
     @GetMapping("/weeks")
     public Mono<ScheduleQueryService.WeekViewResponse> currentWeek(
@@ -70,8 +70,7 @@ public class ScheduleApiController {
         var zoneId = java.time.ZoneId.systemDefault();
         var rangeStart = start == null ? LocalDate.now(zoneId) : start;
         var rangeEnd = end == null ? rangeStart : end;
-        return settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
-            .defaultIfEmpty(new ScheduleCalendarSetting(null, null))
+        return settingService.getSetting()
             .flatMap(setting -> externalCalendarService.listOccurrences(setting, rangeStart, rangeEnd, zoneId)
                 .map(occurrences -> new ExternalDebugResponse(
                     setting.enabledExternalCalendars().stream()
