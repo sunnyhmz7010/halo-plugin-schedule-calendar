@@ -20,6 +20,7 @@ interface ScheduleBackupPayload {
 interface ScheduleBackupImportResult {
   totalEntries: number
   createdEntries: number
+  updatedEntries: number
   deletedEntries: number
 }
 
@@ -109,6 +110,14 @@ const toScheduleEntry = (name: string, spec: ScheduleEntrySpec): ScheduleEntry =
   spec: normalizeEntrySpec(spec),
 })
 
+const normalizeEntryForCompare = (entry: ScheduleEntry) => ({
+  enabled: entry.metadata.annotations?.[ENTRY_ENABLED_ANNOTATION] ?? String(entry.spec.enabled ?? true),
+  spec: normalizeEntrySpec(entry.spec),
+})
+
+const hasEntryChanged = (existing: ScheduleEntry, imported: ScheduleEntry) =>
+  JSON.stringify(normalizeEntryForCompare(existing)) !== JSON.stringify(normalizeEntryForCompare(imported))
+
 const restorePluginSettings = async (settings?: Record<string, unknown>) => {
   await axiosInstance.put(pluginConfigApi, settings ?? {})
 }
@@ -129,26 +138,53 @@ const externalCalendarsFromSettings = (settings?: Record<string, unknown>) => {
   return Array.isArray(externalCalendars) ? externalCalendars : []
 }
 
-const externalCalendarKey = (item: unknown) => {
+const normalizeExternalCalendarForCompare = (item: unknown) => {
   if (typeof item !== 'object' || item === null) {
-    return ''
+    return null
   }
 
-  const calendar = item as { name?: unknown; icsUrl?: unknown }
+  const calendar = item as { name?: unknown; icsUrl?: unknown; enabled?: unknown; color?: unknown }
   const icsUrl = typeof calendar.icsUrl === 'string' ? calendar.icsUrl.trim() : ''
-  const name = typeof calendar.name === 'string' ? calendar.name.trim() : ''
-  return icsUrl ? `${icsUrl}\n${name}` : ''
+  if (!icsUrl) {
+    return null
+  }
+
+  return {
+    name: typeof calendar.name === 'string' ? calendar.name.trim() : '',
+    icsUrl,
+    enabled: calendar.enabled !== false,
+    color: typeof calendar.color === 'string' && calendar.color.trim() ? calendar.color.trim() : '#4285f4',
+  }
 }
+
+const externalCalendarMapFromSettings = (settings?: Record<string, unknown>) =>
+  new Map(
+    externalCalendarsFromSettings(settings)
+      .map((item) => {
+        const normalized = normalizeExternalCalendarForCompare(item)
+        return normalized ? [normalized.icsUrl, normalized] : null
+      })
+      .filter((item): item is [string, NonNullable<ReturnType<typeof normalizeExternalCalendarForCompare>>] =>
+        item !== null,
+      ),
+  )
 
 const countExternalCalendarChanges = (
   beforeSettings?: Record<string, unknown>,
   afterSettings?: Record<string, unknown>,
 ) => {
-  const beforeKeys = new Set(externalCalendarsFromSettings(beforeSettings).map(externalCalendarKey).filter(Boolean))
-  const afterKeys = new Set(externalCalendarsFromSettings(afterSettings).map(externalCalendarKey).filter(Boolean))
+  const beforeMap = externalCalendarMapFromSettings(beforeSettings)
+  const afterMap = externalCalendarMapFromSettings(afterSettings)
+  const beforeKeys = new Set(beforeMap.keys())
+  const afterKeys = new Set(afterMap.keys())
 
   return {
     createdExternalCalendars: [...afterKeys].filter((key) => !beforeKeys.has(key)).length,
+    updatedExternalCalendars: [...afterKeys].filter((key) => {
+      const before = beforeMap.get(key)
+      const after = afterMap.get(key)
+      return before && after && JSON.stringify(before) !== JSON.stringify(after)
+    }).length,
     deletedExternalCalendars: [...beforeKeys].filter((key) => !afterKeys.has(key)).length,
   }
 }
@@ -161,11 +197,16 @@ const restoreEntries = async (
   const importedEntries = items.map((item) => toScheduleEntry(item.name, item.spec))
   const importedNames = new Set(importedEntries.map((entry) => entry.metadata.name))
   let createdEntries = 0
+  let updatedEntries = 0
 
   for (const entry of importedEntries) {
     const existing = existingByName.get(entry.metadata.name)
 
     if (existing) {
+      if (!hasEntryChanged(existing, entry)) {
+        continue
+      }
+
       await axiosInstance.put(`${ENTRY_API}/${encodeURIComponent(entry.metadata.name)}`, {
         apiVersion: existing.apiVersion ?? entry.apiVersion,
         kind: existing.kind ?? entry.kind,
@@ -179,6 +220,7 @@ const restoreEntries = async (
         },
         spec: entry.spec,
       })
+      updatedEntries += 1
       continue
     }
 
@@ -200,6 +242,7 @@ const restoreEntries = async (
   return {
     totalEntries: importedEntries.length,
     createdEntries,
+    updatedEntries,
     deletedEntries,
   }
 }
@@ -249,8 +292,10 @@ const importBackupFile = async (file: File, input: HTMLInputElement) => {
     const externalCalendarChanges = countExternalCalendarChanges(existingSettings, payload.settings)
 
     importSummary.value =
-      `已新增 ${data.createdEntries} 条本地事项、删除 ${data.deletedEntries} 条本地事项、` +
+      `已新增 ${data.createdEntries} 条本地事项、更新 ${data.updatedEntries} 条本地事项、` +
+      `删除 ${data.deletedEntries} 条本地事项、` +
       `新增 ${externalCalendarChanges.createdExternalCalendars} 条外部日历订阅、` +
+      `更新 ${externalCalendarChanges.updatedExternalCalendars} 条外部日历订阅、` +
       `删除 ${externalCalendarChanges.deletedExternalCalendars} 条外部日历订阅。`
     Toast.success('备份已恢复')
   } catch (error) {

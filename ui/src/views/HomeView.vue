@@ -49,6 +49,8 @@ const publicMetaApi = '/apis/api.schedule.calendar.sunny.dev/v1alpha1/public-met
 const occurrencesApi = '/apis/api.schedule.calendar.sunny.dev/v1alpha1/occurrences'
 const externalCalendarValidationApi =
   '/apis/api.schedule.calendar.sunny.dev/v1alpha1/external-calendar-validations'
+const externalCalendarRefreshApi =
+  '/apis/api.schedule.calendar.sunny.dev/v1alpha1/external-calendar-refreshes'
 const hourHeight = 56
 const dayColumnHeight = hourHeight * 24
 const headerHeight = 64
@@ -56,6 +58,7 @@ const headerHeight = 64
 const loading = ref(false)
 const externalCalendarsLoading = ref(false)
 const externalCalendarSaving = ref(false)
+const externalCalendarRefreshing = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
 const dialogVisible = ref(false)
@@ -177,6 +180,19 @@ interface ExternalCalendarValidationResponse {
   valid: boolean
   message?: string
   eventCount: number
+}
+
+interface ExternalCalendarRefreshResponse {
+  sourceCount: number
+  successCount: number
+  eventCount: number
+  items: Array<{
+    name: string
+    icsUrl: string
+    success: boolean
+    message?: string
+    eventCount: number
+  }>
 }
 
 interface ExternalCalendarConfigItem {
@@ -1119,6 +1135,37 @@ const validateExternalCalendar = async (calendar: ExternalCalendarFormItem) => {
   return false
 }
 
+const refreshExternalCalendars = async () => {
+  if (!canManageEntries.value || externalCalendarRefreshing.value) {
+    return
+  }
+
+  externalCalendarRefreshing.value = true
+
+  try {
+    const { data } = await axiosInstance.post<ExternalCalendarRefreshResponse>(externalCalendarRefreshApi)
+    await loadWeekOccurrences()
+
+    const failedItems = data.items?.filter((item) => !item.success) ?? []
+    if (failedItems.length) {
+      Toast.error(
+        `外部日历订阅刷新完成，成功 ${data.successCount}/${data.sourceCount} 个，失败：` +
+          failedItems.map((item) => item.name).join('、'),
+      )
+      return
+    }
+
+    Toast.success(
+      `外部日历订阅已刷新，成功 ${data.successCount} 个，拉取 ${data.eventCount} 个原始事件`,
+    )
+  } catch (error) {
+    console.error(error)
+    Toast.error('外部日历订阅刷新失败')
+  } finally {
+    externalCalendarRefreshing.value = false
+  }
+}
+
 const submitExternalCalendar = async () => {
   if (!canManageEntries.value) {
     return
@@ -1808,6 +1855,13 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
             <div class="entry-card-header__search"></div>
 
             <div v-if="canManageEntries" class="entry-card-header__actions">
+              <VButton
+                type="secondary"
+                :loading="externalCalendarRefreshing"
+                @click="refreshExternalCalendars"
+              >
+                刷新订阅
+              </VButton>
               <VButton type="secondary" @click="openCreateExternalCalendarDialog">
                 <template #icon>
                   <IconAddCircle />

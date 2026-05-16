@@ -104,6 +104,13 @@ public class ScheduleApiController {
         return externalCalendarService.validateSource(request.name(), request.icsUrl(), request.color());
     }
 
+    @PostMapping("/external-calendar-refreshes")
+    @PreAuthorize("hasAuthority('plugin:schedule-calendar:manage')")
+    public Mono<ExternalCalendarService.ExternalCalendarRefreshResult> refreshExternalCalendars() {
+        return settingService.getSetting()
+            .flatMap(externalCalendarService::refreshSources);
+    }
+
     public record ExternalCalendarValidationRequest(String name, String icsUrl, String color) {
     }
 

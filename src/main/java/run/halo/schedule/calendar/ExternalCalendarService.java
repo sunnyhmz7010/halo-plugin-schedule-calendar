@@ -94,6 +94,37 @@ public class ExternalCalendarService {
             )));
     }
 
+    Mono<ExternalCalendarRefreshResult> refreshSources(ScheduleCalendarSetting setting) {
+        var sources = setting.enabledExternalCalendars();
+        if (sources.isEmpty()) {
+            return Mono.just(new ExternalCalendarRefreshResult(0, 0, 0, List.of()));
+        }
+
+        return Flux.fromIterable(sources)
+            .flatMap(source -> refreshEvents(source)
+                .map(events -> new ExternalCalendarRefreshItem(
+                    source.effectiveName(),
+                    source.icsUrl(),
+                    true,
+                    null,
+                    events.size()
+                ))
+                .onErrorResume(error -> Mono.just(new ExternalCalendarRefreshItem(
+                    source.effectiveName(),
+                    source.icsUrl(),
+                    false,
+                    validationMessage(error),
+                    0
+                ))))
+            .collectList()
+            .map(items -> new ExternalCalendarRefreshResult(
+                sources.size(),
+                (int) items.stream().filter(ExternalCalendarRefreshItem::success).count(),
+                items.stream().mapToInt(ExternalCalendarRefreshItem::eventCount).sum(),
+                items
+            ));
+    }
+
     private Mono<List<ExternalCalendarEvent>> loadEvents(ScheduleCalendarSetting.ExternalCalendarSource source) {
         var cacheKey = cacheKey(source);
         var cached = eventCache.get(cacheKey);
@@ -531,6 +562,14 @@ public class ExternalCalendarService {
     }
 
     public record ExternalCalendarValidationResult(boolean valid, String message, int eventCount) {
+    }
+
+    public record ExternalCalendarRefreshResult(int sourceCount, int successCount, int eventCount,
+                                                List<ExternalCalendarRefreshItem> items) {
+    }
+
+    public record ExternalCalendarRefreshItem(String name, String icsUrl, boolean success, String message,
+                                              int eventCount) {
     }
 
     private record ExternalCalendarEvent(String uid, String title, String description, String location,

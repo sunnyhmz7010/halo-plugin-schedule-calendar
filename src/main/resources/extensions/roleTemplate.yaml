@@ -58,7 +58,7 @@ rules:
     resources: ["backupexports"]
     verbs: ["get", "list"]
   - apiGroups: ["api.schedule.calendar.sunny.dev"]
-    resources: ["external-calendar-validations"]
+    resources: ["external-calendar-validations", "external-calendar-refreshes"]
     verbs: ["create"]
   - apiGroups: ["console.api.schedule.calendar.sunny.dev"]
     resources: ["permissions"]
