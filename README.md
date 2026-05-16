@@ -206,19 +206,14 @@ pnpm build
 pnpm test:unit
 ```
 
-## ✅ 测试覆盖
+## 🔐 安全报告
 
-仓库内已包含以下方向的测试：
+如果你发现了安全问题，请不要在公开 Issue 中直接披露细节。请优先参考仓库中的 [SECURITY.md](./SECURITY.md) 提交安全报告。
 
-- 周视图与循环事项展开
-- 摘要信息与下一事项计算
-- 单事项卡片输出
-- 备份导出与恢复逻辑
-- 前端循环规则工具函数
+## 📄 License
 
-## 🔗 项目链接
+本项目基于 [GPL-3.0](./LICENSE) 开源。
 
-- 在线演示：<https://sunnyhmz.top/schedule-calendar>
-- 仓库地址：<https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar>
-- 问题反馈：<https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/issues>
-- License：`GPL-3.0`
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=sunnyhmz7010/halo-plugin-schedule-calendar&type=Date)](https://star-history.com/#sunnyhmz7010/halo-plugin-schedule-calendar&Date)
