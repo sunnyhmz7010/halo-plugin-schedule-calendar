@@ -12,10 +12,3 @@ spec:
           label: 前台页面标题
           value: 日程日历
           help: 用于前台 /schedule-calendar 路由页面的标题和页头文案
-        - $formkit: text
-          name: publicIcalSubscriptionUrl
-          label: 公开 iCal 订阅链接
-          readonly: true
-          help: 自动使用站点外部访问地址生成，仅供复制，不包含外部日历订阅数据。
-          attrs:
-            readonly: true

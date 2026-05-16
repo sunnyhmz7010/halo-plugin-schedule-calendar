@@ -8,7 +8,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -25,7 +24,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +34,6 @@ import reactor.core.publisher.Mono;
 @Service
 public class ExternalCalendarService {
     private static final Logger log = LoggerFactory.getLogger(ExternalCalendarService.class);
-    private static final Duration CACHE_TTL = Duration.ofMinutes(5);
     private static final DateTimeFormatter LOCAL_DATE_TIME =
         DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
     private static final DateTimeFormatter LOCAL_DATE = DateTimeFormatter.BASIC_ISO_DATE;
@@ -46,20 +43,27 @@ public class ExternalCalendarService {
         .followRedirects(HttpClient.Redirect.NORMAL)
         .connectTimeout(Duration.ofSeconds(10))
         .build();
-    private final ConcurrentHashMap<String, CachedCalendar> cache = new ConcurrentHashMap<>();
 
     Mono<List<ScheduleEventOccurrence>> listOccurrences(ScheduleCalendarSetting setting, LocalDate rangeStart,
         LocalDate rangeEnd, ZoneId zoneId) {
         var sources = setting.enabledExternalCalendars();
         if (sources.isEmpty()) {
+            log.debug("No enabled external calendars found for range {} to {}", rangeStart, rangeEnd);
             return Mono.just(List.of());
         }
 
         var start = rangeStart.atStartOfDay();
         var end = rangeEnd.plusDays(1).atStartOfDay();
+        log.info("Loading {} external calendars for range {} to {}", sources.size(), rangeStart, rangeEnd);
         return Flux.fromIterable(sources)
             .flatMap(source -> loadEvents(source)
-                .map(events -> expandEvents(events, source, start, end, zoneId))
+                .map(events -> {
+                    log.info("Fetched {} raw external events from {}", events.size(), source.effectiveName());
+                    var expanded = expandEvents(events, source, start, end, zoneId);
+                    log.info("Expanded {} occurrences from {} for range {} to {}",
+                        expanded.size(), source.effectiveName(), rangeStart, rangeEnd);
+                    return expanded;
+                })
                 .onErrorResume(error -> {
                     log.warn("Failed to load external calendar {}", source.effectiveName(), error);
                     return Mono.just(List.of());
@@ -73,11 +77,6 @@ public class ExternalCalendarService {
 
     private Mono<List<ExternalCalendarEvent>> loadEvents(ScheduleCalendarSetting.ExternalCalendarSource source) {
         var url = source.icsUrl();
-        var cached = cache.get(url);
-        if (cached != null && cached.expiresAt().isAfter(Instant.now())) {
-            return Mono.just(cached.events());
-        }
-
         HttpRequest request;
         try {
             request = HttpRequest.newBuilder(URI.create(url))
@@ -95,9 +94,7 @@ public class ExternalCalendarService {
                     return Mono.error(new IllegalStateException(
                         "Failed to fetch ICS feed, status " + response.statusCode()));
                 }
-                var events = parseEvents(response.body());
-                cache.put(url, new CachedCalendar(events, Instant.now().plus(CACHE_TTL)));
-                return Mono.just(events);
+                return Mono.just(parseEvents(response.body()));
             });
     }
 
@@ -438,9 +435,6 @@ public class ExternalCalendarService {
             .replace("\\,", ",")
             .replace("\\;", ";")
             .replace("\\\\", "\\");
-    }
-
-    private record CachedCalendar(List<ExternalCalendarEvent> events, Instant expiresAt) {
     }
 
     private record PropertyValue(String value, Map<String, String> params) {

@@ -15,6 +15,8 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class ScheduleApiController {
     private final ScheduleQueryService scheduleQueryService;
+    private final ExternalCalendarService externalCalendarService;
+    private final run.halo.app.plugin.ReactiveSettingFetcher settingFetcher;
 
     @GetMapping("/weeks")
     public Mono<ScheduleQueryService.WeekViewResponse> currentWeek(
@@ -58,5 +60,50 @@ public class ScheduleApiController {
     @GetMapping("/entrycards/{name}")
     public Mono<ScheduleQueryService.ScheduleCardResponse> entry(@PathVariable("name") String name) {
         return scheduleQueryService.getEntryCard(name);
+    }
+
+    @GetMapping("/external-debug")
+    public Mono<ExternalDebugResponse> externalDebug(
+        @RequestParam(name = "start", required = false) LocalDate start,
+        @RequestParam(name = "end", required = false) LocalDate end
+    ) {
+        var zoneId = java.time.ZoneId.systemDefault();
+        var rangeStart = start == null ? LocalDate.now(zoneId) : start;
+        var rangeEnd = end == null ? rangeStart : end;
+        return settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
+            .defaultIfEmpty(new ScheduleCalendarSetting(null, null))
+            .flatMap(setting -> externalCalendarService.listOccurrences(setting, rangeStart, rangeEnd, zoneId)
+                .map(occurrences -> new ExternalDebugResponse(
+                    setting.enabledExternalCalendars().stream()
+                        .map(source -> new ExternalSourceDebug(
+                            source.effectiveName(),
+                            source.icsUrl(),
+                            source.isEnabled(),
+                            source.color()
+                        ))
+                        .toList(),
+                    occurrences.size(),
+                    occurrences.stream()
+                        .map(occurrence -> new ExternalOccurrenceDebug(
+                            occurrence.title(),
+                            occurrence.start().toString(),
+                            occurrence.end().toString(),
+                            occurrence.sourceLabel()
+                        ))
+                        .toList()
+                )));
+    }
+
+    public record ExternalDebugResponse(
+        List<ExternalSourceDebug> sources,
+        int occurrenceCount,
+        List<ExternalOccurrenceDebug> occurrences
+    ) {
+    }
+
+    public record ExternalSourceDebug(String name, String icsUrl, boolean enabled, String color) {
+    }
+
+    public record ExternalOccurrenceDebug(String title, String start, String end, String sourceLabel) {
     }
 }

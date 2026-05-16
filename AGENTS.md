@@ -79,7 +79,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Admin capability: create, view, edit, and delete schedule entries in a weekly calendar view.
 - Editor capability: insert a schedule card for a single entry.
 - Current stable version: `v2.8.0`
-- Current prerelease target in local development: `v2.9.0-alpha.9`
+- Current prerelease target in local development: `v2.9.0-alpha.10`
 
 ### Tech Stack
 
@@ -138,7 +138,6 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - For this project, Halo-native plugin settings must be preferred over custom settings pages. Do not reintroduce a custom settings tab unless the user explicitly asks for it.
 - The plugin backup feature belongs in the plugin settings area, but the page itself should stay visually close to Halo native patterns and avoid extra decorative copy.
 - The plugin backup/settings area may surface public export endpoints such as the iCal subscription URL when they are real user-facing capabilities; present them as simple utility actions, not marketing content.
-- `public_page.publicIcalSubscriptionUrl` is a display-only derived setting used to show the external iCal subscription URL in native Halo settings. Keep it synced from Halo external access URL logic, and never treat it as user-authored config or backup source data.
 - Do not add `@halo-dev/ui-shared` just to read UI permissions in this repo. It pulls extra frontend dependencies such as `pinia`/`vue-router` and can break the current plugin build.
 - For public calendar rendering, do not interpolate schedule data into `innerHTML`. Build DOM nodes with `textContent`/`createElement` so persisted entry data cannot become stored XSS.
 - `unplugin-icons` is not required in this repo. Prefer Halo-provided icons from `@halo-dev/components`; keeping `unplugin-icons` pulls `vue-template-compiler` into the dependency tree and creates avoidable audit noise.

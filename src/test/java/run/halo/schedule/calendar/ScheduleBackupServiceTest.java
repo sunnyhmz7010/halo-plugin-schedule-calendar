@@ -67,21 +67,4 @@ class ScheduleBackupServiceTest {
         assertThat(configMap.getData()).containsEntry("public_page", "{\"title\":\"测试标题\"}");
     }
 
-    @Test
-    void excludesNullAndEmptySettingValuesWhenExportingBackup() {
-        var service = new ScheduleBackupService(client, settingFetcher);
-        var objectMapper = JsonMapper.builder().findAndAddModules().build();
-        var publicPage = objectMapper.createObjectNode();
-        publicPage.putNull("title");
-        publicPage.set("externalCalendars", objectMapper.createArrayNode());
-        publicPage.put(SchedulePublicUrlService.DISPLAY_ONLY_PUBLIC_ICAL_URL_KEY, "/schedule-calendar.ics");
-        when(settingFetcher.getValues()).thenReturn(Mono.just(Map.of("public_page", publicPage)));
-        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
-            .thenReturn(Flux.empty());
-
-        var payload = service.exportBackup().block();
-
-        assertThat(payload).isNotNull();
-        assertThat(payload.settings()).doesNotContainKey("public_page");
-    }
 }

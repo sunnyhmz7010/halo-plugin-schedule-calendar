@@ -71,6 +71,7 @@ const nowRef = ref(new Date())
 const pluginTitle = ref('日程日历')
 const externalCalendars = ref<ExternalCalendarFormItem[]>([])
 const publicPageUrl = ref('/schedule-calendar')
+const publicIcalUrl = ref('/schedule-calendar.ics')
 
 const form = reactive({
   title: '',
@@ -360,6 +361,16 @@ const hasExternalCalendarChanged = (
 
 const openPublicPage = () => {
   window.open(publicPageUrl.value, '_blank', 'noopener')
+}
+
+const copyPublicIcalLink = async () => {
+  try {
+    await navigator.clipboard.writeText(publicIcalUrl.value)
+    Toast.success('订阅链接已复制，不包含外部日历订阅数据')
+  } catch (error) {
+    console.error(error)
+    Toast.error('订阅链接复制失败')
+  }
 }
 
 const buildBlockMetaLines = (entry: ScheduleEntry) => {
@@ -905,9 +916,11 @@ const loadPublicMeta = async () => {
   try {
     const { data } = await axiosInstance.get<PublicMetaResponse>(publicMetaApi)
     publicPageUrl.value = data.publicPagePath || '/schedule-calendar'
+    publicIcalUrl.value = data.publicIcalPath || '/schedule-calendar.ics'
   } catch (error) {
     console.error(error)
     publicPageUrl.value = '/schedule-calendar'
+    publicIcalUrl.value = '/schedule-calendar.ics'
   }
 }
 
@@ -1253,8 +1266,8 @@ const openRemoveDialog = (entry: ScheduleEntry) => {
   }
 
   Dialog.warning({
-    title: '确认删除事项',
-    description: `删除后将无法恢复，“${entry.spec.title}”会从周历和事项列表中移除。`,
+    title: '确认删除本地事项',
+    description: `删除后将无法恢复，“${entry.spec.title}”会从周历和本地事项列表中移除。`,
     confirmType: 'danger',
     confirmText: '删除',
     cancelText: '取消',
@@ -1305,6 +1318,9 @@ onBeforeUnmount(() => {
         <IconCalendar class="mr-2 h-5 w-5" />
       </template>
       <template #actions>
+        <VButton @click="copyPublicIcalLink">
+          复制订阅链接
+        </VButton>
         <VButton type="secondary" @click="openPublicPage">
           <template #icon>
             <IconExternalLinkLine />
@@ -1329,7 +1345,7 @@ onBeforeUnmount(() => {
         class="page-alert"
         type="info"
         title="当前为只读权限"
-        description="你可以查看周历和事项列表；新增、编辑、删除和备份恢复需要“日程日历管理”权限。"
+        description="你可以查看周历和本地事项列表；新增、编辑、删除和备份恢复需要“日程日历管理”权限。"
         :closable="false"
       />
 
@@ -1595,7 +1611,7 @@ onBeforeUnmount(() => {
       <VCard class="section-card">
         <template #header>
           <div class="entry-card-header">
-            <div class="entry-card-header__title">事项</div>
+            <div class="entry-card-header__title">本地事项</div>
 
             <div v-if="entries.length" class="entry-card-header__search">
               <div class="entry-search">
@@ -1607,7 +1623,7 @@ onBeforeUnmount(() => {
                     v-model="entryKeyword"
                     type="search"
                     class="entry-search__input"
-                    placeholder="搜索标题、地点、备注、时间或展开信息"
+                    placeholder="搜索本地事项标题、地点、备注、时间或展开信息"
                   />
                 </div>
               </div>
@@ -1618,7 +1634,7 @@ onBeforeUnmount(() => {
                 <template #icon>
                   <IconAddCircle />
                 </template>
-                新增事项
+                新增本地事项
               </VButton>
             </div>
           </div>
@@ -1668,8 +1684,8 @@ onBeforeUnmount(() => {
 
         <VEmpty
           v-else
-          :title="entries.length ? '没有匹配的事项' : '还没有事项'"
-          :message="entries.length ? '换个关键词试试，或者清空当前搜索条件。' : '新增一个事项后，会同时显示在下方列表和上方周历中。'"
+          :title="entries.length ? '没有匹配的本地事项' : '还没有本地事项'"
+          :message="entries.length ? '换个关键词试试，或者清空当前搜索条件。' : '新增一个本地事项后，会同时显示在下方列表和上方周历中。'"
         />
       </VCard>
     </div>
