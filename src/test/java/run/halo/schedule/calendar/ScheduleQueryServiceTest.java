@@ -390,6 +390,50 @@ class ScheduleQueryServiceTest {
                 && block.metaLines().contains("来源：美国节假日"))).isTrue();
     }
 
+    @Test
+    void fallsBackToRootPluginConfigForExternalCalendars() {
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.empty());
+        when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
+            .thenReturn(Mono.just(new ScheduleCalendarSetting("日程日历", null)));
+
+        var publicPage = objectMapper.createObjectNode();
+        publicPage.put("title", "日程日历");
+        when(settingFetcher.getValues()).thenReturn(Mono.just(Map.of(
+            ScheduleCalendarSetting.GROUP, publicPage,
+            "title", objectMapper.getNodeFactory().textNode("日程日历335"),
+            "externalCalendars", objectMapper.createArrayNode()
+                .add(objectMapper.createObjectNode()
+                    .put("name", "美国节假日")
+                    .put("icsUrl", "https://calendar.example/holiday.ics")
+                    .put("enabled", true)
+                    .put("color", "#4285f4"))
+        )));
+
+        var externalOccurrence = new ScheduleEventOccurrence(
+            "holiday-root-1",
+            "Memorial Day",
+            "Public holiday",
+            null,
+            null,
+            "#4285f4",
+            LocalDateTime.of(2026, 5, 25, 0, 0),
+            LocalDateTime.of(2026, 5, 26, 0, 0),
+            "美国节假日"
+        );
+        when(externalCalendarService.listOccurrences(any(), any(), any(), any()))
+            .thenReturn(Mono.just(List.of(externalOccurrence)));
+
+        var view = service.getWeekView(LocalDate.of(2026, 5, 25)).block();
+
+        assertThat(view).isNotNull();
+        assertThat(view.days().stream()
+            .flatMap(day -> day.occupied().stream())
+            .anyMatch(block -> block.title().equals("Memorial Day")
+                && block.metaLines() != null
+                && block.metaLines().contains("来源：美国节假日"))).isTrue();
+    }
+
     private ScheduleEntry scheduleEntry(String name, String title, OffsetDateTime startTime,
         OffsetDateTime endTime, ScheduleEntry.Recurrence recurrence) {
         var entry = new ScheduleEntry();

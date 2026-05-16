@@ -32,18 +32,28 @@ public class ScheduleCalendarSettingService {
 
         return settingFetcher.getValues()
             .defaultIfEmpty(Map.of())
-            .map(values -> mergeFromRawConfig(setting, values.get(ScheduleCalendarSetting.GROUP)))
+            .map(values -> mergeFromRawConfig(
+                setting,
+                values.get(ScheduleCalendarSetting.GROUP),
+                objectMapper.valueToTree(values)
+            ))
             .onErrorReturn(setting == null ? new ScheduleCalendarSetting(null, null) : setting);
     }
 
-    private ScheduleCalendarSetting mergeFromRawConfig(ScheduleCalendarSetting base, JsonNode rawGroup) {
+    private ScheduleCalendarSetting mergeFromRawConfig(ScheduleCalendarSetting base, JsonNode rawGroup,
+        JsonNode rawRoot) {
         var fallback = base == null ? new ScheduleCalendarSetting(null, null) : base;
-        if (rawGroup == null || rawGroup.isNull() || !rawGroup.isObject()) {
+        var merged = mergeFromNode(fallback, rawGroup);
+        return hasExternalCalendars(merged) ? merged : mergeFromNode(merged, rawRoot);
+    }
+
+    private ScheduleCalendarSetting mergeFromNode(ScheduleCalendarSetting base, JsonNode rawNode) {
+        var fallback = base == null ? new ScheduleCalendarSetting(null, null) : base;
+        if (rawNode == null || rawNode.isNull() || !rawNode.isObject()) {
             return fallback;
         }
-
         try {
-            var rawSetting = objectMapper.treeToValue(rawGroup, ScheduleCalendarSetting.class);
+            var rawSetting = objectMapper.treeToValue(rawNode, ScheduleCalendarSetting.class);
             if (rawSetting == null) {
                 return fallback;
             }
@@ -58,5 +68,11 @@ public class ScheduleCalendarSettingService {
         } catch (Exception ignored) {
             return fallback;
         }
+    }
+
+    private boolean hasExternalCalendars(ScheduleCalendarSetting setting) {
+        return setting != null
+            && setting.externalCalendars() != null
+            && !setting.externalCalendars().isEmpty();
     }
 }

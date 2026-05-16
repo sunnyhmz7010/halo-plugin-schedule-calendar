@@ -340,8 +340,8 @@ public class ScheduleQueryService {
                               .calendar__desktop {
                                 position: relative;
                               }
-                              .calendar__desktop::before,
-                              .calendar__desktop::after {
+                              .calendar__scroller::before,
+                              .calendar__scroller::after {
                                 content: "";
                                 position: absolute;
                                 top: 0;
@@ -352,7 +352,7 @@ public class ScheduleQueryService {
                                 transition: opacity 0.2s ease;
                                 z-index: 3;
                               }
-                              .calendar__desktop::before {
+                              .calendar__scroller::before {
                                 left: 0;
                                 background: linear-gradient(
                                   to right,
@@ -360,7 +360,7 @@ public class ScheduleQueryService {
                                   rgba(255, 255, 255, 0)
                                 );
                               }
-                              .calendar__desktop::after {
+                              .calendar__scroller::after {
                                 right: 0;
                                 background: linear-gradient(
                                   to left,
@@ -368,10 +368,10 @@ public class ScheduleQueryService {
                                   rgba(255, 255, 255, 0)
                                 );
                               }
-                              .calendar__desktop.has-left-shadow::before {
+                              .calendar__desktop.has-left-shadow .calendar__scroller::before {
                                 opacity: 1;
                               }
-                              .calendar__desktop.has-right-shadow::after {
+                              .calendar__desktop.has-right-shadow .calendar__scroller::after {
                                 opacity: 1;
                               }
                               .calendar__grid {
@@ -640,8 +640,8 @@ public class ScheduleQueryService {
                               .calendar__scroller {
                                 overflow-x: visible;
                               }
-                              .calendar__desktop::before,
-                              .calendar__desktop::after {
+                              .calendar__scroller::before,
+                              .calendar__scroller::after {
                                 display: none;
                               }
                               .day-columns {

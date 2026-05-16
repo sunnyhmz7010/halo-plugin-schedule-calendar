@@ -140,6 +140,9 @@ interface EntryMetaItem {
 
 interface PluginConfigResponse {
   title?: string
+  public_page?: {
+    title?: string
+  }
   externalCalendars?: ExternalCalendarConfigItem[]
 }
 
@@ -932,7 +935,7 @@ const loadPluginConfig = async () => {
   try {
     const { data } = await axiosInstance.get<PluginConfigResponse>(pluginConfigApi)
 
-    pluginTitle.value = data.title?.trim() || '日程日历'
+    pluginTitle.value = data.public_page?.title?.trim() || data.title?.trim() || '日程日历'
 
     externalCalendars.value = Array.isArray(data.externalCalendars)
       ? data.externalCalendars.map((item, index) =>
@@ -961,7 +964,9 @@ const loadPublicMeta = async () => {
 
 const persistExternalCalendars = async (items: ExternalCalendarFormItem[]) => {
   await axiosInstance.put(pluginConfigApi, {
-    title: pluginTitle.value,
+    public_page: {
+      title: pluginTitle.value,
+    },
     externalCalendars: sanitizeExternalCalendarsForSave(items),
   })
   externalCalendars.value = items
@@ -1897,13 +1902,13 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
           />
         </label>
 
-        <div class="field-row">
-          <label class="field field--compact">
+        <div class="field-row field-row--external-calendar">
+          <label class="field field--compact field--external-color">
             <span>默认颜色</span>
             <input v-model="externalCalendarForm.color" type="color" class="external-calendar-color" />
           </label>
 
-          <label class="field">
+          <label class="field field--checkbox-card">
             <span>状态</span>
             <span class="external-calendar-toggle">
               <input v-model="externalCalendarForm.enabled" type="checkbox" />
@@ -2038,12 +2043,8 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
   padding-bottom: 4px;
 }
 
-.calendar-desktop {
-  position: relative;
-}
-
-.calendar-desktop::before,
-.calendar-desktop::after {
+.calendar-grid-scroll::before,
+.calendar-grid-scroll::after {
   content: '';
   position: absolute;
   top: 0;
@@ -2055,7 +2056,7 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
   z-index: 3;
 }
 
-.calendar-desktop::before {
+.calendar-grid-scroll::before {
   left: 0;
   background: linear-gradient(
     to right,
@@ -2064,7 +2065,7 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
   );
 }
 
-.calendar-desktop::after {
+.calendar-grid-scroll::after {
   right: 0;
   background: linear-gradient(
     to left,
@@ -2073,11 +2074,11 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
   );
 }
 
-.calendar-desktop--left-shadow::before {
+.calendar-desktop--left-shadow .calendar-grid-scroll::before {
   opacity: 1;
 }
 
-.calendar-desktop--right-shadow::after {
+.calendar-desktop--right-shadow .calendar-grid-scroll::after {
   opacity: 1;
 }
 
@@ -2431,9 +2432,19 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  width: fit-content;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--halo-border-color, #d1d5db);
+  border-radius: 8px;
+  background: var(--halo-bg-color, #fff);
   color: var(--halo-text-color-secondary, #6b7280);
   font-size: 13px;
+  box-sizing: border-box;
+}
+
+.external-calendar-toggle input {
+  flex: none;
 }
 
 .external-calendar-color {
@@ -2445,6 +2456,18 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
 
 .field--checkbox {
   width: fit-content;
+}
+
+.field-row--external-calendar {
+  align-items: end;
+}
+
+.field--external-color {
+  width: 140px;
+}
+
+.field--checkbox-card {
+  min-width: 0;
 }
 
 .entry-search {
@@ -2693,8 +2716,8 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
     overflow-x: visible;
   }
 
-  .calendar-desktop::before,
-  .calendar-desktop::after {
+  .calendar-grid-scroll::before,
+  .calendar-grid-scroll::after {
     display: none;
   }
 
