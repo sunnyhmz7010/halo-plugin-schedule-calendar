@@ -2,6 +2,7 @@ package run.halo.schedule.calendar;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -180,7 +181,82 @@ public class ScheduleBackupService {
     }
 
     private Map<String, JsonNode> sanitizeSettings(Map<String, JsonNode> settings) {
-        return settings;
+        if (settings == null || settings.isEmpty()) {
+            return Map.of();
+        }
+
+        var sanitized = new LinkedHashMap<String, JsonNode>();
+        var publicPage = sanitizePublicPageSettings(settings.get(ScheduleCalendarSetting.GROUP));
+        if (publicPage != null && !publicPage.isEmpty()) {
+            sanitized.put(ScheduleCalendarSetting.GROUP, publicPage);
+        }
+        return sanitized;
+    }
+
+    private ObjectNode sanitizePublicPageSettings(JsonNode source) {
+        if (source == null || source.isNull() || !source.isObject()) {
+            return null;
+        }
+
+        var sanitized = JsonNodeFactory.instance.objectNode();
+        var title = source.get("title");
+        if (title != null && !title.isNull()) {
+            var text = title.asText(null);
+            if (text != null && !text.isBlank()) {
+                sanitized.put("title", text);
+            }
+        }
+
+        var externalCalendars = sanitizeExternalCalendars(source.get("externalCalendars"));
+        if (externalCalendars != null && !externalCalendars.isEmpty()) {
+            sanitized.set("externalCalendars", externalCalendars);
+        }
+
+        return sanitized;
+    }
+
+    private ArrayNode sanitizeExternalCalendars(JsonNode source) {
+        if (source == null || source.isNull() || !source.isArray()) {
+            return null;
+        }
+
+        var sanitized = JsonNodeFactory.instance.arrayNode();
+        source.forEach(item -> {
+            if (item == null || item.isNull() || !item.isObject()) {
+                return;
+            }
+
+            var icsUrlNode = item.get("icsUrl");
+            var icsUrl = icsUrlNode == null || icsUrlNode.isNull() ? null : icsUrlNode.asText(null);
+            if (icsUrl == null || icsUrl.isBlank()) {
+                return;
+            }
+
+            var normalized = JsonNodeFactory.instance.objectNode();
+
+            var nameNode = item.get("name");
+            var name = nameNode == null || nameNode.isNull() ? null : nameNode.asText(null);
+            if (name != null && !name.isBlank()) {
+                normalized.put("name", name);
+            }
+
+            normalized.put("icsUrl", icsUrl);
+
+            var enabledNode = item.get("enabled");
+            if (enabledNode != null && !enabledNode.isNull()) {
+                normalized.put("enabled", enabledNode.asBoolean(true));
+            }
+
+            var colorNode = item.get("color");
+            var color = colorNode == null || colorNode.isNull() ? null : colorNode.asText(null);
+            if (color != null && !color.isBlank()) {
+                normalized.put("color", color);
+            }
+
+            sanitized.add(normalized);
+        });
+
+        return sanitized;
     }
 
     private ConfigMap newConfigMap() {

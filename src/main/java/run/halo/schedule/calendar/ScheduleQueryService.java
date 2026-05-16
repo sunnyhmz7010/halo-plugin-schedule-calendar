@@ -340,6 +340,43 @@ public class ScheduleQueryService {
                                 touch-action: pan-x pan-y pinch-zoom;
                                 padding-bottom: 4px;
                               }
+                              .calendar__desktop {
+                                position: relative;
+                              }
+                              .calendar__desktop::before,
+                              .calendar__desktop::after {
+                                content: "";
+                                position: absolute;
+                                top: 0;
+                                bottom: 4px;
+                                width: 32px;
+                                pointer-events: none;
+                                opacity: 0;
+                                transition: opacity 0.2s ease;
+                                z-index: 3;
+                              }
+                              .calendar__desktop::before {
+                                left: 0;
+                                background: linear-gradient(
+                                  to right,
+                                  rgba(255, 255, 255, 0.96),
+                                  rgba(255, 255, 255, 0)
+                                );
+                              }
+                              .calendar__desktop::after {
+                                right: 0;
+                                background: linear-gradient(
+                                  to left,
+                                  rgba(255, 255, 255, 0.96),
+                                  rgba(255, 255, 255, 0)
+                                );
+                              }
+                              .calendar__desktop.has-left-shadow::before {
+                                opacity: 1;
+                              }
+                              .calendar__desktop.has-right-shadow::after {
+                                opacity: 1;
+                              }
                               .calendar__grid {
                                 display: grid;
                                 grid-template-columns: 78px minmax(0, 1fr);
@@ -606,6 +643,10 @@ public class ScheduleQueryService {
                               .calendar__scroller {
                                 overflow-x: visible;
                               }
+                              .calendar__desktop::before,
+                              .calendar__desktop::after {
+                                display: none;
+                              }
                               .day-columns {
                                 grid-template-columns: repeat(7, minmax(0, 1fr));
                               }
@@ -688,7 +729,8 @@ public class ScheduleQueryService {
                               </section>
                               <section class="calendar-wrap">
                                 <section class="calendar" id="calendar-view">
-                                  <div class="calendar__scroller">
+                                  <div class="calendar__desktop" id="calendar-desktop">
+                                    <div class="calendar__scroller" id="calendar-scroller">
                                     <div class="calendar__grid">
                                       <div class="time-column">
                                         <div class="time-column__header">时间</div>
@@ -696,6 +738,7 @@ public class ScheduleQueryService {
                                       </div>
                                       <div class="day-columns" id="calendar-grid"></div>
                                     </div>
+                                  </div>
                                   </div>
                                 </section>
                                 <section class="agenda" id="agenda-view"></section>
@@ -835,6 +878,8 @@ public class ScheduleQueryService {
                               };
                               const calendarView = document.getElementById("calendar-view");
                               const agendaView = document.getElementById("agenda-view");
+                              const calendarDesktop = document.getElementById("calendar-desktop");
+                              const calendarScroller = document.getElementById("calendar-scroller");
                               const prevWeekLink = document.getElementById("prev-week");
                               const nextWeekLink = document.getElementById("next-week");
                               const currentWeekLink = document.getElementById("current-week");
@@ -900,6 +945,24 @@ public class ScheduleQueryService {
                                 }
                                 const query = params.toString();
                                 window.history.replaceState(null, "", query ? `${window.location.pathname}?${query}` : window.location.pathname);
+                                updateCalendarScrollShadows();
+                              };
+                              const updateCalendarScrollShadows = () => {
+                                if (!calendarDesktop || !calendarScroller || currentView !== "calendar") {
+                                  calendarDesktop?.classList.remove("has-left-shadow", "has-right-shadow");
+                                  return;
+                                }
+
+                                const maxScrollLeft = Math.max(
+                                  calendarScroller.scrollWidth - calendarScroller.clientWidth,
+                                  0
+                                );
+                                const hasLeftShadow = maxScrollLeft > 1 && calendarScroller.scrollLeft > 1;
+                                const hasRightShadow =
+                                  maxScrollLeft > 1 && calendarScroller.scrollLeft < maxScrollLeft - 1;
+
+                                calendarDesktop.classList.toggle("has-left-shadow", hasLeftShadow);
+                                calendarDesktop.classList.toggle("has-right-shadow", hasRightShadow);
                               };
                               const assignColumns = (blocks) => {
                                 const prepared = blocks.map((block) => ({
@@ -1182,6 +1245,14 @@ public class ScheduleQueryService {
                                   syncViewMode();
                                 });
                               });
+                              calendarScroller?.addEventListener("scroll", updateCalendarScrollShadows, { passive: true });
+                              if (window.ResizeObserver && calendarScroller && grid) {
+                                const resizeObserver = new ResizeObserver(() => {
+                                  updateCalendarScrollShadows();
+                                });
+                                resizeObserver.observe(calendarScroller);
+                                resizeObserver.observe(grid);
+                              }
                               window.addEventListener("resize", () => {
                                 if (manualViewSelection) {
                                   return;
@@ -1191,7 +1262,9 @@ public class ScheduleQueryService {
                                   currentView = nextView;
                                   syncViewMode();
                                 }
+                                updateCalendarScrollShadows();
                               });
+                              updateCalendarScrollShadows();
                               renderStatusSummary();
                               updateNowIndicators();
                               refreshSummary();

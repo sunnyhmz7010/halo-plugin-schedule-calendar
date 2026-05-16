@@ -68,10 +68,16 @@ const editingExternalCalendarId = ref<string | null>(null)
 const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
 const permissionLevel = ref<'unknown' | 'view' | 'manage'>('unknown')
 const nowRef = ref(new Date())
+const calendarScrollRef = ref<HTMLElement | null>(null)
+const calendarGridRef = ref<HTMLElement | null>(null)
 const pluginTitle = ref('日程日历')
 const externalCalendars = ref<ExternalCalendarFormItem[]>([])
 const publicPageUrl = ref('/schedule-calendar')
 const publicIcalUrl = ref('/schedule-calendar.ics')
+const calendarScrollState = reactive({
+  hasLeftShadow: false,
+  hasRightShadow: false,
+})
 
 const form = reactive({
   title: '',
@@ -609,6 +615,35 @@ const formatCountdownDuration = (target: Date, reference = nowRef.value) => {
   }
 
   return parts.join('')
+}
+
+const updateCalendarScrollShadows = () => {
+  const scroller = calendarScrollRef.value
+
+  if (!scroller || weekViewMode.value !== 'calendar') {
+    calendarScrollState.hasLeftShadow = false
+    calendarScrollState.hasRightShadow = false
+    return
+  }
+
+  const maxScrollLeft = Math.max(scroller.scrollWidth - scroller.clientWidth, 0)
+  if (maxScrollLeft <= 1) {
+    calendarScrollState.hasLeftShadow = false
+    calendarScrollState.hasRightShadow = false
+    return
+  }
+
+  calendarScrollState.hasLeftShadow = scroller.scrollLeft > 1
+  calendarScrollState.hasRightShadow = scroller.scrollLeft < maxScrollLeft - 1
+}
+
+const handleCalendarScroll = () => {
+  updateCalendarScrollShadows()
+}
+
+const syncCalendarScrollShadows = async () => {
+  await nextTick()
+  updateCalendarScrollShadows()
 }
 
 const currentStatus = computed<{ state: 'warning' | 'success'; text: string }>(() => ({
@@ -1290,6 +1325,35 @@ const updateNow = () => {
 }
 
 let nowTimer: number | undefined
+let calendarResizeObserver: ResizeObserver | undefined
+
+const disconnectCalendarResizeObserver = () => {
+  calendarResizeObserver?.disconnect()
+  calendarResizeObserver = undefined
+}
+
+const observeCalendarScrollLayout = () => {
+  disconnectCalendarResizeObserver()
+
+  if (typeof window === 'undefined' || !window.ResizeObserver) {
+    return
+  }
+
+  const scroller = calendarScrollRef.value
+  const grid = calendarGridRef.value
+  if (!scroller) {
+    return
+  }
+
+  calendarResizeObserver = new window.ResizeObserver(() => {
+    updateCalendarScrollShadows()
+  })
+
+  calendarResizeObserver.observe(scroller)
+  if (grid) {
+    calendarResizeObserver.observe(grid)
+  }
+}
 
 onMounted(() => {
   updateNow()
@@ -1301,13 +1365,24 @@ onMounted(() => {
   void loadPluginConfig()
   void loadPermissionLevel()
   void fetchEntries()
+  void syncCalendarScrollShadows()
 })
 
 onBeforeUnmount(() => {
   if (nowTimer) {
     window.clearInterval(nowTimer)
   }
+  disconnectCalendarResizeObserver()
   window.removeEventListener('resize', updateViewportWidth)
+})
+
+watch([calendarScrollRef, calendarGridRef], () => {
+  observeCalendarScrollLayout()
+  void syncCalendarScrollShadows()
+})
+
+watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
+  void syncCalendarScrollShadows()
 })
 </script>
 
@@ -1460,9 +1535,20 @@ onBeforeUnmount(() => {
             </section>
           </div>
 
-          <div v-else class="calendar-desktop">
-            <div class="calendar-grid-scroll">
-              <div class="calendar-grid">
+          <div
+            v-else
+            class="calendar-desktop"
+            :class="{
+              'calendar-desktop--left-shadow': calendarScrollState.hasLeftShadow,
+              'calendar-desktop--right-shadow': calendarScrollState.hasRightShadow,
+            }"
+          >
+            <div
+              ref="calendarScrollRef"
+              class="calendar-grid-scroll"
+              @scroll.passive="handleCalendarScroll"
+            >
+              <div ref="calendarGridRef" class="calendar-grid">
                 <div class="time-column">
                   <div class="time-column__header" :style="{ height: `${headerHeight}px` }">时间</div>
                   <div class="time-column__body" :style="{ height: `${dayColumnHeight}px` }">
@@ -1950,6 +2036,49 @@ onBeforeUnmount(() => {
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y pinch-zoom;
   padding-bottom: 4px;
+}
+
+.calendar-desktop {
+  position: relative;
+}
+
+.calendar-desktop::before,
+.calendar-desktop::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 4px;
+  width: 28px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 3;
+}
+
+.calendar-desktop::before {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--halo-bg-color, #fff) 92%, transparent),
+    transparent
+  );
+}
+
+.calendar-desktop::after {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    color-mix(in srgb, var(--halo-bg-color, #fff) 92%, transparent),
+    transparent
+  );
+}
+
+.calendar-desktop--left-shadow::before {
+  opacity: 1;
+}
+
+.calendar-desktop--right-shadow::after {
+  opacity: 1;
 }
 
 .calendar-mobile {
@@ -2562,6 +2691,11 @@ onBeforeUnmount(() => {
 
   .calendar-grid-scroll {
     overflow-x: visible;
+  }
+
+  .calendar-desktop::before,
+  .calendar-desktop::after {
+    display: none;
   }
 
   .day-columns {

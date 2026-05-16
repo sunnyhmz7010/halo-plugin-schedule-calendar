@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.List;
 import java.util.Map;
@@ -30,10 +31,11 @@ class ScheduleBackupServiceTest {
     @Mock
     ReactiveSettingFetcher settingFetcher;
 
+    private final JsonMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
+
     @Test
     void createsConfigMapWhenImportingSettingsWithoutExistingConfigMap() {
         var service = new ScheduleBackupService(client, settingFetcher);
-        var objectMapper = JsonMapper.builder().findAndAddModules().build();
         var payload = new ScheduleBackupService.ScheduleBackupPayload(
             "schedule.calendar.sunny.dev/v1alpha1",
             "ScheduleBackup",
@@ -67,4 +69,49 @@ class ScheduleBackupServiceTest {
         assertThat(configMap.getData()).containsEntry("public_page", "{\"title\":\"测试标题\"}");
     }
 
+    @Test
+    void exportBackupSanitizesLegacyAndNullPluginSettings() {
+        var service = new ScheduleBackupService(client, settingFetcher);
+        var publicPage = objectMapper.createObjectNode();
+        publicPage.putNull("title");
+        publicPage.put("publicIcalSubscriptionUrl", "https://example.com/schedule-calendar.ics");
+        publicPage.putNull("slots");
+        publicPage.put("unusedField", "ignored");
+
+        var externalCalendars = objectMapper.createArrayNode();
+        externalCalendars.add(objectMapper.createObjectNode()
+            .put("name", "美国节假日")
+            .put("icsUrl", "https://calendar.example/holiday.ics")
+            .put("enabled", true)
+            .put("color", "#4285f4")
+            .putNull("slots")
+            .putNull("title"));
+        externalCalendars.add(objectMapper.createObjectNode()
+            .put("name", "空链接")
+            .put("icsUrl", "   "));
+        publicPage.set("externalCalendars", externalCalendars);
+
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.empty());
+        when(settingFetcher.getValues())
+            .thenReturn(Mono.just(Map.of(
+                "public_page", publicPage,
+                "unused_group", objectMapper.createObjectNode().put("value", "legacy")
+            )));
+
+        var result = service.exportBackup().block();
+
+        assertThat(result).isNotNull();
+        assertThat(result.entries()).isEmpty();
+
+        Map<String, JsonNode> settings = result.settings();
+        assertThat(settings).containsOnlyKeys("public_page");
+        assertThat(settings.get("public_page")).isEqualTo(objectMapper.createObjectNode()
+            .set("externalCalendars", objectMapper.createArrayNode()
+                .add(objectMapper.createObjectNode()
+                    .put("name", "美国节假日")
+                    .put("icsUrl", "https://calendar.example/holiday.ics")
+                    .put("enabled", true)
+                    .put("color", "#4285f4"))));
+    }
 }
