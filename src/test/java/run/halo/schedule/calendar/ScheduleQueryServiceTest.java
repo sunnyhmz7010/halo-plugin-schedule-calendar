@@ -114,6 +114,27 @@ class ScheduleQueryServiceTest {
     }
 
     @Test
+    void excludesAnnotationDisabledLocalEntriesFromPublicWeekView() {
+        var entry = scheduleEntry(
+            "annotation-disabled-class",
+            "注解停用课程",
+            OffsetDateTime.parse("2026-03-30T09:00:00+08:00"),
+            OffsetDateTime.parse("2026-03-30T10:00:00+08:00"),
+            recurrence(ScheduleEntry.RecurrenceFrequency.WEEKLY, 1, null)
+        );
+        entry.getMetadata().setAnnotations(Map.of(ScheduleEntry.ENABLED_ANNOTATION, "false"));
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.just(entry));
+
+        var view = service.getWeekView(LocalDate.of(2026, 3, 30)).block();
+
+        assertThat(view).isNotNull();
+        assertThat(view.days().stream()
+            .flatMap(day -> day.occupied().stream())
+            .map(ScheduleQueryService.TimeBlock::title)).doesNotContain("注解停用课程");
+    }
+
+    @Test
     void stopsRecurringEntriesAfterUntilDate() {
         var entry = scheduleEntry(
             "daily-standup",

@@ -79,9 +79,14 @@ public class ScheduleBackupService {
 
     private ScheduleBackupEntry toBackupEntry(ScheduleEntry entry) {
         var metadata = entry.getMetadata();
+        var spec = copySpec(entry.getSpec());
+        if (spec != null && metadata != null && metadata.getAnnotations() != null
+            && metadata.getAnnotations().containsKey(ScheduleEntry.ENABLED_ANNOTATION)) {
+            spec.setEnabled(Boolean.parseBoolean(metadata.getAnnotations().get(ScheduleEntry.ENABLED_ANNOTATION)));
+        }
         return new ScheduleBackupEntry(
             metadata == null ? null : metadata.getName(),
-            copySpec(entry.getSpec())
+            spec
         );
     }
 
@@ -133,6 +138,7 @@ public class ScheduleBackupService {
                 var existing = existingByName.get(importedEntry.name());
                 if (existing != null) {
                     existing.setSpec(copySpec(importedEntry.spec()));
+                    syncEnabledAnnotation(existing, importedEntry.spec());
                     return client.update(existing).thenReturn(false);
                 }
 
@@ -273,6 +279,7 @@ public class ScheduleBackupService {
     private ScheduleEntry toScheduleEntry(ScheduleBackupEntry backupEntry) {
         var metadata = new Metadata();
         metadata.setName(backupEntry.name());
+        metadata.setAnnotations(enabledAnnotation(backupEntry.spec()));
 
         var entry = new ScheduleEntry();
         entry.setApiVersion(BACKUP_API_VERSION);
@@ -280,6 +287,23 @@ public class ScheduleBackupService {
         entry.setMetadata(metadata);
         entry.setSpec(copySpec(backupEntry.spec()));
         return entry;
+    }
+
+    private void syncEnabledAnnotation(ScheduleEntry entry, ScheduleEntry.Spec spec) {
+        if (entry.getMetadata() == null) {
+            entry.setMetadata(new Metadata());
+        }
+        var annotations = new LinkedHashMap<String, String>();
+        if (entry.getMetadata().getAnnotations() != null) {
+            annotations.putAll(entry.getMetadata().getAnnotations());
+        }
+        annotations.putAll(enabledAnnotation(spec));
+        entry.getMetadata().setAnnotations(annotations);
+    }
+
+    private Map<String, String> enabledAnnotation(ScheduleEntry.Spec spec) {
+        var enabled = spec == null || !Boolean.FALSE.equals(spec.getEnabled());
+        return Map.of(ScheduleEntry.ENABLED_ANNOTATION, String.valueOf(enabled));
     }
 
     private ScheduleEntry.Spec copySpec(ScheduleEntry.Spec source) {

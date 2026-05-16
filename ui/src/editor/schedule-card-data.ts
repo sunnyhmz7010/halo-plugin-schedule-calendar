@@ -8,7 +8,31 @@ import {
 
 export const ENTRY_API = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
 export const CARD_API = '/apis/api.schedule.calendar.sunny.dev/v1alpha1/entrycards'
+export const ENTRY_ENABLED_ANNOTATION = 'schedule.calendar.sunny.dev/enabled'
 const ENTRY_PAGE_SIZE = 200
+
+export const resolveEntryEnabled = (entry: ScheduleEntry) => {
+  const annotationValue = entry.metadata.annotations?.[ENTRY_ENABLED_ANNOTATION]
+  if (annotationValue === 'false') {
+    return false
+  }
+  if (annotationValue === 'true') {
+    return true
+  }
+  return entry.spec.enabled !== false
+}
+
+export const normalizeScheduleEntry = (entry: ScheduleEntry): ScheduleEntry => ({
+  ...entry,
+  metadata: {
+    ...entry.metadata,
+    annotations: entry.metadata.annotations ?? {},
+  },
+  spec: {
+    ...entry.spec,
+    enabled: resolveEntryEnabled(entry),
+  },
+})
 
 const formatEntryDateTime = (value?: string) => {
   if (!value) {
@@ -36,7 +60,7 @@ export const toScheduleCard = (entry: ScheduleEntry): ScheduleCard => ({
 })
 
 export const toScheduleCards = (result?: ExtensionListResult<ScheduleEntry>) =>
-  (result?.items ?? []).map((entry) => toScheduleCard(entry))
+  (result?.items ?? []).map((entry) => toScheduleCard(normalizeScheduleEntry(entry)))
 
 export const normalizeScheduleCard = (card: ScheduleCard): ScheduleCard => ({
   name: card.name || '',
@@ -79,7 +103,7 @@ export const fetchAllScheduleEntries = async () => {
       }
 
       seenNames.add(name)
-      entries.push(entry)
+      entries.push(normalizeScheduleEntry(entry))
       addedCount += 1
     })
 

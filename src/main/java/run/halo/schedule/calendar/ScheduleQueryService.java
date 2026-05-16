@@ -2012,9 +2012,14 @@ public class ScheduleQueryService {
     }
 
     private boolean isEntryEnabled(ScheduleEntry entry) {
-        return entry != null
-            && entry.getSpec() != null
-            && !Boolean.FALSE.equals(entry.getSpec().getEnabled());
+        if (entry == null || entry.getSpec() == null) {
+            return false;
+        }
+        var annotations = entry.getMetadata() == null ? null : entry.getMetadata().getAnnotations();
+        if (annotations != null && annotations.containsKey(ScheduleEntry.ENABLED_ANNOTATION)) {
+            return Boolean.parseBoolean(annotations.get(ScheduleEntry.ENABLED_ANNOTATION));
+        }
+        return !Boolean.FALSE.equals(entry.getSpec().getEnabled());
     }
 
     private int normalizeInterval(Integer interval) {

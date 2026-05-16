@@ -15,6 +15,7 @@ import run.halo.app.extension.GVK;
 @GVK(kind = "ScheduleEntry", group = "schedule.calendar.sunny.dev",
     version = "v1alpha1", singular = "scheduleentry", plural = "scheduleentries")
 public class ScheduleEntry extends AbstractExtension {
+    public static final String ENABLED_ANNOTATION = "schedule.calendar.sunny.dev/enabled";
 
     @Schema(requiredMode = REQUIRED)
     private Spec spec;

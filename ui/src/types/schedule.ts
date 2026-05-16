@@ -22,6 +22,7 @@ export interface ScheduleEntry {
   kind?: string
   metadata: {
     name: string
+    annotations?: Record<string, string>
     creationTimestamp?: string
     version?: number
   }

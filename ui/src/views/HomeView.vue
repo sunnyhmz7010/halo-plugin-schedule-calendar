@@ -41,7 +41,7 @@ import {
   isRecurringEntry,
   spansMultipleLocalDates,
 } from '../utils/recurrence'
-import { fetchAllScheduleEntries } from '../editor/schedule-card-data'
+import { ENTRY_ENABLED_ANNOTATION, fetchAllScheduleEntries } from '../editor/schedule-card-data'
 
 const apiBase = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
 const pluginConfigApi = '/apis/api.console.halo.run/v1alpha1/plugins/schedule-calendar/json-config'
@@ -391,6 +391,7 @@ const hasExternalCalendarChanged = (
   JSON.stringify(normalizeExternalCalendarForCompare(nextItem))
 
 const normalizeSourceLabel = (value?: string) => value?.trim().toLocaleLowerCase() || ''
+const toEnabledBoolean = (value: unknown) => value !== false && value !== 'false'
 
 const enabledExternalCalendarLabelSet = () =>
   new Set(
@@ -883,8 +884,8 @@ const showReadonlyNotice = computed(() => permissionLevel.value === 'view')
 
 const buildEntryMetaItems = (entry: ScheduleEntry): EntryMetaItem[] => {
   const items: EntryMetaItem[] = [
+    { text: entry.spec.enabled === false ? '状态：已停用' : '状态：已启用', block: true },
     { text: formatEntryScheduleSummary(entry) },
-    { text: entry.spec.enabled === false ? '状态：已停用' : '状态：已启用' },
   ]
   const occurrenceSummary = entryOccurrenceSummaryMap.value.get(entry.metadata.name)
 
@@ -1122,7 +1123,7 @@ const submitExternalCalendar = async () => {
       id: editingExternalCalendarId.value ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name,
       icsUrl,
-      enabled: externalCalendarForm.enabled,
+      enabled: toEnabledBoolean(externalCalendarForm.enabled),
       color: externalCalendarForm.color.trim() || '#4285f4',
     }
 
@@ -1228,7 +1229,7 @@ const buildEntrySpec = (startDate: Date, endDate: Date): ScheduleEntrySpec => ({
   startTime: startDate.toISOString(),
   endTime: endDate.toISOString(),
   color: form.color,
-  enabled: form.enabled,
+  enabled: toEnabledBoolean(form.enabled),
   recurrence:
     form.recurrenceFrequency === 'NONE'
       ? undefined
@@ -1253,8 +1254,17 @@ const normalizeEntrySpec = (spec: ScheduleEntrySpec): ScheduleEntrySpec => ({
           frequency: spec.recurrence.frequency,
           interval: spec.recurrence.interval ?? 1,
           until: spec.recurrence.until || undefined,
-        }
-      : undefined,
+      }
+    : undefined,
+})
+
+const buildEntryMetadata = (entryName: string, enabled: boolean, current?: ScheduleEntry) => ({
+  ...(current?.metadata ?? {}),
+  name: entryName,
+  annotations: {
+    ...(current?.metadata.annotations ?? {}),
+    [ENTRY_ENABLED_ANNOTATION]: String(enabled),
+  },
 })
 
 const hasEntryChanged = (currentSpec: ScheduleEntrySpec, nextSpec: ScheduleEntrySpec) =>
@@ -1315,9 +1325,7 @@ const createEntry = async () => {
     await axiosInstance.post(apiBase, {
       apiVersion: 'schedule.calendar.sunny.dev/v1alpha1',
       kind: 'ScheduleEntry',
-      metadata: {
-        name: `schedule-entry-${Date.now()}`,
-      },
+      metadata: buildEntryMetadata(`schedule-entry-${Date.now()}`, toEnabledBoolean(form.enabled)),
       spec: buildEntrySpec(startDate, endDate),
     })
 
@@ -1364,10 +1372,7 @@ const updateEntry = async () => {
     await axiosInstance.put(`${apiBase}/${encodeURIComponent(currentEntry.metadata.name)}`, {
       apiVersion: currentEntry.apiVersion ?? 'schedule.calendar.sunny.dev/v1alpha1',
       kind: currentEntry.kind ?? 'ScheduleEntry',
-      metadata: {
-        ...currentEntry.metadata,
-        name: currentEntry.metadata.name,
-      },
+      metadata: buildEntryMetadata(currentEntry.metadata.name, toEnabledBoolean(form.enabled), currentEntry),
       spec: nextSpec,
     })
 
@@ -2050,7 +2055,7 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
         </label>
 
         <div class="field-row">
-          <label class="field">
+          <label class="field field--compact">
             <span>默认颜色</span>
             <button type="button" class="color-picker" @click="openExternalCalendarColorPicker">
               <span class="color-picker__preview" :style="{ background: externalCalendarForm.color }"></span>
