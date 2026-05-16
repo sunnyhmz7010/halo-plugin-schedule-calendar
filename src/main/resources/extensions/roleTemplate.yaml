@@ -10,7 +10,7 @@ metadata:
     rbac.authorization.halo.run/display-name: "日程日历匿名访问"
 rules:
   - apiGroups: ["api.schedule.calendar.sunny.dev"]
-    resources: ["weeks", "days", "occurrences", "upcoming", "entrycards"]
+    resources: ["public-meta", "weeks", "summary", "days", "occurrences", "upcoming", "entrycards"]
     verbs: ["get", "list"]
 
 ---

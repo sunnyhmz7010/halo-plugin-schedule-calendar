@@ -2921,9 +2921,6 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .card-actions {
-    padding-right: 0;
-  }
 }
 
 @media (max-width: 768px) {
@@ -3008,10 +3005,6 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
   }
 
   .entry-card-header__actions {
-    justify-content: center;
-  }
-
-  .external-calendar-actions {
     justify-content: center;
   }
 

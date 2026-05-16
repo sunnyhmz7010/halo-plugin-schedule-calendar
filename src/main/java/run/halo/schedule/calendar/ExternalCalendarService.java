@@ -59,13 +59,13 @@ public class ExternalCalendarService {
 
         var start = rangeStart.atStartOfDay();
         var end = rangeEnd.plusDays(1).atStartOfDay();
-        log.info("Loading {} external calendars for range {} to {}", sources.size(), rangeStart, rangeEnd);
+        log.debug("Loading {} external calendars for range {} to {}", sources.size(), rangeStart, rangeEnd);
         return Flux.fromIterable(sources)
             .flatMap(source -> loadEvents(source)
                 .map(events -> {
-                    log.info("Fetched {} raw external events from {}", events.size(), source.effectiveName());
+                    log.debug("Fetched {} raw external events from {}", events.size(), source.effectiveName());
                     var expanded = expandEvents(events, source, start, end, zoneId);
-                    log.info("Expanded {} occurrences from {} for range {} to {}",
+                    log.debug("Expanded {} occurrences from {} for range {} to {}",
                         expanded.size(), source.effectiveName(), rangeStart, rangeEnd);
                     return expanded;
                 })

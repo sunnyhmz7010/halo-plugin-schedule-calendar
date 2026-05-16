@@ -48,7 +48,10 @@ public class ScheduleBackupService {
     Mono<ScheduleBackupPayload> exportBackup() {
         return Mono.zip(
                 listEntries(),
-                settingFetcher.getValues().switchIfEmpty(Mono.just(Map.of()))
+                settingFetcher.getSettingValue(ScheduleCalendarSetting.GROUP)
+                    .map(this::toJackson2Node)
+                    .map(setting -> Map.of(ScheduleCalendarSetting.GROUP, setting))
+                    .switchIfEmpty(Mono.just(Map.of()))
             )
             .map(tuple -> new ScheduleBackupPayload(
                 BACKUP_API_VERSION,
@@ -182,8 +185,16 @@ public class ScheduleBackupService {
             } catch (JsonProcessingException ignored) {
                 // Skip invalid setting values instead of failing the whole write.
             }
-        });
+            });
         return encoded;
+    }
+
+    private JsonNode toJackson2Node(tools.jackson.databind.JsonNode source) {
+        try {
+            return objectMapper.readTree(source.toString());
+        } catch (JsonProcessingException ex) {
+            return JsonNodeFactory.instance.objectNode();
+        }
     }
 
     private Map<String, JsonNode> sanitizeSettings(Map<String, JsonNode> settings) {

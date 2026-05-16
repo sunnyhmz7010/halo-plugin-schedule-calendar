@@ -30,7 +30,7 @@ Halo 默认并没有提供一套完整的日程日历能力。这个插件的目
 ## 📸 截图预览
 
 <p align="center">
-  <img src="./schedule-calendar-home.png" alt="日程日历首页预览" />
+  <img src="https://raw.githubusercontent.com/sunnyhmz7010/halo-plugin-schedule-calendar/refs/heads/main/schedule-calendar-home.png" alt="日程日历首页预览" />
 </p>
 
 ## 🚀 核心能力

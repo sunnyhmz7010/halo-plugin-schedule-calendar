@@ -5,7 +5,6 @@ import java.util.List;
 public record ScheduleCalendarSetting(String title, List<ExternalCalendarSource> externalCalendars) {
     public static final String GROUP = "public_page";
     public static final String DEFAULT_TITLE = "日程日历";
-    public static final String DEFAULT_PUBLIC_PATH = "/schedule-calendar";
 
     public String effectiveTitle() {
         return title == null || title.isBlank() ? DEFAULT_TITLE : title;

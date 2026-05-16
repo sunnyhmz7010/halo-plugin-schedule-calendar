@@ -65,37 +65,6 @@ public class ScheduleApiController {
         return scheduleQueryService.getEntryCard(name);
     }
 
-    @GetMapping("/external-debug")
-    public Mono<ExternalDebugResponse> externalDebug(
-        @RequestParam(name = "start", required = false) LocalDate start,
-        @RequestParam(name = "end", required = false) LocalDate end
-    ) {
-        var zoneId = java.time.ZoneId.systemDefault();
-        var rangeStart = start == null ? LocalDate.now(zoneId) : start;
-        var rangeEnd = end == null ? rangeStart : end;
-        return settingService.getSetting()
-            .flatMap(setting -> externalCalendarService.listOccurrences(setting, rangeStart, rangeEnd, zoneId)
-                .map(occurrences -> new ExternalDebugResponse(
-                    setting.enabledExternalCalendars().stream()
-                        .map(source -> new ExternalSourceDebug(
-                            source.effectiveName(),
-                            source.icsUrl(),
-                            source.isEnabled(),
-                            source.color()
-                        ))
-                        .toList(),
-                    occurrences.size(),
-                    occurrences.stream()
-                        .map(occurrence -> new ExternalOccurrenceDebug(
-                            occurrence.title(),
-                            occurrence.start().toString(),
-                            occurrence.end().toString(),
-                            occurrence.sourceLabel()
-                        ))
-                        .toList()
-                )));
-    }
-
     @PostMapping("/external-calendar-validations")
     @PreAuthorize("hasAuthority('plugin:schedule-calendar:manage')")
     public Mono<ExternalCalendarService.ExternalCalendarValidationResult> validateExternalCalendar(
@@ -112,18 +81,5 @@ public class ScheduleApiController {
     }
 
     public record ExternalCalendarValidationRequest(String name, String icsUrl, String color) {
-    }
-
-    public record ExternalDebugResponse(
-        List<ExternalSourceDebug> sources,
-        int occurrenceCount,
-        List<ExternalOccurrenceDebug> occurrences
-    ) {
-    }
-
-    public record ExternalSourceDebug(String name, String icsUrl, boolean enabled, String color) {
-    }
-
-    public record ExternalOccurrenceDebug(String title, String start, String end, String sourceLabel) {
     }
 }

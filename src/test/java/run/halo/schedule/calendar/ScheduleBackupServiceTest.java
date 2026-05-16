@@ -32,6 +32,8 @@ class ScheduleBackupServiceTest {
     ReactiveSettingFetcher settingFetcher;
 
     private final JsonMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
+    private final tools.jackson.databind.json.JsonMapper jackson3ObjectMapper =
+        tools.jackson.databind.json.JsonMapper.builder().findAndAddModules().build();
 
     @Test
     void createsConfigMapWhenImportingSettingsWithoutExistingConfigMap() {
@@ -93,11 +95,8 @@ class ScheduleBackupServiceTest {
 
         when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
             .thenReturn(Flux.empty());
-        when(settingFetcher.getValues())
-            .thenReturn(Mono.just(Map.of(
-                "public_page", publicPage,
-                "unused_group", objectMapper.createObjectNode().put("value", "legacy")
-            )));
+        when(settingFetcher.getSettingValue(ScheduleCalendarSetting.GROUP))
+            .thenReturn(Mono.just(jackson3ObjectMapper.readTree(publicPage.toString())));
 
         var result = service.exportBackup().block();
 
