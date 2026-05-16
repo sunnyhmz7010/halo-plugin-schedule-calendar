@@ -429,7 +429,7 @@ public class ScheduleQueryService {
                                 position: relative;
                                 height: 1344px;
                                 background: #fff;
-                                overflow: hidden;
+                                overflow: visible;
                               }
                               .day-column__lines {
                                 position: absolute;
@@ -476,7 +476,7 @@ public class ScheduleQueryService {
                                 border-radius: 12px;
                                 padding: 6px 8px;
                                 color: #fff;
-                                box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
+                                box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
                                 overflow: hidden;
                                 text-align: center;
                               }

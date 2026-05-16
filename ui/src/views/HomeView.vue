@@ -63,6 +63,7 @@ const pageError = ref('')
 const dialogError = ref('')
 const externalCalendarDialogError = ref('')
 const colorInputRef = ref<HTMLInputElement | null>(null)
+const externalColorInputRef = ref<HTMLInputElement | null>(null)
 const editingEntryName = ref<string | null>(null)
 const editingExternalCalendarId = ref<string | null>(null)
 const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
@@ -772,7 +773,7 @@ const entryOccurrenceSummaryMap = computed(() => {
 })
 
 const isEditing = computed(() => editingEntryName.value !== null)
-const dialogTitle = computed(() => (isEditing.value ? '编辑事项' : '新增事项'))
+const dialogTitle = computed(() => (isEditing.value ? '编辑本地事项' : '新增事项'))
 const dialogSubmitLabel = computed(() => (isEditing.value ? '更新事项' : '保存事项'))
 const isExternalCalendarEditing = computed(() => editingExternalCalendarId.value !== null)
 const externalCalendarDialogTitle = computed(() =>
@@ -898,6 +899,10 @@ const handleExternalCalendarDialogVisibleUpdate = (visible: boolean) => {
 
 const openColorPicker = () => {
   colorInputRef.value?.click()
+}
+
+const openExternalCalendarColorPicker = () => {
+  externalColorInputRef.value?.click()
 }
 
 const updateViewportWidth = () => {
@@ -1725,7 +1730,7 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
                 <template #icon>
                   <IconAddCircle />
                 </template>
-                新增本地事项
+                新增事项
               </VButton>
             </div>
           </div>
@@ -1902,19 +1907,33 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
           />
         </label>
 
-        <div class="field-row field-row--external-calendar">
-          <label class="field field--compact field--external-color">
+        <div class="field-row">
+          <label class="field">
             <span>默认颜色</span>
-            <input v-model="externalCalendarForm.color" type="color" class="external-calendar-color" />
+            <button type="button" class="color-picker" @click="openExternalCalendarColorPicker">
+              <span class="color-picker__preview" :style="{ background: externalCalendarForm.color }"></span>
+              <span class="color-picker__value">{{ externalCalendarForm.color }}</span>
+            </button>
+            <input
+              ref="externalColorInputRef"
+              v-model="externalCalendarForm.color"
+              type="color"
+              class="field__color"
+            />
           </label>
 
-          <label class="field field--checkbox-card">
+          <label class="field">
             <span>状态</span>
-            <span class="external-calendar-toggle">
-              <input v-model="externalCalendarForm.enabled" type="checkbox" />
-              <span>启用该订阅</span>
-            </span>
+            <select v-model="externalCalendarForm.enabled">
+              <option :value="true">启用</option>
+              <option :value="false">停用</option>
+            </select>
           </label>
+        </div>
+
+        <div class="field">
+          <span>说明</span>
+          <input type="text" value="外部订阅仅用于周历与前台展示，不包含在公开 iCal 订阅中" disabled />
         </div>
       </div>
       <template #footer>
@@ -2249,7 +2268,7 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
   position: relative;
   z-index: 0;
   isolation: isolate;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .day-column__lines {
@@ -2300,7 +2319,7 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
   border-radius: 10px;
   padding: 6px 8px;
   color: #fff;
-  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
   overflow: hidden;
   text-align: center;
 }
@@ -2426,48 +2445,6 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
 .entry-card-header__actions {
   display: flex;
   justify-content: flex-end;
-}
-
-.external-calendar-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 40px;
-  padding: 0 12px;
-  border: 1px solid var(--halo-border-color, #d1d5db);
-  border-radius: 8px;
-  background: var(--halo-bg-color, #fff);
-  color: var(--halo-text-color-secondary, #6b7280);
-  font-size: 13px;
-  box-sizing: border-box;
-}
-
-.external-calendar-toggle input {
-  flex: none;
-}
-
-.external-calendar-color {
-  width: 56px !important;
-  min-width: 56px;
-  padding: 4px !important;
-  cursor: pointer;
-}
-
-.field--checkbox {
-  width: fit-content;
-}
-
-.field-row--external-calendar {
-  align-items: end;
-}
-
-.field--external-color {
-  width: 140px;
-}
-
-.field--checkbox-card {
-  min-width: 0;
 }
 
 .entry-search {
