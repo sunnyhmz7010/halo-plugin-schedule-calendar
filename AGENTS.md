@@ -90,7 +90,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Schedule model: `src/main/java/run/halo/schedule/calendar/ScheduleEntry.java`
 - Week/query logic: `src/main/java/run/halo/schedule/calendar/ScheduleQueryService.java`
 - Editor card extension: `ui/src/editor/schedule-card-extension.ts`
-- README screenshot asset: `docs/images/schedule-calendar-home.png`
+- README screenshot asset: `schedule-calendar-home.png`
 
 ### Schedule Entry Rules
 
