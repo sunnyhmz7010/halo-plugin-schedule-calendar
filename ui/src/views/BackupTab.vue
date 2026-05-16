@@ -39,9 +39,11 @@ const publicIcalPath = '/schedule-calendar.ics'
 
 const exporting = ref(false)
 const importing = ref(false)
+const saving = ref(false)
 const importSummary = ref('')
 const importInputRef = ref<HTMLInputElement | null>(null)
 const permissionLevel = ref<'unknown' | 'view' | 'manage'>('unknown')
+const pluginTitle = ref('日程日历')
 
 const canManageEntries = computed(() => permissionLevel.value === 'manage')
 const showReadonlyNotice = computed(() => permissionLevel.value === 'view')
@@ -117,6 +119,16 @@ const toScheduleEntry = (name: string, spec: ScheduleEntrySpec): ScheduleEntry =
 
 const restorePluginSettings = async (settings?: Record<string, unknown>) => {
   await axiosInstance.put(pluginConfigApi, settings ?? {})
+}
+
+const loadPluginSettings = async () => {
+  try {
+    const { data } = await axiosInstance.get<{ title?: string }>(pluginConfigApi)
+    pluginTitle.value = data.title?.trim() || '日程日历'
+  } catch (error) {
+    console.error(error)
+    Toast.error(getErrorMessage(error, '加载插件设置失败'))
+  }
 }
 
 const restoreEntries = async (
@@ -257,6 +269,33 @@ const copyPublicIcalUrl = async () => {
   }
 }
 
+const saveBasicSettings = async () => {
+  if (!canManageEntries.value) {
+    Toast.error('当前账号没有插件设置管理权限')
+    return
+  }
+
+  const normalizedTitle = pluginTitle.value.trim()
+  if (!normalizedTitle) {
+    Toast.error('页面标题不能为空')
+    return
+  }
+
+  saving.value = true
+  try {
+    await axiosInstance.put(pluginConfigApi, {
+      title: normalizedTitle,
+    })
+    pluginTitle.value = normalizedTitle
+    Toast.success('基本设置已保存')
+  } catch (error) {
+    console.error(error)
+    Toast.error(getErrorMessage(error, '保存基本设置失败'))
+  } finally {
+    saving.value = false
+  }
+}
+
 const loadPermissionLevel = async () => {
   permissionLevel.value = 'unknown'
 
@@ -281,6 +320,7 @@ const loadPermissionLevel = async () => {
 
 onMounted(() => {
   void loadPermissionLevel()
+  void loadPluginSettings()
 })
 </script>
 
@@ -296,6 +336,29 @@ onMounted(() => {
 
     <VCard>
       <VEntityContainer>
+        <VEntity>
+          <template #start>
+            <div class="backup-entity">
+              <div class="backup-entity__title">页面标题</div>
+              <div class="backup-entity__description">
+                用于前台 `/schedule-calendar` 页面标题和页头文案。
+              </div>
+              <input
+                v-model="pluginTitle"
+                class="backup-input-text"
+                type="text"
+                maxlength="120"
+                placeholder="请输入页面标题"
+              />
+            </div>
+          </template>
+          <template #end>
+            <VButton type="primary" :loading="saving" :disabled="!canManageEntries" @click="saveBasicSettings">
+              保存标题
+            </VButton>
+          </template>
+        </VEntity>
+
         <VEntity>
           <template #start>
             <div class="backup-entity">
@@ -403,6 +466,24 @@ onMounted(() => {
 
 .backup-input {
   display: none;
+}
+
+.backup-input-text {
+  width: min(420px, 100%);
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--halo-border-color, #d1d5db);
+  border-radius: 8px;
+  background: var(--halo-bg-color, #ffffff);
+  color: var(--halo-text-color, #111827);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.backup-input-text:focus {
+  outline: none;
+  border-color: var(--halo-color-primary, #2563eb);
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 0.12);
 }
 
 .backup-code {

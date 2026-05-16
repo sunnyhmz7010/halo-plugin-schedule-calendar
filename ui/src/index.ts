@@ -35,7 +35,7 @@ export default definePlugin({
     'plugin:self:tabs:create': () => [
       {
         id: 'schedule-calendar-backup',
-        label: '数据备份',
+        label: '基本设置',
         component: markRaw(BackupTab),
       },
     ],

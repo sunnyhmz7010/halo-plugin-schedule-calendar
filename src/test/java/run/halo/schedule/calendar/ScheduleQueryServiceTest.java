@@ -273,6 +273,32 @@ class ScheduleQueryServiceTest {
     }
 
     @Test
+    void exportsIcalWithCalendarTimezone() {
+        var entry = scheduleEntry(
+            "morning-class",
+            "晨课",
+            OffsetDateTime.parse("2026-05-18T09:00:00+08:00"),
+            OffsetDateTime.parse("2026-05-18T10:30:00+08:00"),
+            recurrence(ScheduleEntry.RecurrenceFrequency.NONE, 1, null)
+        );
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.just(entry));
+        when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
+            .thenReturn(Mono.just(new ScheduleCalendarSetting("课程订阅", null)));
+
+        var ical = service.exportPublicIcal().block();
+
+        assertThat(ical).isNotNull();
+        assertThat(ical).contains("X-WR-CALNAME:课程订阅");
+        assertThat(ical).contains("X-WR-TIMEZONE:Asia/Shanghai");
+        assertThat(ical).contains("BEGIN:VTIMEZONE");
+        assertThat(ical).contains("TZID:Asia/Shanghai");
+        assertThat(ical).contains("DTSTART;TZID=Asia/Shanghai:20260518T090000");
+        assertThat(ical).contains("DTEND;TZID=Asia/Shanghai:20260518T103000");
+        assertThat(ical).contains("DTSTAMP:");
+    }
+
+    @Test
     void includesExternalOccurrencesInSummaryAndWeekView() {
         when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
             .thenReturn(Flux.empty());

@@ -5,7 +5,7 @@ metadata:
 spec:
   forms:
     - group: public_page
-      label: 前台页面
+      label: 基本设置
       formSchema:
         - $formkit: text
           name: title

@@ -39,6 +39,8 @@ public class ScheduleQueryService {
         DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter ICAL_DATE_TIME_FORMATTER =
         DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'");
+    private static final DateTimeFormatter ICAL_LOCAL_DATE_TIME_FORMATTER =
+        DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
     private static final int CALENDAR_HEADER_HEIGHT = 64;
     private static final int HOUR_HEIGHT = 56;
     private static final Locale ZH_CN = Locale.SIMPLIFIED_CHINESE;
@@ -138,7 +140,12 @@ public class ScheduleQueryService {
     }
 
     Mono<String> exportPublicIcal() {
-        return listEntries().map(this::toIcalContent);
+        return Mono.zip(
+                listEntries(),
+                settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
+                    .defaultIfEmpty(new ScheduleCalendarSetting(null, null))
+            )
+            .map(tuple -> toIcalContent(tuple.getT1(), tuple.getT2()));
     }
 
     Mono<String> buildPublicCalendarPage(LocalDate requestedStart) {
@@ -1351,26 +1358,47 @@ public class ScheduleQueryService {
                 .collect(Collectors.toList()));
     }
 
-    private String toIcalContent(List<ScheduleEntry> entries) {
+    private String toIcalContent(List<ScheduleEntry> entries, ScheduleCalendarSetting setting) {
+        var zoneId = ZoneId.systemDefault();
         var builder = new StringBuilder()
             .append("BEGIN:VCALENDAR\r\n")
             .append("VERSION:2.0\r\n")
             .append("PRODID:-//sunnyhmz7010//Halo Schedule Calendar//CN\r\n")
             .append("CALSCALE:GREGORIAN\r\n")
             .append("METHOD:PUBLISH\r\n")
+            .append("X-WR-TIMEZONE:")
+            .append(zoneId.getId())
+            .append("\r\n")
             .append("X-WR-CALNAME:")
-            .append(escapeIcalText(ScheduleCalendarSetting.DEFAULT_TITLE))
+            .append(escapeIcalText(setting.effectiveTitle()))
             .append("\r\n");
 
+        appendVTimeZone(builder, zoneId);
+
         for (var entry : entries) {
-            appendIcalEvent(builder, entry);
+            appendIcalEvent(builder, entry, zoneId);
         }
 
         builder.append("END:VCALENDAR\r\n");
         return foldIcalLines(builder.toString());
     }
 
-    private void appendIcalEvent(StringBuilder builder, ScheduleEntry entry) {
+    private void appendVTimeZone(StringBuilder builder, ZoneId zoneId) {
+        var now = OffsetDateTime.now(zoneId);
+        var standardOffset = zoneId.getRules().getStandardOffset(now.toInstant());
+        builder.append("BEGIN:VTIMEZONE\r\n");
+        builder.append("TZID:").append(zoneId.getId()).append("\r\n");
+        builder.append("X-LIC-LOCATION:").append(zoneId.getId()).append("\r\n");
+        builder.append("BEGIN:STANDARD\r\n");
+        builder.append("TZOFFSETFROM:").append(formatIcalOffset(standardOffset)).append("\r\n");
+        builder.append("TZOFFSETTO:").append(formatIcalOffset(standardOffset)).append("\r\n");
+        builder.append("TZNAME:").append(zoneId.getId()).append("\r\n");
+        builder.append("DTSTART:19700101T000000\r\n");
+        builder.append("END:STANDARD\r\n");
+        builder.append("END:VTIMEZONE\r\n");
+    }
+
+    private void appendIcalEvent(StringBuilder builder, ScheduleEntry entry, ZoneId calendarZoneId) {
         if (entry == null || entry.getSpec() == null || entry.getMetadata() == null) {
             return;
         }
@@ -1387,11 +1415,15 @@ public class ScheduleQueryService {
         builder.append("DTSTAMP:")
             .append(toIcalDateTime(OffsetDateTime.now(ZoneOffset.UTC)))
             .append("\r\n");
-        builder.append("DTSTART:")
-            .append(toIcalDateTime(spec.getStartTime()))
+        builder.append("DTSTART;TZID=")
+            .append(calendarZoneId.getId())
+            .append(":")
+            .append(toIcalLocalDateTime(spec.getStartTime(), calendarZoneId))
             .append("\r\n");
-        builder.append("DTEND:")
-            .append(toIcalDateTime(spec.getEndTime()))
+        builder.append("DTEND;TZID=")
+            .append(calendarZoneId.getId())
+            .append(":")
+            .append(toIcalLocalDateTime(spec.getEndTime(), calendarZoneId))
             .append("\r\n");
         builder.append("SUMMARY:")
             .append(escapeIcalText(spec.getTitle()))
@@ -1433,6 +1465,18 @@ public class ScheduleQueryService {
 
     private String toIcalDateTime(OffsetDateTime value) {
         return value.withOffsetSameInstant(ZoneOffset.UTC).format(ICAL_DATE_TIME_FORMATTER);
+    }
+
+    private String toIcalLocalDateTime(OffsetDateTime value, ZoneId zoneId) {
+        return value.atZoneSameInstant(zoneId).toLocalDateTime().format(ICAL_LOCAL_DATE_TIME_FORMATTER);
+    }
+
+    private String formatIcalOffset(ZoneOffset offset) {
+        var totalSeconds = offset.getTotalSeconds();
+        var absoluteSeconds = Math.abs(totalSeconds);
+        var hours = absoluteSeconds / 3600;
+        var minutes = (absoluteSeconds % 3600) / 60;
+        return "%s%02d%02d".formatted(totalSeconds >= 0 ? "+" : "-", hours, minutes);
     }
 
     private String escapeIcalText(String value) {
