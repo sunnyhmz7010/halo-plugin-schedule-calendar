@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./src/main/resources/logo.svg" alt="日程日历 Logo" width="120" />
+  <img src="https://raw.githubusercontent.com/sunnyhmz7010/halo-plugin-schedule-calendar/refs/heads/main/src/main/resources/logo.svg" alt="日程日历 Logo" width="120" />
   <h1>日程日历</h1>
   <p>提供前台日历页面、控制台事项管理和编辑器日程卡片的 Halo 插件</p>
 </div>
