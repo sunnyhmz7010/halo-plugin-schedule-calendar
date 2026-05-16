@@ -10,7 +10,6 @@ import {
   IconExternalLinkLine,
   IconRiPencilFill,
   IconSearch,
-  IconRefreshLine,
   Dialog,
   VAlert,
   VButton,
@@ -52,16 +51,19 @@ const headerHeight = 64
 
 const loading = ref(false)
 const externalCalendarsLoading = ref(false)
-const externalCalendarsSaving = ref(false)
+const externalCalendarSaving = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
 const dialogVisible = ref(false)
+const externalCalendarDialogVisible = ref(false)
 const entries = ref<ScheduleEntry[]>([])
 const entryKeyword = ref('')
 const pageError = ref('')
 const dialogError = ref('')
+const externalCalendarDialogError = ref('')
 const colorInputRef = ref<HTMLInputElement | null>(null)
 const editingEntryName = ref<string | null>(null)
+const editingExternalCalendarId = ref<string | null>(null)
 const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
 const permissionLevel = ref<'unknown' | 'view' | 'manage'>('unknown')
 const nowRef = ref(new Date())
@@ -78,6 +80,13 @@ const form = reactive({
   recurrenceFrequency: 'NONE' as ScheduleEntryRecurrenceFrequency,
   recurrenceInterval: 1,
   recurrenceUntil: '',
+})
+
+const externalCalendarForm = reactive({
+  name: '',
+  icsUrl: '',
+  enabled: true,
+  color: '#4285f4',
 })
 
 interface CalendarBlock {
@@ -220,6 +229,13 @@ const resetForm = () => {
   form.recurrenceUntil = ''
 }
 
+const resetExternalCalendarForm = () => {
+  externalCalendarForm.name = ''
+  externalCalendarForm.icsUrl = ''
+  externalCalendarForm.enabled = true
+  externalCalendarForm.color = '#4285f4'
+}
+
 const fillForm = (entry: ScheduleEntry) => {
   form.title = entry.spec.title
   form.description = entry.spec.description ?? ''
@@ -230,6 +246,13 @@ const fillForm = (entry: ScheduleEntry) => {
   form.recurrenceFrequency = entry.spec.recurrence?.frequency ?? 'NONE'
   form.recurrenceInterval = entry.spec.recurrence?.interval ?? 1
   form.recurrenceUntil = entry.spec.recurrence?.until ?? ''
+}
+
+const fillExternalCalendarForm = (calendar: ExternalCalendarFormItem) => {
+  externalCalendarForm.name = calendar.name
+  externalCalendarForm.icsUrl = calendar.icsUrl
+  externalCalendarForm.enabled = calendar.enabled
+  externalCalendarForm.color = calendar.color || '#4285f4'
 }
 
 const formatDuration = (start: Date, end: Date) => {
@@ -304,19 +327,8 @@ const normalizeExternalCalendar = (
   color: item?.color?.trim() || '#4285f4',
 })
 
-const addExternalCalendar = () => {
-  externalCalendars.value = [
-    ...externalCalendars.value,
-    normalizeExternalCalendar(undefined, `外部日历 ${externalCalendars.value.length + 1}`),
-  ]
-}
-
-const removeExternalCalendar = (id: string) => {
-  externalCalendars.value = externalCalendars.value.filter((item) => item.id !== id)
-}
-
-const sanitizeExternalCalendarsForSave = () =>
-  externalCalendars.value
+const sanitizeExternalCalendarsForSave = (items: ExternalCalendarFormItem[]) =>
+  items
     .map((item) => ({
       name: item.name.trim(),
       icsUrl: item.icsUrl.trim(),
@@ -324,14 +336,6 @@ const sanitizeExternalCalendarsForSave = () =>
       color: item.color.trim() || '#4285f4',
     }))
     .filter((item) => item.icsUrl)
-
-const hasInvalidExternalCalendars = computed(() =>
-  externalCalendars.value.some((item) => item.icsUrl.trim() && !item.name.trim()),
-)
-
-const externalCalendarCountLabel = computed(
-  () => `${externalCalendars.value.filter((item) => item.icsUrl.trim()).length} 个订阅`,
-)
 
 const openPublicPage = () => {
   window.open(new URL(publicPagePath, window.location.origin).toString(), '_blank', 'noopener')
@@ -700,6 +704,13 @@ const entryOccurrenceSummaryMap = computed(() => {
 const isEditing = computed(() => editingEntryName.value !== null)
 const dialogTitle = computed(() => (isEditing.value ? '编辑事项' : '新增事项'))
 const dialogSubmitLabel = computed(() => (isEditing.value ? '更新事项' : '保存事项'))
+const isExternalCalendarEditing = computed(() => editingExternalCalendarId.value !== null)
+const externalCalendarDialogTitle = computed(() =>
+  isExternalCalendarEditing.value ? '编辑外部日历订阅' : '新增外部日历订阅',
+)
+const externalCalendarDialogSubmitLabel = computed(() =>
+  isExternalCalendarEditing.value ? '更新订阅' : '保存订阅',
+)
 const canManageEntries = computed(() => permissionLevel.value === 'manage')
 const showReadonlyNotice = computed(() => permissionLevel.value === 'view')
 
@@ -734,6 +745,11 @@ const buildEntryMetaItems = (entry: ScheduleEntry): EntryMetaItem[] => {
   return items
 }
 
+const buildExternalCalendarMetaItems = (calendar: ExternalCalendarFormItem): EntryMetaItem[] => [
+  { text: calendar.enabled ? '状态：已启用' : '状态：已停用' },
+  { text: `地址：${calendar.icsUrl}`, wide: true, block: true },
+]
+
 const openCreateDialog = () => {
   if (!canManageEntries.value) {
     return
@@ -743,6 +759,17 @@ const openCreateDialog = () => {
   resetForm()
   dialogError.value = ''
   dialogVisible.value = true
+}
+
+const openCreateExternalCalendarDialog = () => {
+  if (!canManageEntries.value) {
+    return
+  }
+
+  editingExternalCalendarId.value = null
+  externalCalendarDialogError.value = ''
+  resetExternalCalendarForm()
+  externalCalendarDialogVisible.value = true
 }
 
 const openEditDialog = (entry: ScheduleEntry) => {
@@ -756,11 +783,29 @@ const openEditDialog = (entry: ScheduleEntry) => {
   dialogVisible.value = true
 }
 
+const openEditExternalCalendarDialog = (calendar: ExternalCalendarFormItem) => {
+  if (!canManageEntries.value) {
+    return
+  }
+
+  editingExternalCalendarId.value = calendar.id
+  fillExternalCalendarForm(calendar)
+  externalCalendarDialogError.value = ''
+  externalCalendarDialogVisible.value = true
+}
+
 const closeDialog = () => {
   dialogVisible.value = false
   editingEntryName.value = null
   dialogError.value = ''
   resetForm()
+}
+
+const closeExternalCalendarDialog = () => {
+  externalCalendarDialogVisible.value = false
+  editingExternalCalendarId.value = null
+  externalCalendarDialogError.value = ''
+  resetExternalCalendarForm()
 }
 
 const handleDialogVisibleUpdate = (visible: boolean) => {
@@ -770,6 +815,15 @@ const handleDialogVisibleUpdate = (visible: boolean) => {
   }
 
   dialogVisible.value = true
+}
+
+const handleExternalCalendarDialogVisibleUpdate = (visible: boolean) => {
+  if (!visible) {
+    closeExternalCalendarDialog()
+    return
+  }
+
+  externalCalendarDialogVisible.value = true
 }
 
 const openColorPicker = () => {
@@ -811,9 +865,7 @@ const loadPluginConfig = async () => {
   try {
     const { data } = await axiosInstance.get<PluginConfigResponse>(pluginConfigApi)
 
-    if (data.title) {
-      pluginTitle.value = data.title
-    }
+    pluginTitle.value = data.title?.trim() || '日程日历'
 
     externalCalendars.value = Array.isArray(data.externalCalendars)
       ? data.externalCalendars.map((item, index) =>
@@ -828,31 +880,104 @@ const loadPluginConfig = async () => {
   }
 }
 
-const saveExternalCalendars = async () => {
+const persistExternalCalendars = async (items: ExternalCalendarFormItem[]) => {
+  await axiosInstance.put(pluginConfigApi, {
+    title: pluginTitle.value,
+    externalCalendars: sanitizeExternalCalendarsForSave(items),
+  })
+  externalCalendars.value = items
+}
+
+const submitExternalCalendar = async () => {
   if (!canManageEntries.value) {
-    Toast.error('当前账号没有日程日历管理权限')
     return
   }
 
-  if (hasInvalidExternalCalendars.value) {
-    Toast.error('已填写订阅地址的外部日历必须填写名称')
+  const name = externalCalendarForm.name.trim()
+  const icsUrl = externalCalendarForm.icsUrl.trim()
+
+  externalCalendarDialogError.value = ''
+
+  if (!name) {
+    externalCalendarDialogError.value = '日历名称不能为空。'
     return
   }
 
-  externalCalendarsSaving.value = true
+  if (!icsUrl) {
+    externalCalendarDialogError.value = 'ICS 订阅地址不能为空。'
+    return
+  }
 
   try {
-    await axiosInstance.put(pluginConfigApi, {
-      title: pluginTitle.value,
-      externalCalendars: sanitizeExternalCalendarsForSave(),
-    })
-    Toast.success('外部日历订阅已保存')
+    new URL(icsUrl)
+  } catch {
+    externalCalendarDialogError.value = 'ICS 订阅地址格式无效。'
+    return
+  }
+
+  externalCalendarSaving.value = true
+
+  try {
+    const nextCalendar: ExternalCalendarFormItem = {
+      id: editingExternalCalendarId.value ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      icsUrl,
+      enabled: externalCalendarForm.enabled,
+      color: externalCalendarForm.color.trim() || '#4285f4',
+    }
+
+    const nextCalendars = isExternalCalendarEditing.value
+      ? externalCalendars.value.map((item) =>
+          item.id === editingExternalCalendarId.value ? nextCalendar : item,
+        )
+      : [...externalCalendars.value, nextCalendar]
+
+    await persistExternalCalendars(nextCalendars)
+    closeExternalCalendarDialog()
+    Toast.success(isExternalCalendarEditing.value ? '外部日历订阅已更新' : '外部日历订阅已添加')
   } catch (error) {
     console.error(error)
-    Toast.error('外部日历订阅保存失败')
+    externalCalendarDialogError.value = '外部日历订阅保存失败。'
   } finally {
-    externalCalendarsSaving.value = false
+    externalCalendarSaving.value = false
   }
+}
+
+const removeExternalCalendar = async (id: string) => {
+  await persistExternalCalendars(externalCalendars.value.filter((item) => item.id !== id))
+}
+
+const openRemoveExternalCalendarDialog = (calendar: ExternalCalendarFormItem) => {
+  if (!canManageEntries.value || deleting.value) {
+    return
+  }
+
+  Dialog.warning({
+    title: '确认删除外部日历订阅',
+    description: `删除后将停止同步“${calendar.name}”的外部日历数据。`,
+    confirmType: 'danger',
+    confirmText: '删除',
+    cancelText: '取消',
+    showCancel: true,
+    onConfirm: () => {
+      if (deleting.value) {
+        return
+      }
+
+      deleting.value = true
+      void removeExternalCalendar(calendar.id)
+        .then(() => {
+          Toast.success('外部日历订阅已删除')
+        })
+        .catch((error) => {
+          console.error(error)
+          Toast.error('外部日历订阅删除失败')
+        })
+        .finally(() => {
+          deleting.value = false
+        })
+    },
+  })
 }
 
 const loadPermissionLevel = async () => {
@@ -1180,109 +1305,6 @@ onBeforeUnmount(() => {
       </VCard>
 
       <VCard class="section-card">
-        <template #header>
-          <div class="entry-card-header">
-            <div class="entry-card-header__title">外部日历订阅</div>
-
-            <div class="entry-card-header__search">
-              <VTag theme="default">{{ externalCalendarCountLabel }}</VTag>
-            </div>
-
-            <div class="entry-card-header__actions">
-              <div class="external-calendar-actions">
-                <VButton
-                  type="secondary"
-                  :loading="externalCalendarsLoading"
-                  @click="loadPluginConfig"
-                >
-                  <template #icon>
-                    <IconRefreshLine />
-                  </template>
-                  刷新
-                </VButton>
-                <VButton v-if="canManageEntries" type="secondary" @click="addExternalCalendar">
-                  <template #icon>
-                    <IconAddCircle />
-                  </template>
-                  新增订阅
-                </VButton>
-                <VButton
-                  v-if="canManageEntries"
-                  type="primary"
-                  :loading="externalCalendarsSaving"
-                  @click="saveExternalCalendars"
-                >
-                  保存订阅
-                </VButton>
-              </div>
-            </div>
-          </div>
-        </template>
-
-        <VAlert
-          v-if="showReadonlyNotice"
-          type="info"
-          title="当前为只读权限"
-          description="你可以查看外部日历订阅，但新增、修改和保存需要“日程日历管理”权限。"
-          :closable="false"
-        />
-
-        <div v-if="externalCalendarsLoading" class="calendar-loading">
-          <VLoading />
-        </div>
-
-        <div v-else class="external-calendar-list">
-          <div
-            v-for="calendar in externalCalendars"
-            :key="calendar.id"
-            class="external-calendar-item"
-          >
-            <div class="field-row">
-              <label class="field">
-                <span>日历名称</span>
-                <input v-model="calendar.name" type="text" :disabled="!canManageEntries" placeholder="例如：Google Calendar" />
-              </label>
-
-              <label class="field field--compact">
-                <span>默认颜色</span>
-                <input v-model="calendar.color" type="color" :disabled="!canManageEntries" class="external-calendar-color" />
-              </label>
-            </div>
-
-            <label class="field">
-              <span>ICS 订阅地址</span>
-              <input
-                v-model="calendar.icsUrl"
-                type="url"
-                :disabled="!canManageEntries"
-                placeholder="填写 Google Calendar 导出的 iCal / ICS 订阅地址"
-              />
-            </label>
-
-            <div class="external-calendar-item__footer">
-              <label class="external-calendar-toggle">
-                <input v-model="calendar.enabled" type="checkbox" :disabled="!canManageEntries" />
-                <span>启用该订阅</span>
-              </label>
-
-              <VButton v-if="canManageEntries" ghost @click="removeExternalCalendar(calendar.id)">
-                <template #icon>
-                  <IconDeleteBin />
-                </template>
-                删除
-              </VButton>
-            </div>
-          </div>
-
-          <VEmpty
-            v-if="!externalCalendars.length"
-            title="还没有外部日历订阅"
-            message="在这里添加 Google Calendar 等 ICS 订阅源，保存后会同步显示到前台日程视图。"
-          />
-        </div>
-      </VCard>
-
-      <VCard class="section-card">
         <div class="week-toolbar">
           <div class="week-toolbar__nav">
             <VButton @click="moveWeek(-1)">
@@ -1457,6 +1479,75 @@ onBeforeUnmount(() => {
       <VCard class="section-card">
         <template #header>
           <div class="entry-card-header">
+            <div class="entry-card-header__title">外部日历订阅</div>
+
+            <div v-if="canManageEntries" class="entry-card-header__actions">
+              <VButton type="secondary" @click="openCreateExternalCalendarDialog">
+                <template #icon>
+                  <IconAddCircle />
+                </template>
+                新增订阅
+              </VButton>
+            </div>
+          </div>
+        </template>
+
+        <VEntityContainer v-if="externalCalendars.length">
+          <VEntity v-for="calendar in externalCalendars" :key="calendar.id">
+            <template #start>
+              <div class="entry-start">
+                <span class="entry-dot" :style="{ background: calendar.color || '#4285f4' }"></span>
+                <div class="entry-main">
+                  <div class="entry-title">{{ calendar.name }}</div>
+                  <div class="entry-meta">
+                    <span
+                      v-for="(item, index) in buildExternalCalendarMetaItems(calendar)"
+                      :key="`${calendar.id}-${index}`"
+                      class="entry-meta__item"
+                      :class="{
+                        'entry-meta__item--wide': item.wide,
+                        'entry-meta__item--block': item.block,
+                      }"
+                    >
+                      {{ item.text }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <template #end>
+              <div v-if="canManageEntries" class="entry-actions">
+                <VButton ghost @click="openEditExternalCalendarDialog(calendar)">
+                  <template #icon>
+                    <IconRiPencilFill />
+                  </template>
+                  编辑
+                </VButton>
+                <VButton ghost @click="openRemoveExternalCalendarDialog(calendar)">
+                  <template #icon>
+                    <IconDeleteBin />
+                  </template>
+                  删除
+                </VButton>
+              </div>
+            </template>
+          </VEntity>
+        </VEntityContainer>
+
+        <div v-else-if="externalCalendarsLoading" class="calendar-loading">
+          <VLoading />
+        </div>
+
+        <VEmpty
+          v-else
+          title="还没有外部日历订阅"
+          message="新增一个 ICS 订阅后，会自动同步显示到前台日程视图。"
+        />
+      </VCard>
+
+      <VCard class="section-card">
+        <template #header>
+          <div class="entry-card-header">
             <div class="entry-card-header__title">事项</div>
 
             <div v-if="entries.length" class="entry-card-header__search">
@@ -1621,6 +1712,62 @@ onBeforeUnmount(() => {
           <VButton @click="closeDialog">取消</VButton>
           <VButton type="primary" :loading="saving" @click="submitEntry">
             {{ dialogSubmitLabel }}
+          </VButton>
+        </div>
+      </template>
+    </VModal>
+
+    <VModal
+      :visible="externalCalendarDialogVisible"
+      :title="externalCalendarDialogTitle"
+      :width="dialogWidth"
+      :layer-closable="false"
+      :body-class="['schedule-modal-body']"
+      @update:visible="handleExternalCalendarDialogVisibleUpdate"
+    >
+      <div class="dialog-form">
+        <VAlert
+          v-if="externalCalendarDialogError"
+          type="error"
+          title="操作失败"
+          :description="externalCalendarDialogError"
+          :closable="false"
+        />
+
+        <label class="field">
+          <span>日历名称</span>
+          <input v-model="externalCalendarForm.name" type="text" placeholder="例如：Google Calendar" />
+        </label>
+
+        <label class="field">
+          <span>ICS 订阅地址</span>
+          <input
+            v-model="externalCalendarForm.icsUrl"
+            type="url"
+            placeholder="填写 Google Calendar 导出的 iCal / ICS 订阅地址"
+          />
+        </label>
+
+        <div class="field-row">
+          <label class="field field--compact">
+            <span>默认颜色</span>
+            <input v-model="externalCalendarForm.color" type="color" class="external-calendar-color" />
+          </label>
+
+          <label class="field field--checkbox">
+            <span>状态</span>
+            <label class="external-calendar-toggle">
+              <input v-model="externalCalendarForm.enabled" type="checkbox" />
+              <span>启用该订阅</span>
+            </label>
+          </label>
+        </div>
+      </div>
+      <template #footer>
+        <div class="modal-footer">
+          <VButton @click="closeExternalCalendarDialog">取消</VButton>
+          <VButton type="primary" :loading="externalCalendarSaving" @click="submitExternalCalendar">
+            {{ externalCalendarDialogSubmitLabel }}
           </VButton>
         </div>
       </template>
@@ -2086,38 +2233,6 @@ onBeforeUnmount(() => {
   justify-content: flex-end;
 }
 
-.external-calendar-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.external-calendar-list {
-  display: grid;
-  gap: 16px;
-}
-
-.external-calendar-item {
-  display: grid;
-  gap: 12px;
-  padding: 16px 20px;
-  border-top: 1px solid var(--halo-border-color-soft, #f3f4f6);
-}
-
-.external-calendar-item:first-child {
-  border-top: 0;
-}
-
-.external-calendar-item__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
 .external-calendar-toggle {
   display: inline-flex;
   align-items: center;
@@ -2131,6 +2246,10 @@ onBeforeUnmount(() => {
   min-width: 56px;
   padding: 4px !important;
   cursor: pointer;
+}
+
+.field--checkbox {
+  justify-content: flex-end;
 }
 
 .entry-search {

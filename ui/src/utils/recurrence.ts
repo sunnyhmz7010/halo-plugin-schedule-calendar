@@ -22,6 +22,10 @@ const clockFormatter = new Intl.DateTimeFormat('zh-CN', {
   hour12: false,
 })
 
+const weekdayFormatter = new Intl.DateTimeFormat('zh-CN', {
+  weekday: 'long',
+})
+
 const startOfDay = (value: Date) => {
   const next = new Date(value)
   next.setHours(0, 0, 0, 0)
@@ -39,12 +43,15 @@ export const spansMultipleLocalDates = (start: Date, end: Date) => toDateKey(sta
 
 export const formatDisplayDate = (value: Date) => toDateKey(value)
 
+export const formatDisplayDateWithWeekday = (value: Date) =>
+  `${formatDisplayDate(value)}（${weekdayFormatter.format(value)}）`
+
 export const formatDisplayDateTime = (value: Date) => `${formatDisplayDate(value)} ${clockFormatter.format(value)}`
 
 export const formatDisplayDateTimeRange = (start: Date, end: Date) =>
   spansMultipleLocalDates(start, end)
-    ? `${formatDisplayDateTime(start)} - ${formatDisplayDateTime(end)}`
-    : `${formatDisplayDate(start)} ${clockFormatter.format(start)}-${clockFormatter.format(end)}`
+    ? `${formatDisplayDateWithWeekday(start)} ${clockFormatter.format(start)} - ${formatDisplayDateWithWeekday(end)} ${clockFormatter.format(end)}`
+    : `${formatDisplayDateWithWeekday(start)} ${clockFormatter.format(start)}-${clockFormatter.format(end)}`
 
 const normalizeInterval = (interval?: number) => {
   if (!interval || Number.isNaN(interval) || interval < 1) {
