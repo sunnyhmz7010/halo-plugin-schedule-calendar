@@ -3,8 +3,11 @@ package run.halo.schedule.calendar;
 import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -91,6 +94,17 @@ public class ScheduleApiController {
                         ))
                         .toList()
                 )));
+    }
+
+    @PostMapping("/external-calendar-validations")
+    @PreAuthorize("hasAuthority('plugin:schedule-calendar:manage')")
+    public Mono<ExternalCalendarService.ExternalCalendarValidationResult> validateExternalCalendar(
+        @RequestBody ExternalCalendarValidationRequest request
+    ) {
+        return externalCalendarService.validateSource(request.name(), request.icsUrl(), request.color());
+    }
+
+    public record ExternalCalendarValidationRequest(String name, String icsUrl, String color) {
     }
 
     public record ExternalDebugResponse(

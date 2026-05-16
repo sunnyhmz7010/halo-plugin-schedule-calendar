@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,11 +40,14 @@ public class ExternalCalendarService {
         DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
     private static final DateTimeFormatter LOCAL_DATE = DateTimeFormatter.BASIC_ISO_DATE;
     private static final int MAX_EXPANSION_STEPS = 10000;
+    private static final Duration CACHE_TTL = Duration.ofMinutes(30);
 
     private final HttpClient httpClient = HttpClient.newBuilder()
         .followRedirects(HttpClient.Redirect.NORMAL)
         .connectTimeout(Duration.ofSeconds(10))
         .build();
+    private final Map<String, CachedEvents> eventCache = new ConcurrentHashMap<>();
+    private final Set<String> refreshInProgress = ConcurrentHashMap.newKeySet();
 
     Mono<List<ScheduleEventOccurrence>> listOccurrences(ScheduleCalendarSetting setting, LocalDate rangeStart,
         LocalDate rangeEnd, ZoneId zoneId) {
@@ -75,7 +80,54 @@ public class ExternalCalendarService {
                 .collect(Collectors.toList()));
     }
 
+    Mono<ExternalCalendarValidationResult> validateSource(String name, String icsUrl, String color) {
+        if (icsUrl == null || icsUrl.isBlank()) {
+            return Mono.just(new ExternalCalendarValidationResult(false, "ICS 订阅地址不能为空。", 0));
+        }
+        var source = new ScheduleCalendarSetting.ExternalCalendarSource(name, icsUrl, true, color);
+        return refreshEvents(source)
+            .map(events -> new ExternalCalendarValidationResult(true, null, events.size()))
+            .onErrorResume(error -> Mono.just(new ExternalCalendarValidationResult(
+                false,
+                validationMessage(error),
+                0
+            )));
+    }
+
     private Mono<List<ExternalCalendarEvent>> loadEvents(ScheduleCalendarSetting.ExternalCalendarSource source) {
+        var cacheKey = cacheKey(source);
+        var cached = eventCache.get(cacheKey);
+        if (cached != null) {
+            if (!cached.isExpired()) {
+                return Mono.just(cached.events());
+            }
+            refreshEventsInBackground(source);
+            return Mono.just(cached.events());
+        }
+        return refreshEvents(source);
+    }
+
+    private void refreshEventsInBackground(ScheduleCalendarSetting.ExternalCalendarSource source) {
+        var cacheKey = cacheKey(source);
+        if (!refreshInProgress.add(cacheKey)) {
+            return;
+        }
+        refreshEvents(source)
+            .doFinally(signalType -> refreshInProgress.remove(cacheKey))
+            .subscribe(
+                ignored -> {
+                },
+                error -> log.warn("Failed to refresh cached external calendar {}", source.effectiveName(), error)
+            );
+    }
+
+    private Mono<List<ExternalCalendarEvent>> refreshEvents(ScheduleCalendarSetting.ExternalCalendarSource source) {
+        var cacheKey = cacheKey(source);
+        return fetchEvents(source)
+            .doOnNext(events -> eventCache.put(cacheKey, new CachedEvents(events, Instant.now())));
+    }
+
+    private Mono<List<ExternalCalendarEvent>> fetchEvents(ScheduleCalendarSetting.ExternalCalendarSource source) {
         var url = source.icsUrl();
         HttpRequest request;
         try {
@@ -96,6 +148,24 @@ public class ExternalCalendarService {
                 }
                 return Mono.just(parseEvents(response.body()));
             });
+    }
+
+    private String cacheKey(ScheduleCalendarSetting.ExternalCalendarSource source) {
+        return source.icsUrl() == null ? "" : source.icsUrl().trim();
+    }
+
+    private String validationMessage(Throwable error) {
+        var message = error.getMessage();
+        if (message == null || message.isBlank()) {
+            return "无法拉取或解析该 iCal / ICS 订阅地址，请检查链接是否可公开访问。";
+        }
+        if (message.contains("Invalid ICS URL")) {
+            return "ICS 订阅地址格式无效。";
+        }
+        if (message.contains("status")) {
+            return "订阅地址返回异常：" + message + "。";
+        }
+        return "无法拉取或解析该 iCal / ICS 订阅地址：" + message;
     }
 
     private List<ScheduleEventOccurrence> expandEvents(List<ExternalCalendarEvent> events,
@@ -452,6 +522,15 @@ public class ExternalCalendarService {
     }
 
     private record TemporalValue(ZonedDateTime value, boolean allDay) {
+    }
+
+    private record CachedEvents(List<ExternalCalendarEvent> events, Instant refreshedAt) {
+        private boolean isExpired() {
+            return refreshedAt.plus(CACHE_TTL).isBefore(Instant.now());
+        }
+    }
+
+    public record ExternalCalendarValidationResult(boolean valid, String message, int eventCount) {
     }
 
     private record ExternalCalendarEvent(String uid, String title, String description, String location,

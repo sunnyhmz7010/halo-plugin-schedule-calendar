@@ -47,6 +47,8 @@ const apiBase = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
 const pluginConfigApi = '/apis/api.console.halo.run/v1alpha1/plugins/schedule-calendar/json-config'
 const publicMetaApi = '/apis/api.schedule.calendar.sunny.dev/v1alpha1/public-meta'
 const occurrencesApi = '/apis/api.schedule.calendar.sunny.dev/v1alpha1/occurrences'
+const externalCalendarValidationApi =
+  '/apis/api.schedule.calendar.sunny.dev/v1alpha1/external-calendar-validations'
 const hourHeight = 56
 const dayColumnHeight = hourHeight * 24
 const headerHeight = 64
@@ -169,6 +171,12 @@ interface PluginConfigResponse {
 interface PublicMetaResponse {
   publicPagePath: string
   publicIcalPath: string
+}
+
+interface ExternalCalendarValidationResponse {
+  valid: boolean
+  message?: string
+  eventCount: number
 }
 
 interface ExternalCalendarConfigItem {
@@ -1088,6 +1096,29 @@ const persistExternalCalendars = async (items: ExternalCalendarFormItem[]) => {
   await loadWeekOccurrences()
 }
 
+const validateExternalCalendar = async (calendar: ExternalCalendarFormItem) => {
+  if (!calendar.enabled) {
+    return true
+  }
+
+  const { data } = await axiosInstance.post<ExternalCalendarValidationResponse>(
+    externalCalendarValidationApi,
+    {
+      name: calendar.name,
+      icsUrl: calendar.icsUrl,
+      color: calendar.color,
+    },
+  )
+
+  if (data.valid) {
+    return true
+  }
+
+  externalCalendarDialogError.value =
+    data.message || '外部日历订阅拉取失败，请检查链接是否可公开访问。'
+  return false
+}
+
 const submitExternalCalendar = async () => {
   if (!canManageEntries.value) {
     return
@@ -1119,6 +1150,7 @@ const submitExternalCalendar = async () => {
 
   try {
     const wasEditing = isExternalCalendarEditing.value
+    let currentCalendar: ExternalCalendarFormItem | undefined
     const nextCalendar: ExternalCalendarFormItem = {
       id: editingExternalCalendarId.value ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name,
@@ -1128,7 +1160,7 @@ const submitExternalCalendar = async () => {
     }
 
     if (isExternalCalendarEditing.value) {
-      const currentCalendar = externalCalendars.value.find((item) => item.id === editingExternalCalendarId.value)
+      currentCalendar = externalCalendars.value.find((item) => item.id === editingExternalCalendarId.value)
       if (!currentCalendar) {
         externalCalendarDialogError.value = '未找到要编辑的订阅，请刷新后重试。'
         return
@@ -1138,6 +1170,16 @@ const submitExternalCalendar = async () => {
         Toast.success('没有变化')
         return
       }
+    }
+
+    const shouldValidate =
+      nextCalendar.enabled &&
+      (!wasEditing ||
+        currentCalendar?.enabled === false ||
+        currentCalendar?.icsUrl.trim() !== nextCalendar.icsUrl.trim())
+
+    if (shouldValidate && !(await validateExternalCalendar(nextCalendar))) {
+      return
     }
 
     const nextCalendars = isExternalCalendarEditing.value
@@ -1151,7 +1193,7 @@ const submitExternalCalendar = async () => {
     Toast.success(wasEditing ? '外部日历订阅已更新' : '外部日历订阅已添加')
   } catch (error) {
     console.error(error)
-    externalCalendarDialogError.value = '外部日历订阅保存失败。'
+    externalCalendarDialogError.value = '外部日历订阅保存或校验失败。'
   } finally {
     externalCalendarSaving.value = false
   }
