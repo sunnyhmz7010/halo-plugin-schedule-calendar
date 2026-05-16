@@ -36,8 +36,3 @@ spec:
               name: enabled
               label: 启用
               value: true
-        - $formkit: text
-          name: publicIcalSubscriptionUrl
-          label: 公开 iCal 订阅地址
-          value: /schedule-calendar.ics
-          help: 固定公开地址，当前公开 iCal 订阅不包含外部日历订阅数据

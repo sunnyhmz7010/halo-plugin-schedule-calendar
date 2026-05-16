@@ -1481,6 +1481,8 @@ onBeforeUnmount(() => {
           <div class="entry-card-header">
             <div class="entry-card-header__title">外部日历订阅</div>
 
+            <div class="entry-card-header__search"></div>
+
             <div v-if="canManageEntries" class="entry-card-header__actions">
               <VButton type="secondary" @click="openCreateExternalCalendarDialog">
                 <template #icon>
@@ -1754,13 +1756,13 @@ onBeforeUnmount(() => {
             <input v-model="externalCalendarForm.color" type="color" class="external-calendar-color" />
           </label>
 
-          <label class="field field--checkbox">
+          <div class="field field--checkbox">
             <span>状态</span>
             <label class="external-calendar-toggle">
               <input v-model="externalCalendarForm.enabled" type="checkbox" />
               <span>启用该订阅</span>
             </label>
-          </label>
+          </div>
         </div>
       </div>
       <template #footer>
