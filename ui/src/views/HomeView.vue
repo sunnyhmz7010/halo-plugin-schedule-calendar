@@ -7,6 +7,7 @@ import {
   IconArrowRight,
   IconCalendar,
   IconDeleteBin,
+  IconExternalLinkLine,
   IconRiPencilFill,
   IconSearch,
   Dialog,
@@ -59,6 +60,7 @@ const editingEntryName = ref<string | null>(null)
 const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
 const permissionLevel = ref<'unknown' | 'view' | 'manage'>('unknown')
 const nowRef = ref(new Date())
+const publicPagePath = ref('/schedule-calendar')
 
 const form = reactive({
   title: '',
@@ -110,6 +112,10 @@ interface EntryMetaItem {
   text: string
   wide?: boolean
   block?: boolean
+}
+
+interface PublicMetaResponse {
+  publicPagePath?: string
 }
 
 type WeekViewMode = 'calendar' | 'agenda'
@@ -263,6 +269,10 @@ const handleWeekViewModeChange = (value: string | number) => {
 const goToCurrentWeek = () => {
   currentWeekStart.value = startOfWeek(new Date())
   syncWeekInput()
+}
+
+const openPublicPage = () => {
+  window.open(new URL(publicPagePath.value, window.location.origin).toString(), '_blank', 'noopener')
 }
 
 const buildBlockMetaLines = (entry: ScheduleEntry) => {
@@ -733,6 +743,19 @@ const fetchEntries = async () => {
   }
 }
 
+const loadPublicMeta = async () => {
+  try {
+    const { data } = await axiosInstance.get<PublicMetaResponse>(
+      '/apis/api.schedule.calendar.sunny.dev/v1alpha1/public-meta',
+    )
+    if (data.publicPagePath) {
+      publicPagePath.value = data.publicPagePath
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 const loadPermissionLevel = async () => {
   permissionLevel.value = 'unknown'
 
@@ -993,6 +1016,7 @@ onMounted(() => {
   updateViewportWidth()
   window.addEventListener('resize', updateViewportWidth)
   syncWeekInput()
+  void loadPublicMeta()
   void loadPermissionLevel()
   void fetchEntries()
 })
@@ -1010,6 +1034,14 @@ onBeforeUnmount(() => {
     <VPageHeader title="日程日历">
       <template #icon>
         <IconCalendar class="mr-2 h-5 w-5" />
+      </template>
+      <template #actions>
+        <VButton type="secondary" @click="openPublicPage">
+          <template #icon>
+            <IconExternalLinkLine />
+          </template>
+          打开前台页面
+        </VButton>
       </template>
     </VPageHeader>
 

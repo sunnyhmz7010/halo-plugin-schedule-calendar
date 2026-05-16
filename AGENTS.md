@@ -73,9 +73,11 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Public card route: `/schedule-calendar/cards/{name}`
 - Theme integration surface: Finder API via `scheduleCalendarFinder`
 - Public JSON integration surface: REST API under `/apis/api.schedule.calendar.sunny.dev/v1alpha1`
+- Public page path is configurable in plugin settings via `publicPath`; do not hardcode `/schedule-calendar` in console UI logic when a runtime-resolved path is available.
 - Admin capability: create, view, edit, and delete schedule entries in a weekly calendar view.
 - Editor capability: insert a schedule card for a single entry.
 - Current stable version: `v2.8.0`
+- Current prerelease target in local development: `v2.9.0-alpha.1`
 
 ### Tech Stack
 
@@ -90,6 +92,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Plugin metadata: `src/main/resources/plugin.yaml`
 - Role templates: `src/main/resources/extensions/roleTemplate.yaml`
 - Native plugin settings schema: `src/main/resources/extensions/settings.yaml`
+- Public-page meta API: `GET /apis/api.schedule.calendar.sunny.dev/v1alpha1/public-meta`
 - Repo rules: `AGENTS.md`
 - User docs: `README.md`
 - Main admin page: `ui/src/views/HomeView.vue`
@@ -121,6 +124,10 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Backend build/test command:
   - `./gradlew.bat build`
   - `./gradlew.bat test`
+- External calendar MVP:
+  - use Halo-native plugin settings to configure Google Calendar or other ICS/iCal subscription sources
+  - external calendar events are read-only and merge into public page, Finder, and REST query results
+  - do not mix external ICS events into local schedule-entry CRUD or editor-card selection unless the user explicitly asks for that broader scope
 - Important environment constraint:
   - this project requires Java 21 toolchain for Gradle tasks
   - if the machine only has Java 8 or Java 25, Gradle verification may fail before tests run

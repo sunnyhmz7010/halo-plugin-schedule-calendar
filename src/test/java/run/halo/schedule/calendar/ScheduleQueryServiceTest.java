@@ -3,10 +3,14 @@ package run.halo.schedule.calendar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.List;
 import java.util.TimeZone;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +34,9 @@ class ScheduleQueryServiceTest {
     @Mock
     ReactiveSettingFetcher settingFetcher;
 
+    @Mock
+    ExternalCalendarService externalCalendarService;
+
     private TimeZone originalTimeZone;
     private ScheduleQueryService service;
 
@@ -37,7 +44,11 @@ class ScheduleQueryServiceTest {
     void setUp() {
         originalTimeZone = TimeZone.getDefault();
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Shanghai"));
-        service = new ScheduleQueryService(client, settingFetcher);
+        service = new ScheduleQueryService(client, settingFetcher, externalCalendarService);
+        lenient().when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
+            .thenReturn(Mono.empty());
+        lenient().when(externalCalendarService.listOccurrences(any(), any(), any(), any()))
+            .thenReturn(Mono.just(List.of()));
     }
 
     @AfterEach
@@ -252,7 +263,11 @@ class ScheduleQueryServiceTest {
         when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
             .thenReturn(Flux.empty());
         when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
-            .thenReturn(Mono.just(new ScheduleCalendarSetting("<script>alert('xss')</script>")));
+            .thenReturn(Mono.just(new ScheduleCalendarSetting(
+                "<script>alert('xss')</script>",
+                ScheduleCalendarSetting.DEFAULT_PUBLIC_PATH,
+                null
+            )));
 
         var html = service.buildPublicCalendarPage(LocalDate.of(2026, 4, 13)).block();
 
@@ -261,6 +276,53 @@ class ScheduleQueryServiceTest {
         assertThat(html).contains("<h1>&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;</h1>");
         assertThat(html).doesNotContain("<title><script>alert('xss')</script></title>");
         assertThat(html).doesNotContain("<h1><script>alert('xss')</script></h1>");
+    }
+
+    @Test
+    void includesExternalOccurrencesInSummaryAndWeekView() {
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.empty());
+
+        var zoneId = ZoneId.systemDefault();
+        var now = OffsetDateTime.now(zoneId).withSecond(0).withNano(0);
+        var eventStart = now.plusHours(1).toLocalDateTime();
+        var eventEnd = eventStart.plusHours(1);
+        var externalOccurrence = new ScheduleEventOccurrence(
+            "google-1",
+            "Google 日程",
+            "来自手机同步",
+            "Google Meet",
+            null,
+            "#4285f4",
+            eventStart,
+            eventEnd,
+            "Google Calendar"
+        );
+        when(externalCalendarService.listOccurrences(any(), any(), any(), any()))
+            .thenReturn(Mono.just(List.of(externalOccurrence)));
+
+        var summary = service.getSummary().block();
+        var view = service.getWeekView(eventStart.toLocalDate()).block();
+
+        assertThat(summary).isNotNull();
+        assertThat(summary.next()).isNotNull();
+        assertThat(summary.next().title()).isEqualTo("Google 日程");
+        assertThat(view).isNotNull();
+        assertThat(view.summary()).isNotNull();
+        assertThat(view.summary().next()).isNotNull();
+        assertThat(view.summary().next().title()).isEqualTo("Google 日程");
+        assertThat(view.days().stream()
+            .flatMap(day -> day.occupied().stream())
+            .anyMatch(block -> block.title().equals("Google 日程")
+                && block.metaLines() != null
+                && block.metaLines().contains("来源：Google Calendar"))).isTrue();
+    }
+
+    @Test
+    void normalizesConfiguredPublicPath() {
+        var setting = new ScheduleCalendarSetting("标题", "calendar/custom/", null);
+
+        assertThat(setting.effectivePublicPath()).isEqualTo("/calendar/custom");
     }
 
     private ScheduleEntry scheduleEntry(String name, String title, OffsetDateTime startTime,

@@ -22,6 +22,7 @@ repositories {
 dependencies {
     implementation platform('run.halo.tools.platform:plugin:2.23.0')
     compileOnly 'run.halo.app:api'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
     testImplementation 'run.halo.app:api'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

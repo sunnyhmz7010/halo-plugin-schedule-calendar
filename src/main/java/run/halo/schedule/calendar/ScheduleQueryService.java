@@ -14,6 +14,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -37,16 +38,18 @@ public class ScheduleQueryService {
     private static final int CALENDAR_HEADER_HEIGHT = 64;
     private static final int HOUR_HEIGHT = 56;
     private static final Locale ZH_CN = Locale.SIMPLIFIED_CHINESE;
-    private static final String DEFAULT_TITLE = "日程日历";
 
     private final ReactiveExtensionClient client;
     private final ReactiveSettingFetcher settingFetcher;
+    private final ExternalCalendarService externalCalendarService;
     private final JsonMapper objectMapper;
 
     public ScheduleQueryService(ReactiveExtensionClient client,
-        ReactiveSettingFetcher settingFetcher) {
+        ReactiveSettingFetcher settingFetcher,
+        ExternalCalendarService externalCalendarService) {
         this.client = client;
         this.settingFetcher = settingFetcher;
+        this.externalCalendarService = externalCalendarService;
         this.objectMapper = JsonMapper.builder()
             .findAndAddModules()
             .build();
@@ -59,22 +62,23 @@ public class ScheduleQueryService {
             ? LocalDate.now(zoneId).with(DayOfWeek.MONDAY)
             : requestedStart.with(DayOfWeek.MONDAY);
         var weekEnd = weekStart.plusDays(6);
-        return listEntries()
-            .map(entries -> toWeekView(entries, weekStart, weekEnd, zoneId, serverNow));
+        return loadCalendarContext(weekStart, weekEnd, zoneId)
+            .map(context -> toWeekView(context, weekStart, weekEnd, zoneId, serverNow));
     }
 
     Mono<SummaryResponse> getSummary() {
         var zoneId = ZoneId.systemDefault();
         var serverNow = OffsetDateTime.now(zoneId);
-        return listEntries()
-            .map(entries -> toSummary(entries, zoneId, serverNow));
+        var today = LocalDate.now(zoneId);
+        return loadCalendarContext(today, today.plusDays(90), zoneId)
+            .map(context -> toSummary(context.occurrences(), zoneId, serverNow));
     }
 
     Mono<DayView> getDayView(LocalDate requestedDate) {
         var zoneId = ZoneId.systemDefault();
         var date = requestedDate == null ? LocalDate.now(zoneId) : requestedDate;
-        return listEntries()
-            .map(entries -> toDayView(entries, date, zoneId));
+        return loadCalendarContext(date, date, zoneId)
+            .map(context -> toDayView(context.occurrences(), date));
     }
 
     Mono<List<OccurrenceResponse>> listOccurrences(LocalDate requestedStart, LocalDate requestedEnd) {
@@ -89,8 +93,8 @@ public class ScheduleQueryService {
 
         var rangeStart = start;
         var rangeEnd = end;
-        return listEntries()
-            .map(entries -> expandOccurrences(entries, rangeStart, rangeEnd, zoneId).stream()
+        return loadCalendarContext(rangeStart, rangeEnd, zoneId)
+            .map(context -> context.occurrences().stream()
                 .map(occurrence -> toOccurrenceResponse(occurrence, zoneId))
                 .toList());
     }
@@ -101,8 +105,8 @@ public class ScheduleQueryService {
         var start = now.toLocalDate();
         var end = now.plusDays(365).toLocalDate();
         var limit = normalizeLimit(requestedLimit);
-        return listEntries()
-            .map(entries -> expandOccurrences(entries, start, end, zoneId).stream()
+        return loadCalendarContext(start, end, zoneId)
+            .map(context -> context.occurrences().stream()
                 .filter(occurrence -> occurrence.end().isAfter(now))
                 .limit(limit)
                 .map(occurrence -> toOccurrenceResponse(occurrence, zoneId))
@@ -133,7 +137,11 @@ public class ScheduleQueryService {
         return Mono.zip(
                 getWeekView(requestedStart),
                 settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
-                    .defaultIfEmpty(new ScheduleCalendarSetting(DEFAULT_TITLE))
+                    .defaultIfEmpty(new ScheduleCalendarSetting(
+                        ScheduleCalendarSetting.DEFAULT_TITLE,
+                        ScheduleCalendarSetting.DEFAULT_PUBLIC_PATH,
+                        null
+                    ))
             )
             .map(tuple -> {
                 var view = tuple.getT1();
@@ -1333,11 +1341,37 @@ public class ScheduleQueryService {
     }
 
     private Mono<List<ScheduleEntry>> listEntries() {
-        return client.listAll(ScheduleEntry.class, ListOptions.builder().build(), Sort.unsorted())
+                return client.listAll(ScheduleEntry.class, ListOptions.builder().build(), Sort.unsorted())
             .collectList()
             .map(entries -> entries.stream()
                 .sorted(comparing(entry -> entry.getSpec().getStartTime()))
                 .collect(Collectors.toList()));
+    }
+
+    private Mono<CalendarContext> loadCalendarContext(LocalDate rangeStart, LocalDate rangeEnd, ZoneId zoneId) {
+        return Mono.zip(
+                listEntries(),
+                settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
+                    .defaultIfEmpty(new ScheduleCalendarSetting(
+                        ScheduleCalendarSetting.DEFAULT_TITLE,
+                        ScheduleCalendarSetting.DEFAULT_PUBLIC_PATH,
+                        null
+                    ))
+            )
+            .flatMap(tuple -> {
+                var entries = tuple.getT1();
+                var setting = tuple.getT2();
+                var localOccurrences = expandOccurrences(entries, rangeStart, rangeEnd, zoneId);
+                return externalCalendarService.listOccurrences(setting, rangeStart, rangeEnd, zoneId)
+                    .map(externalOccurrences -> {
+                        var occurrences = new ArrayList<ScheduleEventOccurrence>(localOccurrences.size()
+                            + externalOccurrences.size());
+                        occurrences.addAll(localOccurrences);
+                        occurrences.addAll(externalOccurrences);
+                        occurrences.sort(Comparator.comparing(ScheduleEventOccurrence::start));
+                        return new CalendarContext(entries, occurrences, setting);
+                    });
+            });
     }
 
     private ScheduleCardResponse toScheduleCardResponse(ScheduleEntry entry, ZoneId zoneId) {
@@ -1355,14 +1389,14 @@ public class ScheduleQueryService {
         );
     }
 
-    private WeekViewResponse toWeekView(List<ScheduleEntry> entries, LocalDate weekStart, LocalDate weekEnd,
+    private WeekViewResponse toWeekView(CalendarContext context, LocalDate weekStart, LocalDate weekEnd,
         ZoneId zoneId, OffsetDateTime serverNow) {
         var days = new ArrayList<DayView>();
         for (int offset = 0; offset < 7; offset++) {
             var date = weekStart.plusDays(offset);
-            days.add(toDayView(entries, date, zoneId));
+            days.add(toDayView(context.occurrences(), date));
         }
-        var summary = toSummary(entries, zoneId, serverNow);
+        var summary = toSummary(context.occurrences(), zoneId, serverNow);
         var nextOccurrence = summary.next();
         return new WeekViewResponse(
             weekStart.toString(),
@@ -1379,30 +1413,34 @@ public class ScheduleQueryService {
         );
     }
 
-    private SummaryResponse toSummary(List<ScheduleEntry> entries, ZoneId zoneId, OffsetDateTime serverNow) {
+    private SummaryResponse toSummary(List<ScheduleEventOccurrence> occurrences, ZoneId zoneId,
+        OffsetDateTime serverNow) {
         var now = serverNow.toLocalDateTime();
-        var activeTitles = currentOccurrenceTitles(entries, zoneId, now);
+        var activeTitles = currentOccurrenceTitles(occurrences, now);
         var current = new CurrentStatusSummary(
             !activeTitles.isEmpty(),
             formatCurrentStatusText(activeTitles),
             activeTitles
         );
-        var nextOccurrence = nextUpcomingOccurrence(entries, zoneId, now);
+        var nextOccurrence = nextUpcomingOccurrence(occurrences, now);
         var next = nextOccurrence == null
             ? null
             : new NextOccurrenceSummary(
-                nextOccurrence.entry().getSpec().getTitle(),
+                nextOccurrence.title(),
                 DATE_TIME_FORMATTER.format(nextOccurrence.start()),
                 Duration.between(now, nextOccurrence.start()).toMinutes(),
-                formatCountdownText(Duration.between(now, nextOccurrence.start()),
-                    nextOccurrence.entry().getSpec().getTitle())
+                formatCountdownText(Duration.between(now, nextOccurrence.start()), nextOccurrence.title())
             );
         return new SummaryResponse(serverNow.toString(), zoneId.getId(), current, next);
     }
 
-    private DayView toDayView(List<ScheduleEntry> entries, LocalDate date, ZoneId zoneId) {
-        var occurrences = expandOccurrences(entries, date, date, zoneId);
-        var occupied = toOccupiedBlocks(occurrences, date);
+    private DayView toDayView(List<ScheduleEventOccurrence> occurrences, LocalDate date) {
+        var dailyOccurrences = occurrences.stream()
+            .filter(occurrence -> occurrence.end().isAfter(date.atStartOfDay())
+                && occurrence.start().isBefore(date.plusDays(1).atStartOfDay()))
+            .sorted(comparing(ScheduleEventOccurrence::start))
+            .toList();
+        var occupied = toOccupiedBlocks(dailyOccurrences, date);
         var free = toFreeBlocks(occupied);
         return new DayView(
             date.toString(),
@@ -1412,17 +1450,17 @@ public class ScheduleQueryService {
         );
     }
 
-    private List<ScheduleOccurrence> expandOccurrences(List<ScheduleEntry> entries, LocalDate weekStart,
+    private List<ScheduleEventOccurrence> expandOccurrences(List<ScheduleEntry> entries, LocalDate weekStart,
         LocalDate weekEnd, ZoneId zoneId) {
         var rangeStart = weekStart.atStartOfDay();
         var rangeEnd = weekEnd.plusDays(1).atStartOfDay();
         return entries.stream()
             .flatMap(entry -> occurrencesForRange(entry, rangeStart, rangeEnd, zoneId).stream())
-            .sorted(comparing(ScheduleOccurrence::start))
+            .sorted(comparing(ScheduleEventOccurrence::start))
             .collect(Collectors.toList());
     }
 
-    private List<ScheduleOccurrence> occurrencesForRange(ScheduleEntry entry, LocalDateTime rangeStart,
+    private List<ScheduleEventOccurrence> occurrencesForRange(ScheduleEntry entry, LocalDateTime rangeStart,
         LocalDateTime rangeEnd, ZoneId zoneId) {
         var spec = entry.getSpec();
         var start = spec.getStartTime().atZoneSameInstant(zoneId).toLocalDateTime();
@@ -1432,7 +1470,7 @@ public class ScheduleQueryService {
         }
         if (!isRecurring(spec) || spansMultipleDates(start, end)) {
             if (end.isAfter(rangeStart) && start.isBefore(rangeEnd)) {
-                return List.of(new ScheduleOccurrence(entry, start, end));
+                return List.of(toOccurrence(entry, start, end, zoneId));
             }
             return List.of();
         }
@@ -1442,21 +1480,37 @@ public class ScheduleQueryService {
         var interval = normalizeInterval(recurrence.getInterval());
         var duration = Duration.between(start, end);
         var cursor = alignOccurrenceStart(start, duration, rangeStart, frequency, interval);
-        var occurrences = new ArrayList<ScheduleOccurrence>();
+        var occurrences = new ArrayList<ScheduleEventOccurrence>();
         while (cursor.isBefore(rangeEnd)) {
             if (isAfterUntil(cursor, recurrence)) {
                 break;
             }
             var occurrenceEnd = cursor.plus(duration);
             if (occurrenceEnd.isAfter(rangeStart) && cursor.isBefore(rangeEnd)) {
-                occurrences.add(new ScheduleOccurrence(entry, cursor, occurrenceEnd));
+                occurrences.add(toOccurrence(entry, cursor, occurrenceEnd, zoneId));
             }
             cursor = advanceOccurrence(cursor, frequency, interval);
         }
         return occurrences;
     }
 
-    private List<TimeBlock> toOccupiedBlocks(List<ScheduleOccurrence> occurrences, LocalDate date) {
+    private ScheduleEventOccurrence toOccurrence(ScheduleEntry entry, LocalDateTime start, LocalDateTime end,
+        ZoneId zoneId) {
+        var spec = entry.getSpec();
+        return new ScheduleEventOccurrence(
+            entry.getMetadata().getName(),
+            spec.getTitle(),
+            spec.getDescription(),
+            spec.getLocation(),
+            recurrenceDescription(spec.getRecurrence()),
+            defaultColor(spec.getColor()),
+            start,
+            end,
+            null
+        );
+    }
+
+    private List<TimeBlock> toOccupiedBlocks(List<ScheduleEventOccurrence> occurrences, LocalDate date) {
         var startOfDay = date.atStartOfDay();
         var endOfDay = date.plusDays(1).atStartOfDay();
         return occurrences.stream()
@@ -1466,8 +1520,8 @@ public class ScheduleQueryService {
             .collect(Collectors.toList());
     }
 
-    private TimeBlock toBlock(ScheduleOccurrence occurrence, LocalDateTime startOfDay, LocalDateTime endOfDay) {
-        var spec = occurrence.entry().getSpec();
+    private TimeBlock toBlock(ScheduleEventOccurrence occurrence, LocalDateTime startOfDay,
+        LocalDateTime endOfDay) {
         var start = occurrence.start();
         var end = occurrence.end();
         if (!end.isAfter(startOfDay) || !start.isBefore(endOfDay)) {
@@ -1478,11 +1532,11 @@ public class ScheduleQueryService {
         return new TimeBlock(
             TIME_FORMATTER.format(clippedStart),
             TIME_FORMATTER.format(clippedEnd),
-            spec.getTitle(),
-            buildMetaLines(spec),
-            buildTooltipMeta(spec),
+            occurrence.title(),
+            buildMetaLines(occurrence),
+            buildTooltipMeta(occurrence),
             formatDuration(clippedStart, clippedEnd),
-            defaultColor(spec.getColor())
+            occurrence.color()
         );
     }
 
@@ -1519,22 +1573,24 @@ public class ScheduleQueryService {
         );
     }
 
-    private String buildTooltipMeta(ScheduleEntry.Spec spec) {
-        var meta = buildMetaLines(spec);
+    private String buildTooltipMeta(ScheduleEventOccurrence occurrence) {
+        var meta = buildMetaLines(occurrence);
         return meta.isEmpty() ? null : String.join(" ", meta);
     }
 
-    private List<String> buildMetaLines(ScheduleEntry.Spec spec) {
+    private List<String> buildMetaLines(ScheduleEventOccurrence occurrence) {
         var meta = new ArrayList<String>();
-        if (spec.getLocation() != null && !spec.getLocation().isBlank()) {
-            meta.add("地点：" + spec.getLocation());
+        if (occurrence.location() != null && !occurrence.location().isBlank()) {
+            meta.add("地点：" + occurrence.location());
         }
-        if (spec.getDescription() != null && !spec.getDescription().isBlank()) {
-            meta.add("备注：" + spec.getDescription());
+        if (occurrence.description() != null && !occurrence.description().isBlank()) {
+            meta.add("备注：" + occurrence.description());
         }
-        var recurrence = recurrenceDescription(spec.getRecurrence());
-        if (recurrence != null) {
-            meta.add(recurrence);
+        if (occurrence.recurrenceDescription() != null && !occurrence.recurrenceDescription().isBlank()) {
+            meta.add(occurrence.recurrenceDescription());
+        }
+        if (occurrence.sourceLabel() != null && !occurrence.sourceLabel().isBlank()) {
+            meta.add("来源：" + occurrence.sourceLabel());
         }
         return meta;
     }
@@ -1543,13 +1599,10 @@ public class ScheduleQueryService {
         return color == null || color.isBlank() ? "#0f766e" : color;
     }
 
-    private List<String> currentOccurrenceTitles(List<ScheduleEntry> entries, ZoneId zoneId, LocalDateTime now) {
-        var startOfDay = now.toLocalDate().atStartOfDay();
-        var endOfDay = startOfDay.plusDays(1);
-        return entries.stream()
-            .flatMap(entry -> occurrencesForRange(entry, startOfDay, endOfDay, zoneId).stream())
+    private List<String> currentOccurrenceTitles(List<ScheduleEventOccurrence> occurrences, LocalDateTime now) {
+        return occurrences.stream()
             .filter(occurrence -> !occurrence.start().isAfter(now) && occurrence.end().isAfter(now))
-            .map(occurrence -> occurrence.entry().getSpec().getTitle())
+            .map(ScheduleEventOccurrence::title)
             .filter(title -> title != null && !title.isBlank())
             .distinct()
             .toList();
@@ -1713,7 +1766,7 @@ public class ScheduleQueryService {
             return null;
         }
 
-        ScheduleOccurrence nextOccurrence;
+        ScheduleEventOccurrence nextOccurrence;
         if (baseStart.isAfter(now)) {
             nextOccurrence = upcomingOccurrences.stream()
                 .filter(occurrence -> occurrence.start().isAfter(baseStart))
@@ -1730,16 +1783,11 @@ public class ScheduleQueryService {
         return formatOccurrenceLabel(nextOccurrence.start(), nextOccurrence.end());
     }
 
-    private ScheduleOccurrence nextUpcomingOccurrence(List<ScheduleEntry> entries, ZoneId zoneId) {
-        return nextUpcomingOccurrence(entries, zoneId, LocalDateTime.now(zoneId));
-    }
-
-    private ScheduleOccurrence nextUpcomingOccurrence(List<ScheduleEntry> entries, ZoneId zoneId, LocalDateTime now) {
-        var rangeEnd = now.plusDays(90);
-        return entries.stream()
-            .flatMap(entry -> occurrencesForRange(entry, now, rangeEnd, zoneId).stream())
+    private ScheduleEventOccurrence nextUpcomingOccurrence(List<ScheduleEventOccurrence> occurrences,
+        LocalDateTime now) {
+        return occurrences.stream()
             .filter(occurrence -> occurrence.start().isAfter(now))
-            .min(comparing(ScheduleOccurrence::start))
+            .min(comparing(ScheduleEventOccurrence::start))
             .orElse(null);
     }
 
@@ -1756,23 +1804,21 @@ public class ScheduleQueryService {
             + DATE_TIME_FORMATTER.format(end);
     }
 
-    private OccurrenceResponse toOccurrenceResponse(ScheduleOccurrence occurrence, ZoneId zoneId) {
-        var entry = occurrence.entry();
-        var spec = entry.getSpec();
+    private OccurrenceResponse toOccurrenceResponse(ScheduleEventOccurrence occurrence, ZoneId zoneId) {
         var start = occurrence.start();
         var end = occurrence.end();
         return new OccurrenceResponse(
-            entry.getMetadata().getName(),
-            spec.getTitle(),
-            spec.getDescription(),
-            spec.getLocation(),
+            occurrence.name(),
+            occurrence.title(),
+            occurrence.description(),
+            occurrence.location(),
             DATE_TIME_FORMATTER.format(start),
             DATE_TIME_FORMATTER.format(end),
             start.toLocalDate().toString(),
             start.getDayOfWeek().getDisplayName(TextStyle.FULL, ZH_CN),
-            recurrenceDescription(spec.getRecurrence()),
+            occurrence.recurrenceDescription(),
             formatDuration(start, end),
-            defaultColor(spec.getColor())
+            occurrence.color()
         );
     }
 
@@ -1808,7 +1854,8 @@ public class ScheduleQueryService {
                             String durationLabel, String color) {
     }
 
-    private record ScheduleOccurrence(ScheduleEntry entry, LocalDateTime start, LocalDateTime end) {
+    private record CalendarContext(List<ScheduleEntry> entries, List<ScheduleEventOccurrence> occurrences,
+                                   ScheduleCalendarSetting setting) {
     }
 
     public record OccurrenceResponse(String name, String title, String description, String location,

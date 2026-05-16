@@ -15,13 +15,14 @@ import reactor.core.publisher.Mono;
 public class SchedulePageController {
     private final ScheduleQueryService scheduleQueryService;
 
-    @GetMapping(value = "/schedule-calendar", produces = MediaType.TEXT_HTML_VALUE)
+    @GetMapping(value = ScheduleCalendarRoutes.DEFAULT_PUBLIC_PAGE_PATH, produces = MediaType.TEXT_HTML_VALUE)
     @ResponseBody
     public Mono<String> page(@RequestParam(name = "start", required = false) LocalDate start) {
         return scheduleQueryService.buildPublicCalendarPage(start);
     }
 
-    @GetMapping(value = "/schedule-calendar/cards/{name}", produces = MediaType.TEXT_HTML_VALUE)
+    @GetMapping(value = ScheduleCalendarRoutes.PUBLIC_CARD_PATH_PREFIX + "/{name}",
+        produces = MediaType.TEXT_HTML_VALUE)
     @ResponseBody
     public Mono<String> card(@PathVariable("name") String name) {
         return scheduleQueryService.buildPublicCardPage(name);
