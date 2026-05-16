@@ -1,7 +1,7 @@
 <div align="center">
   <img src="./src/main/resources/logo.svg" alt="日程日历 Logo" width="120" />
   <h1>日程日历</h1>
-  <p>提供前台日历页面、控制台事项管理、外部日历订阅和编辑器日程卡片的 Halo 插件</p>
+  <p>提供前台日历页面、控制台事项管理和编辑器日程卡片的 Halo 插件</p>
 </div>
 
 <p align="center">
