@@ -46,6 +46,7 @@ import { fetchAllScheduleEntries } from '../editor/schedule-card-data'
 const apiBase = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
 const pluginConfigApi = '/apis/api.console.halo.run/v1alpha1/plugins/schedule-calendar/json-config'
 const publicMetaApi = '/apis/api.schedule.calendar.sunny.dev/v1alpha1/public-meta'
+const occurrencesApi = '/apis/api.schedule.calendar.sunny.dev/v1alpha1/occurrences'
 const hourHeight = 56
 const dayColumnHeight = hourHeight * 24
 const headerHeight = 64
@@ -58,6 +59,7 @@ const deleting = ref(false)
 const dialogVisible = ref(false)
 const externalCalendarDialogVisible = ref(false)
 const entries = ref<ScheduleEntry[]>([])
+const weekOccurrences = ref<CalendarOccurrence[]>([])
 const entryKeyword = ref('')
 const pageError = ref('')
 const dialogError = ref('')
@@ -125,6 +127,21 @@ interface CalendarOccurrence {
   entry: ScheduleEntry
   start: Date
   end: Date
+}
+
+interface ApiOccurrenceResponse {
+  name: string
+  title: string
+  description?: string
+  location?: string
+  startTime: string
+  endTime: string
+  date: string
+  dayLabel: string
+  recurrenceDescription?: string
+  durationLabel?: string
+  color?: string
+  sourceLabel?: string
 }
 
 interface EntryOccurrenceSummary {
@@ -404,6 +421,55 @@ const buildBlockMetaLines = (entry: ScheduleEntry) => {
 
 const buildTooltipMeta = (entry: ScheduleEntry) => buildBlockMetaLines(entry).join(' ')
 
+const buildOccurrenceEntry = (occurrence: ApiOccurrenceResponse): ScheduleEntry => ({
+  apiVersion: 'schedule.calendar.sunny.dev/v1alpha1',
+  kind: 'ScheduleEntry',
+  metadata: {
+    name: `${occurrence.name || occurrence.title}-${occurrence.startTime}`,
+  },
+  spec: {
+    title: occurrence.title,
+    description: occurrence.description || occurrence.sourceLabel || undefined,
+    location: occurrence.location,
+    startTime: occurrence.startTime,
+    endTime: occurrence.endTime,
+    color: occurrence.color || '#4285f4',
+    recurrence: undefined,
+  },
+})
+
+const loadWeekOccurrences = async () => {
+  const start = new Date(currentWeekStart.value)
+  const end = new Date(currentWeekStart.value)
+  end.setDate(end.getDate() + 6)
+
+  const { data } = await axiosInstance.get<ApiOccurrenceResponse[]>(occurrencesApi, {
+    params: {
+      start: formatDateInput(start),
+      end: formatDateInput(end),
+    },
+  })
+
+  weekOccurrences.value = Array.isArray(data)
+    ? data
+        .map((occurrence) => {
+          const start = new Date(occurrence.startTime)
+          const end = new Date(occurrence.endTime)
+          if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+            return null
+          }
+
+          return {
+            id: `${occurrence.name || occurrence.title}-${occurrence.startTime}`,
+            entry: buildOccurrenceEntry(occurrence),
+            start,
+            end,
+          } satisfies CalendarOccurrence
+        })
+        .filter((item): item is CalendarOccurrence => item !== null)
+    : []
+}
+
 const buildVisibleMetaLines = (block: {
   density: CalendarBlock['density']
   height: number
@@ -563,13 +629,7 @@ const weekDays = computed(() => {
 })
 
 const currentWeekOccurrences = computed(() => {
-  const rangeStart = new Date(currentWeekStart.value)
-  const rangeEnd = new Date(currentWeekStart.value)
-  rangeEnd.setDate(rangeEnd.getDate() + 7)
-
-  return entries.value
-    .flatMap((entry) => expandEntryOccurrences(entry, rangeStart, rangeEnd))
-    .sort((left, right) => left.start.getTime() - right.start.getTime())
+  return [...weekOccurrences.value].sort((left, right) => left.start.getTime() - right.start.getTime())
 })
 
 const currentActiveOccurrences = computed(() => {
@@ -923,6 +983,12 @@ const fetchEntries = async () => {
 
   try {
     entries.value = await fetchAllScheduleEntries()
+    try {
+      await loadWeekOccurrences()
+    } catch (error) {
+      pageError.value = '周历事项加载失败，请稍后重试。'
+      console.error(error)
+    }
     if (permissionLevel.value === 'unknown') {
       permissionLevel.value = 'view'
     }
@@ -975,6 +1041,7 @@ const persistExternalCalendars = async (items: ExternalCalendarFormItem[]) => {
     externalCalendars: sanitizeExternalCalendarsForSave(items),
   })
   externalCalendars.value = items
+  await loadWeekOccurrences()
 }
 
 const submitExternalCalendar = async () => {
@@ -1391,6 +1458,13 @@ watch([calendarScrollRef, calendarGridRef], () => {
   void syncCalendarScrollShadows()
 })
 
+watch(currentWeekStart, () => {
+  void loadWeekOccurrences().catch((error) => {
+    console.error(error)
+    pageError.value = '周历事项加载失败，请稍后重试。'
+  })
+})
+
 watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
   void syncCalendarScrollShadows()
 })
@@ -1659,17 +1733,23 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
                 <div class="entry-main">
                   <div class="entry-title">{{ calendar.name }}</div>
                   <div class="entry-meta">
-                    <span
+                    <div
                       v-for="(item, index) in buildExternalCalendarMetaItems(calendar)"
                       :key="`${calendar.id}-${index}`"
-                      class="entry-meta__item"
+                      class="entry-meta__item-wrap"
                       :class="{
-                        'entry-meta__item--wide': item.wide,
-                        'entry-meta__item--block': item.block,
+                        'entry-meta__item-wrap--block': item.block,
                       }"
                     >
-                      {{ item.text }}
-                    </span>
+                      <span
+                        class="entry-meta__item"
+                        :class="{
+                          'entry-meta__item--wide': item.wide,
+                        }"
+                      >
+                        {{ item.text }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1744,17 +1824,23 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
                 <div class="entry-main">
                   <div class="entry-title">{{ entry.spec.title }}</div>
                   <div class="entry-meta">
-                    <span
+                    <div
                       v-for="(item, index) in buildEntryMetaItems(entry)"
                       :key="`${entry.metadata.name}-${index}`"
-                      class="entry-meta__item"
+                      class="entry-meta__item-wrap"
                       :class="{
-                        'entry-meta__item--wide': item.wide,
-                        'entry-meta__item--block': item.block,
+                        'entry-meta__item-wrap--block': item.block,
                       }"
                     >
-                      {{ item.text }}
-                    </span>
+                      <span
+                        class="entry-meta__item"
+                        :class="{
+                          'entry-meta__item--wide': item.wide,
+                        }"
+                      >
+                        {{ item.text }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2386,12 +2472,21 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
   min-width: 0;
 }
 
+.entry-meta__item-wrap {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.entry-meta__item-wrap--block {
+  flex: 0 0 100%;
+}
+
 .entry-meta__item {
   display: inline-flex;
   align-items: center;
   flex: 0 1 auto;
   max-width: 100%;
-  width: fit-content;
   min-width: 0;
   padding: 4px 10px;
   border-radius: 999px;
@@ -2403,15 +2498,8 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
 }
 
 .entry-meta__item--wide {
-  flex: 0 1 auto;
-  max-width: 100%;
   border-radius: 12px;
   white-space: normal;
-}
-
-.entry-meta__item--block {
-  flex: 0 0 100%;
-  width: fit-content;
 }
 
 .entry-actions {

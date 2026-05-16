@@ -22,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
@@ -50,12 +51,13 @@ class ScheduleQueryServiceTest {
         objectMapper = JsonMapper.builder().findAndAddModules().build();
         service = new ScheduleQueryService(
             client,
-            new ScheduleCalendarSettingService(settingFetcher),
+            new ScheduleCalendarSettingService(settingFetcher, client),
             externalCalendarService
         );
         lenient().when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
             .thenReturn(Mono.empty());
-        lenient().when(settingFetcher.getValues()).thenReturn(Mono.just(Map.of()));
+        lenient().when(client.fetch(eq(ConfigMap.class), eq("schedule-calendar-settings")))
+            .thenReturn(Mono.empty());
         lenient().when(externalCalendarService.listOccurrences(any(), any(), any(), any()))
             .thenReturn(Mono.just(List.of()));
     }
@@ -348,7 +350,7 @@ class ScheduleQueryServiceTest {
     }
 
     @Test
-    void fallsBackToRawPluginConfigForExternalCalendars() {
+    void fallsBackToRawPluginConfigForExternalCalendars() throws Exception {
         when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
             .thenReturn(Flux.empty());
         when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
@@ -362,9 +364,12 @@ class ScheduleQueryServiceTest {
                 .put("icsUrl", "https://calendar.example/holiday.ics")
                 .put("enabled", true)
                 .put("color", "#4285f4")));
-        when(settingFetcher.getValues()).thenReturn(Mono.just(Map.of(
-            ScheduleCalendarSetting.GROUP, publicPage
-        )));
+        var configMap = new ConfigMap();
+        configMap.setData(Map.of(
+            ScheduleCalendarSetting.GROUP, objectMapper.writeValueAsString(publicPage)
+        ));
+        when(client.fetch(eq(ConfigMap.class), eq("schedule-calendar-settings")))
+            .thenReturn(Mono.just(configMap));
 
         var externalOccurrence = new ScheduleEventOccurrence(
             "holiday-1",
@@ -391,7 +396,7 @@ class ScheduleQueryServiceTest {
     }
 
     @Test
-    void fallsBackToRootPluginConfigForExternalCalendars() {
+    void fallsBackToRootPluginConfigForExternalCalendars() throws Exception {
         when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
             .thenReturn(Flux.empty());
         when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
@@ -399,16 +404,19 @@ class ScheduleQueryServiceTest {
 
         var publicPage = objectMapper.createObjectNode();
         publicPage.put("title", "日程日历");
-        when(settingFetcher.getValues()).thenReturn(Mono.just(Map.of(
-            ScheduleCalendarSetting.GROUP, publicPage,
-            "title", objectMapper.getNodeFactory().textNode("日程日历335"),
-            "externalCalendars", objectMapper.createArrayNode()
+        var configMap = new ConfigMap();
+        configMap.setData(Map.of(
+            ScheduleCalendarSetting.GROUP, objectMapper.writeValueAsString(publicPage),
+            "title", "日程日历335",
+            "externalCalendars", objectMapper.writeValueAsString(objectMapper.createArrayNode()
                 .add(objectMapper.createObjectNode()
                     .put("name", "美国节假日")
                     .put("icsUrl", "https://calendar.example/holiday.ics")
                     .put("enabled", true)
-                    .put("color", "#4285f4"))
-        )));
+                    .put("color", "#4285f4")))
+        ));
+        when(client.fetch(eq(ConfigMap.class), eq("schedule-calendar-settings")))
+            .thenReturn(Mono.just(configMap));
 
         var externalOccurrence = new ScheduleEventOccurrence(
             "holiday-root-1",
