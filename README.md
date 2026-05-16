@@ -27,9 +27,7 @@ Halo 默认并没有提供一套完整的日程日历能力。这个插件的目
 - 给编辑器新增可插入文章的日程卡片
 - 给主题和自定义前端新增可直接读取的 Finder 与 REST API
 
-它不是对旧功能的修补，而是为 Halo 新增一套从前台展示、后台维护到主题集成都能直接使用的日程能力。
-
-## 📸 Screenshots
+## 📸 截图预览
 
 <p align="center">
   <img src="./schedule-calendar-home.png" alt="日程日历首页预览" />
