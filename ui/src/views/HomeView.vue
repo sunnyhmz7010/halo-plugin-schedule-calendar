@@ -160,6 +160,7 @@ interface PluginConfigResponse {
   title?: string
   public_page?: {
     title?: string
+    externalCalendars?: ExternalCalendarConfigItem[]
   }
   externalCalendars?: ExternalCalendarConfigItem[]
 }
@@ -1008,8 +1009,12 @@ const loadPluginConfig = async () => {
 
     pluginTitle.value = data.public_page?.title?.trim() || data.title?.trim() || '日程日历'
 
-    externalCalendars.value = Array.isArray(data.externalCalendars)
-      ? data.externalCalendars.map((item, index) =>
+    const savedExternalCalendars = Array.isArray(data.public_page?.externalCalendars)
+      ? data.public_page.externalCalendars
+      : data.externalCalendars
+
+    externalCalendars.value = Array.isArray(savedExternalCalendars)
+      ? savedExternalCalendars.map((item, index) =>
           normalizeExternalCalendar(item, item?.name?.trim() || `外部日历 ${index + 1}`),
         )
       : []
@@ -1037,8 +1042,8 @@ const persistExternalCalendars = async (items: ExternalCalendarFormItem[]) => {
   await axiosInstance.put(pluginConfigApi, {
     public_page: {
       title: pluginTitle.value,
+      externalCalendars: sanitizeExternalCalendarsForSave(items),
     },
-    externalCalendars: sanitizeExternalCalendarsForSave(items),
   })
   externalCalendars.value = items
   await loadWeekOccurrences()
