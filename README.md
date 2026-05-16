@@ -1,10 +1,8 @@
-# 📅 日程日历
-
-提供前台日历页面、控制台事项管理、编辑器日程卡片，以及面向 Halo 主题和自定义前端的日程数据能力。
-
-<p align="center">
+<div align="center">
   <img src="./src/main/resources/logo.svg" alt="日程日历 Logo" width="120" />
-</p>
+  <h1>📅 日程日历</h1>
+  <p>提供前台日历页面、控制台事项管理、编辑器日程卡片，以及面向 Halo 主题和自定义前端的日程数据能力。</p>
+</div>
 
 <p align="center">
   <a href="https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/releases"><img src="https://img.shields.io/github/v/release/sunnyhmz7010/halo-plugin-schedule-calendar?label=Release&color=3b82f6" alt="Release" /></a>
