@@ -2686,6 +2686,8 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
 .entry-card-header__actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .entry-search {
