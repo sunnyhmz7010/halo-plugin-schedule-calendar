@@ -14,6 +14,12 @@ These rules are intentionally written in a reusable way so they can be copied in
 - Keep `README.md` user-facing and promotional for external readers. Contributor rules, operational constraints, missing-work notes, AI guidance, release-process conventions, and collaboration guidance belong in `AGENTS.md`, not `README.md`.
 - Do not create repository subdirectories such as `docs/`, `notes/`, `tmp/`, or similar just to store AI handoff notes, internal architecture summaries, release drafting scratch files, or collaboration-only guidance. Put that material in `AGENTS.md` unless the user explicitly asks for a separate file or directory.
 - When updating `README.md`, follow the style of strong, high-star GitHub project READMEs: lead with clear value, polished feature framing, concise usage/integration guidance, and externally useful examples.
+- Prefer the current polished README pattern used in this repository family: a centered hero block with logo, project name, one-sentence value summary, badges, and primary links first; then a short “why this exists” section, screenshot preview, core capability breakdown, quick start, usage/integration examples, feature details, local development, security reporting, license, and other public project metadata.
+- Keep README section order user-journey oriented: what it is, why it matters, what it can do, how to start, how to use/integrate it, then contributor-facing local development notes. Do not lead with developer setup, internal architecture, or maintenance workflow.
+- In README capability sections, group features by user-facing surface or scenario, using short subsections plus concise bullet lists. Prefer concrete capability statements over abstract architecture descriptions.
+- In README usage sections, include copyable real examples for routes, commands, Finder calls, APIs, or embed snippets when the product exposes them. Keep examples minimal but directly runnable or adaptable.
+- For README visual style, it is acceptable to use light decoration such as emoji section headings, centered screenshots, badges, and concise call-to-action links, as long as the page still reads cleanly and professionally.
+- Keep README paragraphs and bullet lists tight. Prefer a few high-signal bullets over long prose blocks, and avoid repeating the same capability in multiple sections unless each repetition adds new context.
 - For the project's leading one-sentence summary in README or similar public-facing docs, prefer a direct product-description sentence instead of starting with the repository name or "This project is ...", unless the user explicitly asks for that phrasing.
 - Do not add README sections framed as internal progress tracking or roadmap bookkeeping, such as “当前已实现”, “当前缺失”, “后续里程碑”, “未来计划”, or similar wording.
 - Do not use “当前…” style internal status phrasing in README copy unless the user explicitly requests it. README should read like a polished public-facing project page, not an internal handoff note.
@@ -69,7 +75,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Public JSON integration surface: REST API under `/apis/api.schedule.calendar.sunny.dev/v1alpha1`
 - Admin capability: create, view, edit, and delete schedule entries in a weekly calendar view.
 - Editor capability: insert a schedule card for a single entry.
-- Current stable version: `v2.7.0`
+- Current stable version: `v2.8.0`
 
 ### Tech Stack
 
@@ -125,6 +131,7 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Do not add `@halo-dev/ui-shared` just to read UI permissions in this repo. It pulls extra frontend dependencies such as `pinia`/`vue-router` and can break the current plugin build.
 - For public calendar rendering, do not interpolate schedule data into `innerHTML`. Build DOM nodes with `textContent`/`createElement` so persisted entry data cannot become stored XSS.
 - `unplugin-icons` is not required in this repo. Prefer Halo-provided icons from `@halo-dev/components`; keeping `unplugin-icons` pulls `vue-template-compiler` into the dependency tree and creates avoidable audit noise.
+- `ui/env.d.ts` should not keep `unplugin-icons` type references after icon cleanup. Keep only the Vite/client reference plus repo-specific global component declarations unless the dependency is intentionally reintroduced.
 - When dependency audit is part of the task, `pnpm.overrides` in `ui/package.json` is an acceptable way to pin vulnerable transitive packages to safe versions, as long as `pnpm build`, `pnpm audit`, and Gradle tests still pass afterward.
 - When this repository's structure, commands, Finder/REST capabilities, release conventions, or known pitfalls change, update this file before handoff so a new session can recover project context quickly.
 
