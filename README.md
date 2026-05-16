@@ -1,16 +1,13 @@
 <div align="center">
   <img src="./src/main/resources/logo.svg" alt="日程日历 Logo" width="120" />
-  <h1>📅 日程日历</h1>
-  <p>提供前台日历页面、控制台事项管理、编辑器日程卡片，以及面向 Halo 主题和自定义前端的日程数据能力。</p>
+  <h1>日程日历</h1>
+  <p>提供前台日历页面、控制台事项管理和编辑器日程卡片的 Halo 插件</p>
 </div>
 
 <p align="center">
   <a href="https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/releases"><img src="https://img.shields.io/github/v/release/sunnyhmz7010/halo-plugin-schedule-calendar?label=Release&color=3b82f6" alt="Release" /></a>
   <a href="https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/blob/main/LICENSE"><img src="https://img.shields.io/github/license/sunnyhmz7010/halo-plugin-schedule-calendar?color=10b981" alt="License" /></a>
   <a href="https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/actions/workflows/ci.yaml"><img src="https://img.shields.io/github/actions/workflow/status/sunnyhmz7010/halo-plugin-schedule-calendar/ci.yaml?branch=main&label=CI" alt="CI" /></a>
-  <img src="https://img.shields.io/badge/Halo-%3E%3D%202.23.0-0ea5e9" alt="Halo >= 2.23.0" />
-  <img src="https://img.shields.io/badge/Java-21-f59e0b" alt="Java 21" />
-  <img src="https://img.shields.io/badge/Vue-3.5-42b883" alt="Vue 3.5" />
 </p>
 
 <p align="center">
@@ -19,7 +16,9 @@
   <a href="https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/issues">反馈问题</a>
 </p>
 
-![日程日历首页预览](./docs/images/schedule-calendar-home.png)
+---
+
+![日程日历首页预览](./schedule-calendar-home.png)
 
 ## ✨ 为什么做这个插件
 
@@ -217,3 +216,7 @@ pnpm test:unit
 ## ⭐ Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=sunnyhmz7010/halo-plugin-schedule-calendar&type=Date)](https://star-history.com/#sunnyhmz7010/halo-plugin-schedule-calendar&Date)
+
+<div align="center">
+  <sub>Built with ❤️ by Sunny</sub>
+</div>
