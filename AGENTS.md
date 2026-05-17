@@ -60,6 +60,12 @@ These rules are intentionally written in a reusable way so they can be copied in
 - If replacing or deleting an older release in favor of a newer one, compare the old tag, the new tag, and the default branch separately so unreleased work is not accidentally documented.
 - Do not promote a prerelease to a stable `vX.Y.Z` release unless the user explicitly asks for that exact stable release.
 - GitHub release titles should default to the bare tag name such as `v0.1.0` or `v0.1.0-beta.1`, not `ProjectName v0.1.0`, unless the user explicitly asks for a product-prefixed title.
+- Treat release signing assets as product-critical state. Before generating or replacing a mobile/desktop release signing key, ask the user for all identity fields the tool will embed, alias/key naming, password policy, storage location, and whether the key is intended for long-term upgrades.
+- Do not treat a successful release-mode build as proof that an artifact is properly signed. Verify the final artifact with the platform verifier whenever one exists, such as `apksigner verify --print-certs` for Android APKs.
+- Never commit private signing material, keystores, provisioning profiles, passwords, or generated local signing property files. Commit only non-sensitive examples or documentation, and ensure `.gitignore` covers the real local files before generating them.
+- If a release signing key is lost or replaced, existing users may lose the normal upgrade path. Surface that risk explicitly before changing keys.
+- Keep release architecture/package allowlists explicit. When the allowed architectures change, update every related build surface in the same task: native build config, packaging/copy scripts, package-manager scripts, release docs, and generated artifact cleanup.
+- After changing release architecture/package rules, scan for removed architecture names and delete stale artifacts from local release output directories before handoff.
 
 ## Repository-Specific Rules
 
