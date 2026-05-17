@@ -234,11 +234,11 @@ pnpm test:unit
 
 如果你发现了安全问题，请不要在公开 Issue 中直接披露细节。请优先参考仓库中的 [SECURITY.md](./SECURITY.md) 提交安全报告。
 
-## 📄 License
+## 📄 许可证
 
 本项目基于 [GPL-3.0](./LICENSE) 开源。
 
-## ⭐ Star History
+## ⭐ 星标历史
 
 [![Star History Chart](https://api.star-history.com/svg?repos=sunnyhmz7010/halo-plugin-schedule-calendar&type=Date)](https://star-history.com/#sunnyhmz7010/halo-plugin-schedule-calendar&Date)
 
