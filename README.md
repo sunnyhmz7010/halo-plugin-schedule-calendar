@@ -232,7 +232,7 @@ pnpm test:unit
 
 ## 🔐 安全报告
 
-如果你发现了安全问题，请不要在公开 Issue 中直接披露细节。请优先参考仓库中的 [SECURITY.md](./SECURITY.md) 提交安全报告。
+如果发现安全问题，请不要公开披露细节。请优先参考仓库中的 [SECURITY.md](./SECURITY.md) 提交安全报告。
 
 ## 📄 许可证
 
