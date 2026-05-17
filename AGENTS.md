@@ -5,6 +5,8 @@
 These rules are intentionally written in a reusable way so they can be copied into other repositories as a starting point.
 
 - This repository's `Reusable Rules` section is intended to be the shared baseline across projects. By default, other project `AGENTS.md` files should keep these reusable rules aligned in structure, intent, and policy unless the user explicitly asks for a deliberate deviation.
+- Treat reusable-rule updates as bidirectional synchronization across the project family, not as a one-way copy from a single canonical repository. When a reusable rule is improved in one repository, apply the same reusable-rule block to sibling repositories in the same task when the user asks for shared-rule synchronization.
+- Repository-specific requirements must live under `Repository-Specific Rules`. Do not put local-only product, packaging, signing, route, or architecture requirements into `Reusable Rules`.
 
 ### General Working Style
 
@@ -15,6 +17,8 @@ These rules are intentionally written in a reusable way so they can be copied in
 - Do not create repository subdirectories such as `docs/`, `notes/`, `tmp/`, or similar just to store AI handoff notes, internal architecture summaries, release drafting scratch files, or collaboration-only guidance. Put that material in `AGENTS.md` unless the user explicitly asks for a separate file or directory.
 - If a repository maintains a public-facing root `README.md`, follow the style of strong, high-star GitHub project READMEs: lead with clear value, polished feature framing, concise usage/integration guidance, and externally useful examples.
 - If a repository maintains a public-facing root `README.md`, prefer the current polished README pattern used in this repository family: a centered hero block with logo, project name, one-sentence value summary, badges, and primary links first; then a short “why this exists” section, screenshot preview, core capability breakdown, quick start, usage/integration examples, feature details, local development, security reporting, license, and other public project metadata.
+- If a repository follows this repository family's polished README pattern, include the expected family elements unless the user explicitly asks otherwise: centered logo/title/value summary, centered Release/License/CI badges, centered primary links, a `---` divider after the hero block, emoji section headings, screenshot preview, license section, Star History chart, and centered footer credit.
+- README license text, license badge, root `LICENSE`, package metadata, and build metadata must agree. If one changes, update the others in the same task or explicitly call out why they intentionally differ.
 - If a repository maintains a public-facing root `README.md`, keep README section order user-journey oriented: what it is, why it matters, what it can do, how to start, how to use/integrate it, then contributor-facing local development notes. Do not lead with developer setup, internal architecture, or maintenance workflow.
 - If a repository maintains a public-facing root `README.md`, group capability sections by user-facing surface or scenario, using short subsections plus concise bullet lists. Prefer concrete capability statements over abstract architecture descriptions.
 - If a repository maintains a public-facing root `README.md`, include copyable real examples for routes, commands, Finder calls, APIs, or embed snippets when the product exposes them. Keep examples minimal but directly runnable or adaptable.
@@ -216,3 +220,4 @@ This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
 - Blocks cross-day recurring entries in the admin form and stabilizes 24-hour public rendering.
 - Uses unified admin/public meta ordering for location, note, and recurrence text.
 - Uses adaptive calendar-block text rendering to reduce clipping in short blocks.
+
