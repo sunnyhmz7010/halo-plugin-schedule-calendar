@@ -27,6 +27,7 @@ These rules are intentionally written in a reusable way so they can be copied in
 - If a repository maintains a public-facing root `README.md`, prefer a direct product-description leading sentence instead of starting with the repository name or "This project is ...", unless the user explicitly asks for that phrasing.
 - If a repository maintains a public-facing root `README.md`, do not add sections framed as internal progress tracking or roadmap bookkeeping, such as “当前已实现”, “当前缺失”, “后续里程碑”, “未来计划”, or similar wording.
 - If a repository maintains a public-facing root `README.md`, do not use “当前…” style internal status phrasing unless the user explicitly requests it. README should read like a polished public-facing project page, not an internal handoff note.
+- If a repository maintains a public-facing root `README.md`, include concise `技术栈` and `项目架构` sections when documenting or refreshing the README. Keep the stack factual and the architecture tree high-level, user-facing, and aligned with the real repository layout; place these sections after product usage/details and before local development unless the user asks for a different order.
 - In public-facing docs such as a root `README.md`, write commands using standard upstream tooling, not local wrappers, aliases, shell functions, or private helper commands. Keep local convenience commands in contributor-only docs such as `AGENTS.md`.
 - For searches, prefer `rg`.
 - Use `apply_patch` for manual edits when the environment is stable.

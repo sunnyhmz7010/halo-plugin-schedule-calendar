@@ -201,6 +201,34 @@ GET /apis/api.schedule.calendar.sunny.dev/v1alpha1/entrycards/{name}
 - 控制台支持查看权限与管理权限区分
 - 管理权限可进行本地事项和外部日历订阅的新增、编辑、删除、刷新、备份和恢复
 
+## 🧱 技术栈
+
+- 运行平台：Halo `>= 2.23.0`
+- 后端：Java 21、Gradle、Halo Plugin API
+- 控制台前端：Vue 3、TypeScript、Vite、Halo UI Components
+- 编辑器集成：Halo Rich Text Editor 扩展
+- 对外集成：Finder API、REST API、iCal/ICS 订阅
+- 构建方式：Gradle 多模块构建，`ui/` 前端产物打包进插件控制台资源
+
+## 🗂️ 项目架构
+
+```text
+halo-plugin-schedule-calendar/
+├─ src/main/java/run/halo/schedule/calendar/  # 插件后端、公开页面、REST API、Finder、查询与备份逻辑
+├─ src/main/resources/                        # plugin.yaml、插件资源和 Halo 扩展配置
+│  └─ extensions/                             # 权限模板、插件设置 schema 等扩展定义
+├─ ui/                                        # 控制台前端与编辑器扩展源码
+│  └─ src/
+│     ├─ views/                               # 控制台页面
+│     ├─ editor/                              # 编辑器日程卡片扩展
+│     ├─ utils/                               # 前端工具函数
+│     └─ types/                               # TypeScript 类型声明
+├─ gradle/                                    # Gradle Wrapper 支持文件
+├─ build.gradle                               # 后端依赖、Halo 插件构建和前端资源打包配置
+├─ gradle.properties                          # 插件版本等 Gradle 属性
+└─ settings.gradle                            # Gradle 多模块设置
+```
+
 ## 👨‍💻 本地开发
 
 ### 🧰 环境
