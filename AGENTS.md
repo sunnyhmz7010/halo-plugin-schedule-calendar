@@ -1,216 +1,157 @@
 # AGENTS.md
 
-## Reusable Rules
+## 项目概况
 
-These rules are written as the shared baseline for this project family.
+| 维度 | 内容 |
+|------|------|
+| 产品定位 | Halo 日程日历插件，非通用日历库 |
+| 核心功能 | 公开日历查看、控制台日程管理、编辑器日程卡片、主题/API 集成 |
+| 当前稳定版本 | `v3.0.0` |
 
-- Keep the `Reusable Rules` block aligned across sibling repositories unless the user explicitly asks for a deliberate deviation.
-- Treat reusable-rule updates as bidirectional synchronization: when shared rules change in one repository, apply the same block to sibling repositories in the same task.
-- Keep repository-specific product, packaging, signing, route, architecture, and handoff details under `Repository-Specific Rules`, not in this section.
+### 技术栈
 
-### General Working Style
+| 层级 | 技术 |
+|------|------|
+| 后端 | Java 21、Gradle、Halo Plugin API |
+| 前端 | Vue 3、TypeScript、Vite |
 
-- Prefer minimal, targeted changes over broad refactors.
-- Preserve existing product copy unless the task requires rewriting it.
-- Keep user-facing docs concise and practical; avoid adding AI collaboration notes or marketing filler unless explicitly requested.
-- Keep public root `README.md` files user-facing and polished: lead with value, use concise feature/usage framing, include externally useful examples, and avoid internal progress notes, AI handoff notes, operational constraints, or release-process guidance.
-- Prefer the project-family README pattern when applicable: centered logo/title/value summary, badges and primary links, a `---` divider, screenshot preview, capability breakdown, quick start, usage/integration examples, feature details, local development, security reporting, license, Star History, and footer credit.
-- Keep README structure user-journey oriented: what it is, why it matters, what it can do, how to start, how to use or integrate it, then contributor-facing local development notes.
-- Keep README prose tight. Group capabilities by user-facing surface or scenario, use concrete statements and copyable minimal examples, and avoid repeating the same capability unless new context is added.
-- README license text, license badge, root `LICENSE`, package metadata, and build metadata must agree; update them together or explicitly call out intentional differences.
-- Contributor rules, AI guidance, handoff notes, release conventions, missing-work notes, and local helper commands belong in `AGENTS.md`, not public docs. Do not create `docs/`, `notes/`, `tmp/`, or similar directories just to store that material unless the user asks.
-- In public docs, write commands with standard upstream tooling rather than local wrappers, aliases, shell functions, or private helper commands.
-- For searches, prefer `rg`.
-- Use `apply_patch` for manual edits when the environment is stable.
-- Do not run destructive git commands unless explicitly requested.
+### 关键路径
 
-### Validation And Hygiene
+| 用途 | 路径 |
+|------|------|
+| 前端源码 | `ui/` |
+| 后端源码 | `src/main/java/run/halo/schedule/calendar/` |
+| 版本号 | `gradle.properties` |
+| 插件元数据 | `src/main/resources/plugin.yaml` |
+| 角色模板 | `src/main/resources/extensions/roleTemplate.yaml` |
+| 设置 Schema | `src/main/resources/extensions/settings.yaml` |
+| 主管理页 | `ui/src/views/HomeView.vue` |
+| 日程模型 | `src/main/java/run/halo/schedule/calendar/ScheduleEntry.java` |
+| 周查询逻辑 | `src/main/java/run/halo/schedule/calendar/ScheduleQueryService.java` |
+| 编辑器卡片 | `ui/src/editor/schedule-card-extension.ts` |
 
-- Keep the working tree clean before handoff: do not leave local build outputs, dependency caches, debugging screenshots, or temporary troubleshooting files committed or untracked.
-- When the environment lacks a required toolchain and the user does not need full local verification, skip heavy verification only when necessary and say so explicitly.
-- Release notes are user-facing change logs. Do not include internal verification/process statements such as having run tests, builds, audits, or CI checks unless explicitly requested.
-- When repository structure, commands, external capabilities, release process, or recurring engineering pitfalls change, update `AGENTS.md` in the same task. Keeping this file current is required, not optional.
-- If newly learned guidance appears reusable across repositories, ask whether to scan sibling `AGENTS.md` files, apply the shared rule, and push those updates.
-- For GitHub-hosted repositories, maintain the baseline repository-governance files consistently across projects unless the user explicitly asks for divergence. This baseline includes `LICENSE`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, issue templates, and similar repo-health/community files.
-- "Consistently" does not mean every line must be identical. Keep the structure, tone, and policy baseline aligned, but make the necessary project-specific substitutions for repository name, product name, links, version fields, platform fields, security scope, issue-form fields, and other repo-specific facts.
-- If one of those GitHub governance files changes in a way that should become the new shared baseline, ask whether to propagate it across sibling GitHub repositories and push the updates while preserving required project-specific substitutions.
+### 路由
 
-### Security And Review
+| 路由 | 用途 |
+|------|------|
+| `/schedule-calendar` | 公开日历页 |
+| `/schedule-calendar.ics` | iCal 订阅 |
+| `/schedule-calendar/cards/{name}` | 公开卡片 |
+| `/apis/api.schedule.calendar.sunny.dev/v1alpha1` | REST API |
 
-- Review code with a bug-risk mindset first. Prioritize functional regressions, security issues, breaking changes, and missing tests before style or cleanup suggestions.
-- If code returns `text/html` built from server-side string templates, HTML-escape all text fields from settings, persisted data, and user-controlled input before interpolating them into tags such as `<title>`, headings, attributes, or inline scripts.
-- Do not assume only frontend `innerHTML` paths are XSS-relevant; also inspect backend-rendered HTML, email templates, CMS fragments, and raw string formatting that bypasses auto-escaping.
-- For admin permission checks, prefer no-side-effect probes against real resources.
-- Do not use invalid create requests to probe permissions; validation failures can mask the real authorization result and create misleading server logs.
+## 架构约束
 
-### Dependency And Upgrade Rules
+### 日程条目规则
 
-- Do not merge dependency or toolchain bumps just to clear security alerts or Dependabot PRs. First confirm the repository config is compatible and all required CI/build/test steps stay green.
-- Treat build-tool upgrades such as `vite`, bundlers, editors, framework compilers, and test runners as compatibility work, not routine version bumps. If the upgrade breaks the build, defer it or patch it properly instead of merging a red PR.
-- When a security alert applies only to dev tooling or an unused runtime mode, verify real exposure before escalating. Distinguish "reported in the dependency graph" from "actually exploitable in this repository."
+- 基础数据模型存储单条源条目，重复条目不在存储中复制
+- 重复规则在渲染/查询周视图时动态展开
+- 支持频率：`DAILY`、`WEEKLY`、`MONTHLY`、`YEARLY`
+- 重复字段位于 `ScheduleEntry.Spec.recurrence`：`frequency`、`interval`、`until`
+- 管理表单禁止跨天重复条目
 
-### Release Rules
+### 产品约束
 
-- Rewrite stable release notes from the commits actually included by the published tag. Do not mix in changes that landed only on `main` after that tag.
-- When converting prereleases into a stable release, aggregate the effective user-visible changes across the prerelease cycle instead of copying beta notes verbatim.
-- If replacing or deleting an older release in favor of a newer one, compare the old tag, the new tag, and the default branch separately so unreleased work is not accidentally documented.
-- Do not promote a prerelease to a stable `vX.Y.Z` release unless the user explicitly asks for that exact stable release.
-- GitHub release titles should default to the bare tag name such as `v0.1.0` or `v0.1.0-beta.1`, not `ProjectName v0.1.0`, unless the user explicitly asks for a product-prefixed title.
-- Treat release signing assets as product-critical state. Before generating or replacing a mobile/desktop release signing key, ask the user for all identity fields the tool will embed, alias/key naming, password policy, storage location, and whether the key is intended for long-term upgrades.
-- Do not treat a successful release-mode build as proof that an artifact is properly signed. Verify the final artifact with the platform verifier whenever one exists, such as `apksigner verify --print-certs` for Android APKs.
-- Never commit private signing material, keystores, provisioning profiles, passwords, or generated local signing property files. Commit only non-sensitive examples or documentation, and ensure `.gitignore` covers the real local files before generating them.
-- If a release signing key is lost or replaced, existing users may lose the normal upgrade path. Surface that risk explicitly before changing keys.
-- Keep release architecture/package allowlists explicit. When the allowed architectures change, update every related build surface in the same task: native build config, packaging/copy scripts, package-manager scripts, release docs, and generated artifact cleanup.
-- Windows release artifact architecture labels must use `amd64` for 64-bit Intel/AMD builds, not `x64`; keep required toolchain/platform identifiers unchanged, such as Rust target triples (`x86_64-pc-windows-msvc`), Android ABIs (`x86_64`), and npm platform package names (`win32-x64`).
-- After changing release architecture/package rules, scan for removed architecture names and delete stale artifacts from local release output directories before handoff.
+- 公开页面标题可在插件设置中配置，但公开页面和 iCal 订阅路由固定
+- Halo 原生插件设置优先于自定义设置页
+- 外部日历 MVP 使用 Halo 原生插件设置配置 ICS 订阅源
+- 外部日历事件为只读，合并到公开页面、Finder 和 REST 查询结果
+- 不要将外部 ICS 事件混入本地日程 CRUD 或编辑器卡片选择
 
-## Repository-Specific Rules
+### 权限规则
 
-This repository is a Halo plugin project named `halo-plugin-schedule-calendar`.
+- `roleTemplate.yaml` 是 Halo 角色聚合的唯一来源
+- `manage` 角色必须包含实际的 `scheduleentries` 读写权限
+- 前端权限探测优先使用无副作用的真实资源请求
+- 控制台入口保持可见，页面内通过运行时能力探测执行权限
 
-### Project Summary
+### 渲染规范
 
-- This project is a Halo schedule calendar plugin, not a generic calendar library.
-- Goal: provide a single plugin that covers public calendar viewing, console-side schedule management, editor schedule cards, and theme/API integration for Halo sites.
-- Public route: `/schedule-calendar`
-- Public iCal route: `/schedule-calendar.ics`
-- Public card route: `/schedule-calendar/cards/{name}`
-- Theme integration surface: Finder API via `scheduleCalendarFinder`
-- Public JSON integration surface: REST API under `/apis/api.schedule.calendar.sunny.dev/v1alpha1`
-- Public page title is configurable in plugin settings, but public page and iCal subscription routes are fixed.
-- Public page and iCal subscription routes are fixed; do not reintroduce configurable public-path settings unless the user explicitly asks for that feature again.
-- Admin capability: create, view, edit, and delete schedule entries in a weekly calendar view.
-- Editor capability: insert a schedule card for a single entry.
-- Current stable version: `v3.0.0`
-- Current prerelease target in local development: none
+- 地点和备注同时显示时，地点在前、备注在后
+- 可见日历块元信息使用标记多行文本：`地点：...` 然后 `备注：...`
+- 悬停提示元信息使用空格分隔文本
+- 公开页面和管理页面使用相同的元信息排序和标记规则
+- 日历块内容优先顶部对齐，短块使用保守的可见行计算
 
-### Tech Stack
+## 开发规范
 
-- Backend: Java 21, Gradle, Halo plugin API
-- Frontend: Vue 3, TypeScript, Vite
-- UI location: `ui/`
-- Backend source: `src/main/java/run/halo/schedule/calendar/`
+### 命令速查
 
-### Important Files
+| 场景 | 命令 |
+|------|------|
+| 前端构建验证 | `cd ui && npm run build` |
+| 后端构建 | `./gradlew.bat build` |
+| 后端测试 | `./gradlew.bat test` |
 
-- Version: `gradle.properties`
-- Plugin metadata: `src/main/resources/plugin.yaml`
-- Role templates: `src/main/resources/extensions/roleTemplate.yaml`
-- Native plugin settings schema: `src/main/resources/extensions/settings.yaml`
-- Public-page meta API: `GET /apis/api.schedule.calendar.sunny.dev/v1alpha1/public-meta`
-- Repo rules: `AGENTS.md`
-- User docs: `README.md`
-- Main admin page: `ui/src/views/HomeView.vue`
-- Schedule model: `src/main/java/run/halo/schedule/calendar/ScheduleEntry.java`
-- Week/query logic: `src/main/java/run/halo/schedule/calendar/ScheduleQueryService.java`
-- Editor card extension: `ui/src/editor/schedule-card-extension.ts`
-- README screenshot asset: `schedule-calendar-home.png`
+### 环境约束
 
-### Schedule Entry Rules
+- 项目需要 Java 21 工具链
+- 如果机器只有 Java 8 或 Java 25，Gradle 验证可能在测试前失败
 
-- Base data model stores a single source entry.
-- Repeating entries are not duplicated in storage.
-- Recurrence is expanded dynamically when rendering/querying a week view.
-- Supported recurrence frequencies:
-  - `DAILY`
-  - `WEEKLY`
-  - `MONTHLY`
-  - `YEARLY`
-- Recurrence fields live under `ScheduleEntry.Spec.recurrence`:
-  - `frequency`
-  - `interval`
-  - `until`
-- Cross-day recurring entries are not allowed from the admin form.
+### 依赖管理
 
-### Repository Development Notes
+- 不要添加 `@halo-dev/ui-shared` 读取 UI 权限，会引入额外依赖
+- `unplugin-icons` 非必需，优先使用 `@halo-dev/components` 提供的图标
+- `ui/env.d.ts` 不应保留 `unplugin-icons` 类型引用
+- `pnpm.overrides` 可用于固定有漏洞的传递依赖
 
-- Frontend validation command:
-  - `npm run build` in `ui/`
-- Backend build/test command:
-  - `./gradlew.bat build`
-  - `./gradlew.bat test`
-- External calendar MVP:
-  - use Halo-native plugin settings to configure Google Calendar or other ICS/iCal subscription sources
-  - external calendar events are read-only and merge into public page, Finder, and REST query results
-  - do not mix external ICS events into local schedule-entry CRUD or editor-card selection unless the user explicitly asks for that broader scope
-  - when reading external calendar sources on the server side, do not rely only on typed `public_page` schema fields; preserve compatibility with raw plugin `json-config` so saved `externalCalendars` are actually visible to public APIs and pages
-- Important environment constraint:
-  - this project requires Java 21 toolchain for Gradle tasks
-  - if the machine only has Java 8 or Java 25, Gradle verification may fail before tests run
-- Do not keep local-only Gradle workarounds in `ui/build.gradle` after troubleshooting; restore the committed repo version unless the user explicitly wants the workaround merged.
-- `gradle/wrapper/` is normal committed project infrastructure for this repo; do not treat it as garbage when cleaning the repository.
-- For this project, Halo-native plugin settings must be preferred over custom settings pages. Do not reintroduce a custom settings tab unless the user explicitly asks for it.
-- The plugin backup feature belongs in the plugin settings area, but the page itself should stay visually close to Halo native patterns and avoid extra decorative copy.
-- The plugin backup/settings area may surface public export endpoints such as the iCal subscription URL when they are real user-facing capabilities; present them as simple utility actions, not marketing content.
-- Do not add `@halo-dev/ui-shared` just to read UI permissions in this repo. It pulls extra frontend dependencies such as `pinia`/`vue-router` and can break the current plugin build.
-- For public calendar rendering, do not interpolate schedule data into `innerHTML`. Build DOM nodes with `textContent`/`createElement` so persisted entry data cannot become stored XSS.
-- `unplugin-icons` is not required in this repo. Prefer Halo-provided icons from `@halo-dev/components`; keeping `unplugin-icons` pulls `vue-template-compiler` into the dependency tree and creates avoidable audit noise.
-- `ui/env.d.ts` should not keep `unplugin-icons` type references after icon cleanup. Keep only the Vite/client reference plus repo-specific global component declarations unless the dependency is intentionally reintroduced.
-- When dependency audit is part of the task, `pnpm.overrides` in `ui/package.json` is an acceptable way to pin vulnerable transitive packages to safe versions, as long as `pnpm build`, `pnpm audit`, and Gradle tests still pass afterward.
-- When this repository's structure, commands, Finder/REST capabilities, release conventions, or known pitfalls change, update this file before handoff so a new session can recover project context quickly.
+### XSS 防护
 
-### Repository Release Conventions
+- 公开日历渲染不要将日程数据插入 `innerHTML`
+- 使用 `textContent`/`createElement` 构建 DOM 节点
 
-- Version tags follow this style:
-  - stable: `v1.2.0`
-  - prerelease example: `v1.2.1-beta.1`
-- When releasing:
-  - update `gradle.properties`
-  - keep `README.md` current if screenshots, URLs, or capability descriptions change
-- If `WeekViewResponse`, Finder 返回结构, or public `weeks` API fields change, update both the Finder section and the REST API section in `README.md`; do not document only one side.
-- If `SummaryResponse` or week-page summary fields change, update the server-rendered public page script to consume the new structure and keep README examples aligned with both Finder and REST usage.
-- When public-page UX adds user-visible capabilities such as 当前状态、下一个事项倒计时、当前时间线, reflect them in `README.md` 功能概览 and 对外能力说明.
-- This repo no longer keeps a committed `CHANGELOG.md`; release history is maintained in GitHub Releases instead.
-- For this repository, release notes should use the heading `## 更新内容`.
-- Release notes should describe concrete 新增功能、修复内容、优化点, and should avoid vague wording such as "收敛".
-- Do not include plugin metadata-only edits in release notes, such as author name, author website, or similar manifest/profile adjustments, unless the user explicitly wants those noted.
-- Stable release notes must aggregate the effective changes across the whole prerelease cycle since the previous stable release.
-- Before editing or publishing release notes, compare the target version against the previous stable tag and review recent GitHub release bodies so repeated items are removed and missing new items, especially permission-control and backup-recovery changes, are not omitted.
-- GitHub Actions release build is triggered by the `Release published` event.
-- For prereleases, prefer creating a GitHub prerelease and let CI build and upload the jar.
-- A local full Gradle build is optional before release if the user does not need local verification.
-- If the user asks to "覆盖" an existing release version, it is acceptable to delete and recreate the GitHub Release/tag at the latest commit, then rerun the release workflow if needed.
-- If the user asks to delete a whole beta series before a stable release, remove both the GitHub prereleases and their tags before creating the stable tag.
+## 移植性/踩坑经验
 
-### Permission Rules
+### 控制台入口排查
 
-- `roleTemplate.yaml` is the source of truth for Halo role aggregation in this repo.
-- The `manage` role must include the real `scheduleentries` read/write verbs it depends on; do not rely only on transitive role assumptions when the UI needs direct resource access.
-- If frontend behavior depends on whether a user can manage schedule entries, prefer probing real `scheduleentries` capability with a no-side-effect request rather than relying only on custom permission endpoints.
-- Do not gate the discoverability of the plugin's main console route, quick action, or plugin self tabs purely on Halo UI permission metadata. If Halo-side UI permission aggregation drifts or fails after upgrade, the whole入口 can disappear even while the plugin is still `STARTED`.
-- For this plugin, prefer keeping console entry points visible and enforce real permissions inside the page with runtime capability probes plus readonly/disabled states.
-- If a custom permission endpoint is kept, its authorization rules and the role template entries for that endpoint must be updated together.
-
-### Console Entry Troubleshooting
-
-- If the console menu item and plugin self tab disappear together after a release, do not assume the release jar is broken first.
-- Check the live plugin state before changing code:
+- 如果控制台菜单项和插件自标签同时消失，先检查插件状态：
   - `halo plugin get schedule-calendar --json`
-  - if `status.phase` is `STARTED` and `status.entry` exists, the plugin has started and the console asset is registered
-- If the plugin is `STARTED` but the入口 is still missing, suspect Halo UI permission aggregation or frontend route visibility rules before suspecting missing bundle files.
-- When comparing release artifacts, verify at least:
+  - 如果 `status.phase` 是 `STARTED` 且 `status.entry` 存在，插件已启动
+- 如果插件 `STARTED` 但入口仍缺失，优先怀疑 Halo UI 权限聚合或前端路由可见性规则
+- 比较发布产物时至少验证：
   - `console/main.js`
   - `console/style.css`
   - `META-INF/plugin-components.idx`
   - `extensions/roleTemplate.yaml`
-- For authenticated console bundle checks, remember `/apis/api.console.halo.run/v1alpha1/plugins/-/bundle.js` returns the login page when requested without console authentication, so unauthenticated fetch results are not valid evidence.
+- 认证控制台包检查时，`/apis/api.console.halo.run/v1alpha1/plugins/-/bundle.js` 无认证会返回登录页
 
-### Rendering Conventions
+### 构建注意事项
 
-- When both location and note are shown, always render location first and note second.
-- Visible calendar block meta uses labeled multiline text: `地点：...` then `备注：...`.
-- Hover tooltip meta uses space-separated text instead of multiline separators.
-- Keep admin list summaries consolidated under the title, but location and note can occupy separate full-width lines for readability.
-- Public page and admin page should use the same meta ordering and labeling rules.
-- Calendar blocks should prefer top-aligned content instead of vertical centering when text may overflow.
-- For short calendar blocks, use conservative visible-line calculation: keep title, time, and duration readable first; hide extra meta lines rather than showing half-clipped text.
+- 不要在 `ui/build.gradle` 中保留本地 Gradle 变通方案
+- `gradle/wrapper/` 是正常的项目基础设施
 
-### Stable Feature Set
+## 版本历史
 
-- Supports recurring schedule entries with dynamic weekly expansion.
-- Supports admin-side entry editing, deletion, and recurrence configuration.
-- Supports Finder API access for Halo themes.
-- Blocks cross-day recurring entries in the admin form and stabilizes 24-hour public rendering.
-- Uses unified admin/public meta ordering for location, note, and recurrence text.
-- Uses adaptive calendar-block text rendering to reduce clipping in short blocks.
+### 版本标签格式
 
+| 类型 | 格式 |
+|------|------|
+| 稳定版 | `v1.2.0` |
+| 预发布 | `v1.2.1-beta.1` |
+
+### 发布检查清单
+
+发布时需同步更新：
+- `gradle.properties` 版本号
+- `README.md`（如截图、URL 或功能描述有变）
+
+### README 同步规则
+
+- `WeekViewResponse`、Finder 返回结构或公开 `weeks` API 字段变更时，同时更新 Finder 和 REST API 文档
+- `SummaryResponse` 或周页面摘要字段变更时，更新服务端渲染公开页面脚本
+- 公开页面 UX 添加用户可见功能时，反映到 `README.md` 功能概览和对外能力说明
+
+### 发布流程
+
+- GitHub Actions 发布构建由 `Release published` 事件触发
+- 预发布优先创建 GitHub prerelease，让 CI 构建并上传 jar
+- 如需"覆盖"现有版本，可删除并重新创建 GitHub Release/tag
+- 如需删除整个 beta 系列，在创建稳定标签前删除 GitHub prereleases 及其标签
+
+### 稳定功能集
+
+- 支持重复日程条目及动态周展开
+- 支持控制台条目编辑、删除和重复配置
+- 支持 Finder API 供 Halo 主题使用
+- 阻止跨天重复条目，稳定 24 小时公开渲染
+- 统一管理/公开元信息排序
+- 自适应日历块文本渲染减少短块裁剪
