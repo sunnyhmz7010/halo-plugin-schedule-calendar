@@ -41,6 +41,29 @@ public class ExternalCalendarService {
     private static final DateTimeFormatter LOCAL_DATE = DateTimeFormatter.BASIC_ISO_DATE;
     private static final int MAX_EXPANSION_STEPS = 10000;
     private static final Duration CACHE_TTL = Duration.ofMinutes(30);
+    
+    private static final Map<String, String> WINDOWS_TO_IANA_TZ_MAP = new HashMap<>();
+    static {
+        // Windows timezone to IANA timezone mapping (common ones)
+        WINDOWS_TO_IANA_TZ_MAP.put("China Standard Time", "Asia/Shanghai");
+        WINDOWS_TO_IANA_TZ_MAP.put("Eastern Standard Time", "America/New_York");
+        WINDOWS_TO_IANA_TZ_MAP.put("Pacific Standard Time", "America/Los_Angeles");
+        WINDOWS_TO_IANA_TZ_MAP.put("GMT Standard Time", "Europe/London");
+        WINDOWS_TO_IANA_TZ_MAP.put("Tokyo Standard Time", "Asia/Tokyo");
+        WINDOWS_TO_IANA_TZ_MAP.put("Korea Standard Time", "Asia/Seoul");
+        WINDOWS_TO_IANA_TZ_MAP.put("India Standard Time", "Asia/Kolkata");
+        WINDOWS_TO_IANA_TZ_MAP.put("Central European Standard Time", "Europe/Berlin");
+        WINDOWS_TO_IANA_TZ_MAP.put("Mountain Standard Time", "America/Denver");
+        WINDOWS_TO_IANA_TZ_MAP.put("Central Standard Time", "America/Chicago");
+        WINDOWS_TO_IANA_TZ_MAP.put("Alaskan Standard Time", "America/Anchorage");
+        WINDOWS_TO_IANA_TZ_MAP.put("Hawaiian Standard Time", "Pacific/Honolulu");
+        WINDOWS_TO_IANA_TZ_MAP.put("Singapore Standard Time", "Asia/Singapore");
+        WINDOWS_TO_IANA_TZ_MAP.put("Taipei Standard Time", "Asia/Taipei");
+        WINDOWS_TO_IANA_TZ_MAP.put("W. Australia Standard Time", "Australia/Perth");
+        WINDOWS_TO_IANA_TZ_MAP.put("AUS Eastern Standard Time", "Australia/Sydney");
+        WINDOWS_TO_IANA_TZ_MAP.put("New Zealand Standard Time", "Pacific/Auckland");
+        // Add more as needed
+    }
 
     private final HttpClient httpClient = HttpClient.newBuilder()
         .followRedirects(HttpClient.Redirect.NORMAL)
@@ -400,15 +423,26 @@ public class ExternalCalendarService {
             : property.value();
     }
 
+    private ZoneId resolveZoneId(String tzid) {
+        if (tzid == null || tzid.isBlank()) {
+            return ZoneId.systemDefault();
+        }
+        var mapped = WINDOWS_TO_IANA_TZ_MAP.getOrDefault(tzid, tzid);
+        try {
+            return ZoneId.of(mapped);
+        } catch (Exception ex) {
+            log.warn("Unknown timezone ID '{}', falling back to system default", tzid, ex);
+            return ZoneId.systemDefault();
+        }
+    }
+
     private TemporalValue parseTemporal(PropertyValue property) {
         var raw = property.value();
         if (raw == null || raw.isBlank()) {
             return null;
         }
 
-        var zoneId = property.params().containsKey("TZID")
-            ? ZoneId.of(property.params().get("TZID"))
-            : ZoneId.systemDefault();
+        var zoneId = resolveZoneId(property.params().get("TZID"));
 
         if ("DATE".equalsIgnoreCase(property.params().get("VALUE")) || raw.length() == 8) {
             var date = LocalDate.parse(raw, LOCAL_DATE);
