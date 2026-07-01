@@ -2482,16 +2482,28 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
         />
 
         <div v-if="batchImportStep === 'input'">
-          <label class="field">
+          <label class="field batch-input-field">
             <span>批量日程数据</span>
             <textarea
               v-model="batchImportText"
               rows="12"
               class="batch-import-textarea"
-              placeholder="每条日程以「标题：」开头，字段按行填写，支持中英文字段名和冒号
+              placeholder="请输入日程数据..."
+            ></textarea>
+          </label>
 
-示例：
-标题：团队周会
+          <div class="batch-format-help">
+            <p><strong>格式说明</strong></p>
+            <ul>
+              <li>每条以「标题：」开头，字段按行填写，空行分隔不同日程</li>
+              <li>字段名/冒号均支持中英文</li>
+              <li>日期：2026-07-02、2026/07/02、2026年7月2日、07-02（补今年）</li>
+              <li>时间：10:00 或 10：00</li>
+              <li>颜色：#3b82f6 或 3b82f6，大小写均可</li>
+              <li>说明支持多行，缩进内容自动合并</li>
+            </ul>
+            <p><strong>示例</strong></p>
+            <pre class="batch-format-example">标题：团队周会
 开始：2026-07-02 10:00
 结束：2026-07-02 11:00
 地点：会议室A
@@ -2501,21 +2513,7 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
 标题：项目评审
 开始：2026-07-03 14:00
 结束：2026-07-03 16:00
-颜色：#FF6B6B"
-            ></textarea>
-          </label>
-
-          <div class="batch-format-help">
-            <p><strong>格式说明：</strong></p>
-            <ul>
-              <li>每条日程以「标题：」开头，字段按行填写</li>
-              <li>支持中英文字段名：标题/title、开始/start、结束/end、地点/location、说明/description、颜色/color</li>
-              <li>支持中英文冒号：「：」和「:」</li>
-              <li>日期格式：2026-07-02、2026/07/02、2026.07.02、2026年7月2日、07-02（自动补今年）、7月2日（自动补今年）</li>
-              <li>时间格式：10:00、10：00</li>
-              <li>说明字段支持多行，缩进的内容会自动合并</li>
-              <li>颜色为可选，支持 #3b82f6 或 3b82f6 格式</li>
-            </ul>
+颜色：#FF6B6B</pre>
           </div>
         </div>
 
@@ -3550,6 +3548,10 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
   resize: vertical;
 }
 
+.batch-input-field {
+  margin-bottom: 16px;
+}
+
 .batch-format-help {
   background: #f8f9fa;
   border: 1px solid #e9ecef;
@@ -3563,6 +3565,11 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
   margin: 0 0 8px 0;
 }
 
+.batch-format-help p:last-of-type {
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
 .batch-format-help ul {
   margin: 0;
   padding-left: 20px;
@@ -3570,6 +3577,18 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
 
 .batch-format-help li {
   margin-bottom: 4px;
+}
+
+.batch-format-example {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
 }
 
 .batch-preview {
