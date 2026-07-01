@@ -50,3 +50,15 @@ export interface ScheduleCard {
   color: string
   sourceLabel?: string
 }
+
+export interface BatchImportItem {
+  index: number
+  title: string
+  startTime: string
+  endTime: string
+  location?: string
+  description?: string
+  color?: string
+  error?: string
+  warnings?: string[]
+}

@@ -28,6 +28,7 @@ import {
   Toast,
 } from '@halo-dev/components'
 import type {
+  BatchImportItem,
   ScheduleEntry,
   ScheduleEntryRecurrenceFrequency,
   ScheduleEntrySpec,
@@ -86,6 +87,14 @@ const calendarScrollState = reactive({
   hasLeftShadow: false,
   hasRightShadow: false,
 })
+
+const batchImportDialogVisible = ref(false)
+const batchImportText = ref('')
+const batchImportError = ref('')
+const batchImportLoading = ref(false)
+const batchImportPreview = ref<BatchImportItem[]>([])
+const batchImportStep = ref<'input' | 'preview' | 'result'>('input')
+const batchImportResult = ref<{ success: number; failed: number; errors: string[] } | null>(null)
 
 const form = reactive({
   title: '',
@@ -1490,6 +1499,270 @@ const submitEntry = async () => {
   await createEntry()
 }
 
+// 批量导入相关函数
+const FIELD_NAME_MAP: Record<string, keyof Omit<BatchImportItem, 'index' | 'error' | 'warnings'>> = {
+  '标题': 'title',
+  'title': 'title',
+  '开始': 'startTime',
+  'start': 'startTime',
+  '结束': 'endTime',
+  'end': 'endTime',
+  '地点': 'location',
+  'location': 'location',
+  '说明': 'description',
+  'description': 'description',
+  '颜色': 'color',
+  'color': 'color',
+}
+
+const MULTI_LINE_FIELDS = new Set(['description'])
+
+const normalizeFieldName = (name: string): keyof Omit<BatchImportItem, 'index' | 'error' | 'warnings'> | null => {
+  return FIELD_NAME_MAP[name.trim().toLowerCase()] ?? null
+}
+
+const parseDateTime = (dateStr: string, timeStr: string): Date | null => {
+  const timeMatch = timeStr.trim().match(/^(\d{1,2})[：:](\d{2})$/)
+  if (!timeMatch) return null
+  const hours = parseInt(timeMatch[1])
+  const minutes = parseInt(timeMatch[2])
+  if (hours > 23 || minutes > 59) return null
+
+  const dateTrimmed = dateStr.trim()
+  let year: number | null = null
+  let month: number | null = null
+  let day: number | null = null
+
+  let match = dateTrimmed.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/)
+  if (match) { year = +match[1]; month = +match[2]; day = +match[3] }
+
+  if (!year) {
+    match = dateTrimmed.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日?$/)
+    if (match) { year = +match[1]; month = +match[2]; day = +match[3] }
+  }
+
+  if (!year) {
+    match = dateTrimmed.match(/^(\d{1,2})[-/](\d{1,2})$/)
+    if (match) { year = new Date().getFullYear(); month = +match[1]; day = +match[2] }
+  }
+
+  if (!year) {
+    match = dateTrimmed.match(/^(\d{1,2})月(\d{1,2})日?$/)
+    if (match) { year = new Date().getFullYear(); month = +match[1]; day = +match[2] }
+  }
+
+  if (year && month && day) {
+    const date = new Date(year, month - 1, day, hours, minutes)
+    if (date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day) {
+      return date
+    }
+  }
+  return null
+}
+
+const normalizeColor = (color: string): string => {
+  const trimmed = color.trim()
+  const hex = trimmed.startsWith('#') ? trimmed : `#${trimmed}`
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) return hex
+  return '#3b82f6'
+}
+
+const validateAndBuildItem = (index: number, raw: Record<string, string>): BatchImportItem => {
+  const warnings: string[] = []
+
+  if (!raw.title?.trim()) {
+    return { index, title: '', startTime: '', endTime: '', error: '标题不能为空' }
+  }
+  if (!raw.startTime?.trim()) {
+    return { index, title: raw.title.trim(), startTime: '', endTime: '', error: '开始时间不能为空' }
+  }
+  if (!raw.endTime?.trim()) {
+    return { index, title: raw.title.trim(), startTime: raw.startTime.trim(), endTime: '', error: '结束时间不能为空' }
+  }
+
+  const startDate = parseDateTime(raw.startTime, raw.startTime.includes('：') || raw.startTime.includes(':')
+    ? raw.startTime.split(/[：:]/).slice(1).join(':')
+    : '')
+
+  const endDate = parseDateTime(raw.endTime, raw.endTime.includes('：') || raw.endTime.includes(':')
+    ? raw.endTime.split(/[：:]/).slice(1).join(':')
+    : '')
+
+  // 重新解析：日期和时间可能是分开的字段，但我们的格式是 "开始：2026-07-02 10:00" 整体在一行
+  const startParts = raw.startTime.trim().split(/\s+/)
+  const endParts = raw.endTime.trim().split(/\s+/)
+
+  const parsedStart = startParts.length >= 2 ? parseDateTime(startParts[0], startParts[1]) : null
+  const parsedEnd = endParts.length >= 2 ? parseDateTime(endParts[0], endParts[1]) : null
+
+  if (!parsedStart) {
+    return { index, title: raw.title.trim(), startTime: raw.startTime.trim(), endTime: raw.endTime.trim(), error: '开始时间格式无效' }
+  }
+  if (!parsedEnd) {
+    return { index, title: raw.title.trim(), startTime: raw.startTime.trim(), endTime: raw.endTime.trim(), error: '结束时间格式无效' }
+  }
+  if (parsedEnd <= parsedStart) {
+    return { index, title: raw.title.trim(), startTime: raw.startTime.trim(), endTime: raw.endTime.trim(), error: '结束时间必须晚于开始时间' }
+  }
+
+  const item: BatchImportItem = {
+    index,
+    title: raw.title.trim(),
+    startTime: raw.startTime.trim(),
+    endTime: raw.endTime.trim(),
+    location: raw.location?.trim() || undefined,
+    description: raw.description?.trim() || undefined,
+  }
+
+  if (raw.color?.trim()) {
+    const normalized = normalizeColor(raw.color)
+    if (normalized === '#3b82f6' && raw.color.trim() !== '#3b82f6' && raw.color.trim() !== '3b82f6') {
+      warnings.push('颜色格式无效，已使用默认色')
+    }
+    item.color = normalized
+  }
+
+  if (warnings.length > 0) {
+    item.warnings = warnings
+  }
+
+  return item
+}
+
+const FIELD_REGEX = /^(标题|title|开始|start|结束|end|地点|location|说明|description|颜色|color)[：:]\s*(.*)/i
+
+const parseBatchText = (text: string): BatchImportItem[] => {
+  const lines = text.split('\n')
+  const items: BatchImportItem[] = []
+  let current: Record<string, string> | null = null
+  let lastField: string | null = null
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+
+    const match = trimmed.match(FIELD_REGEX)
+    if (match) {
+      const fieldName = normalizeFieldName(match[1])
+      const value = match[2]
+
+      if (fieldName === 'title' && current?.title) {
+        items.push(validateAndBuildItem(items.length + 1, current))
+        current = { title: value }
+      } else {
+        if (!current) current = {}
+        if (fieldName) current[fieldName] = value
+      }
+      lastField = fieldName
+    } else {
+      if (current && lastField && MULTI_LINE_FIELDS.has(lastField)) {
+        current[lastField] = (current[lastField] || '') + '\n' + trimmed
+      }
+    }
+  }
+
+  if (current?.title) {
+    items.push(validateAndBuildItem(items.length + 1, current))
+  }
+
+  return items
+}
+
+const openBatchImportDialog = () => {
+  if (!canManageEntries.value) return
+  batchImportText.value = ''
+  batchImportError.value = ''
+  batchImportPreview.value = []
+  batchImportStep.value = 'input'
+  batchImportResult.value = null
+  batchImportDialogVisible.value = true
+}
+
+const closeBatchImportDialog = () => {
+  batchImportDialogVisible.value = false
+}
+
+const resetBatchImport = () => {
+  batchImportStep.value = 'input'
+  batchImportPreview.value = []
+  batchImportResult.value = null
+  batchImportError.value = ''
+}
+
+const previewBatchImport = () => {
+  batchImportError.value = ''
+  if (!batchImportText.value.trim()) {
+    batchImportError.value = '请输入要导入的日程数据。'
+    return
+  }
+
+  const items = parseBatchText(batchImportText.value)
+  if (items.length === 0) {
+    batchImportError.value = '未解析到有效的日程数据，请检查格式。'
+    return
+  }
+
+  batchImportPreview.value = items
+  batchImportStep.value = 'preview'
+}
+
+const submitBatchImport = async () => {
+  if (!canManageEntries.value) return
+
+  const validItems = batchImportPreview.value.filter((item) => !item.error)
+  if (validItems.length === 0) {
+    batchImportError.value = '没有可导入的有效条目。'
+    return
+  }
+
+  batchImportLoading.value = true
+  const results = { success: 0, failed: 0, errors: [] as string[] }
+
+  for (const item of validItems) {
+    try {
+      const startParts = item.startTime.split(/\s+/)
+      const endParts = item.endTime.split(/\s+/)
+      const startDate = parseDateTime(startParts[0], startParts[1])
+      const endDate = parseDateTime(endParts[0], endParts[1])
+
+      if (!startDate || !endDate) {
+        results.failed++
+        results.errors.push(`第 ${item.index} 行「${item.title}」：时间解析失败`)
+        continue
+      }
+
+      await axiosInstance.post(apiBase, {
+        apiVersion: 'schedule.calendar.sunny.dev/v1alpha1',
+        kind: 'ScheduleEntry',
+        metadata: buildEntryMetadata(`schedule-entry-${Date.now()}-${item.index}`, true),
+        spec: {
+          title: item.title,
+          description: item.description || undefined,
+          location: item.location || undefined,
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
+          color: item.color || '#3b82f6',
+          enabled: true,
+        },
+      })
+
+      results.success++
+    } catch (err) {
+      results.failed++
+      results.errors.push(`第 ${item.index} 行「${item.title}」创建失败`)
+      console.error(err)
+    }
+  }
+
+  batchImportResult.value = results
+  batchImportStep.value = 'result'
+  batchImportLoading.value = false
+
+  if (results.success > 0) {
+    await fetchEntries()
+  }
+}
+
 const removeEntry = async (name: string) => {
   if (!canManageEntries.value) {
     return false
@@ -1953,6 +2226,12 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
             </div>
 
             <div v-if="canManageEntries" class="entry-card-header__actions">
+              <VButton type="secondary" @click="openBatchImportDialog">
+                <template #icon>
+                  <IconAddCircle />
+                </template>
+                批量导入
+              </VButton>
               <VButton type="secondary" @click="openCreateDialog">
                 <template #icon>
                   <IconAddCircle />
@@ -2180,6 +2459,150 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
           <VButton @click="closeExternalCalendarDialog">取消</VButton>
           <VButton type="primary" :loading="externalCalendarSaving" @click="submitExternalCalendar">
             {{ externalCalendarDialogSubmitLabel }}
+          </VButton>
+        </div>
+      </template>
+    </VModal>
+
+    <VModal
+      :visible="batchImportDialogVisible"
+      title="批量导入日程"
+      :width="720"
+      :layer-closable="false"
+      :body-class="['schedule-modal-body']"
+      @update:visible="batchImportDialogVisible = $event"
+    >
+      <div class="dialog-form batch-import-form">
+        <VAlert
+          v-if="batchImportError"
+          type="error"
+          title="导入失败"
+          :description="batchImportError"
+          :closable="false"
+        />
+
+        <div v-if="batchImportStep === 'input'">
+          <label class="field">
+            <span>批量日程数据</span>
+            <textarea
+              v-model="batchImportText"
+              rows="12"
+              class="batch-import-textarea"
+              placeholder="每条日程以「标题：」开头，字段按行填写，支持中英文字段名和冒号
+
+示例：
+标题：团队周会
+开始：2026-07-02 10:00
+结束：2026-07-02 11:00
+地点：会议室A
+说明：讨论Q3计划
+    参与人：张三、李四
+
+标题：项目评审
+开始：2026-07-03 14:00
+结束：2026-07-03 16:00
+颜色：#FF6B6B"
+            ></textarea>
+          </label>
+
+          <div class="batch-format-help">
+            <p><strong>格式说明：</strong></p>
+            <ul>
+              <li>每条日程以「标题：」开头，字段按行填写</li>
+              <li>支持中英文字段名：标题/title、开始/start、结束/end、地点/location、说明/description、颜色/color</li>
+              <li>支持中英文冒号：「：」和「:」</li>
+              <li>日期格式：2026-07-02、2026/07/02、2026.07.02、2026年7月2日、07-02（自动补今年）、7月2日（自动补今年）</li>
+              <li>时间格式：10:00、10：00</li>
+              <li>说明字段支持多行，缩进的内容会自动合并</li>
+              <li>颜色为可选，支持 #3b82f6 或 3b82f6 格式</li>
+            </ul>
+          </div>
+        </div>
+
+        <div v-if="batchImportStep === 'preview'" class="batch-preview">
+          <p class="batch-preview__summary">
+            共解析到 <strong>{{ batchImportPreview.length }}</strong> 条日程，
+            其中 <strong>{{ batchImportPreview.filter((i) => !i.error).length }}</strong> 条有效，
+            <strong>{{ batchImportPreview.filter((i) => i.error).length }}</strong> 条有误
+          </p>
+
+          <div class="batch-preview__table-wrapper">
+            <table class="batch-preview__table">
+              <thead>
+                <tr>
+                  <th>序号</th>
+                  <th>标题</th>
+                  <th>开始时间</th>
+                  <th>结束时间</th>
+                  <th>状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="item in batchImportPreview"
+                  :key="item.index"
+                  :class="{ 'batch-preview__row--error': item.error }"
+                >
+                  <td>{{ item.index }}</td>
+                  <td>{{ item.title }}</td>
+                  <td>{{ item.startTime }}</td>
+                  <td>{{ item.endTime }}</td>
+                  <td>
+                    <span v-if="item.error" class="batch-preview__error">{{ item.error }}</span>
+                    <span v-else-if="item.warnings?.length" class="batch-preview__warning">
+                      ⚠️ {{ item.warnings[0] }}
+                    </span>
+                    <span v-else class="batch-preview__success">✓</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div v-if="batchImportStep === 'result'" class="batch-result">
+          <VAlert
+            v-if="batchImportResult && batchImportResult.success > 0"
+            type="success"
+            title="导入完成"
+            :description="`成功导入 ${batchImportResult.success} 条日程`"
+          />
+
+          <VAlert
+            v-if="batchImportResult && batchImportResult.failed > 0"
+            type="warning"
+            title="部分导入失败"
+            :description="`${batchImportResult.failed} 条日程导入失败`"
+          />
+
+          <ul v-if="batchImportResult?.errors?.length" class="batch-result__errors">
+            <li v-for="(err, index) in batchImportResult.errors" :key="index">{{ err }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="modal-footer">
+          <VButton @click="closeBatchImportDialog">
+            {{ batchImportStep === 'result' ? '关闭' : '取消' }}
+          </VButton>
+          <VButton v-if="batchImportStep === 'result'" @click="resetBatchImport">
+            继续导入
+          </VButton>
+          <VButton
+            v-if="batchImportStep === 'input'"
+            type="primary"
+            @click="previewBatchImport"
+          >
+            解析预览
+          </VButton>
+          <VButton
+            v-if="batchImportStep === 'preview'"
+            type="primary"
+            :loading="batchImportLoading"
+            @click="submitBatchImport"
+          >
+            确认导入 ({{ batchImportPreview.filter((i) => !i.error).length }} 条)
           </VButton>
         </div>
       </template>
@@ -3112,6 +3535,120 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
   .modal-footer :deep(button) {
     width: 100%;
   }
+}
+
+.batch-import-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.batch-import-textarea {
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.batch-format-help {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #495057;
+}
+
+.batch-format-help p {
+  margin: 0 0 8px 0;
+}
+
+.batch-format-help ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.batch-format-help li {
+  margin-bottom: 4px;
+}
+
+.batch-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.batch-preview__summary {
+  margin: 0;
+  font-size: 14px;
+  color: #495057;
+}
+
+.batch-preview__table-wrapper {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+}
+
+.batch-preview__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.batch-preview__table th,
+.batch-preview__table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.batch-preview__table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.batch-preview__table tr:last-child td {
+  border-bottom: none;
+}
+
+.batch-preview__row--error {
+  background: #fff5f5;
+}
+
+.batch-preview__error {
+  color: #dc3545;
+  font-size: 12px;
+}
+
+.batch-preview__warning {
+  color: #ffc107;
+  font-size: 12px;
+}
+
+.batch-preview__success {
+  color: #28a745;
+}
+
+.batch-result {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.batch-result__errors {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: #dc3545;
+}
+
+.batch-result__errors li {
+  margin-bottom: 4px;
 }
 
 </style>
