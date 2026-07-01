@@ -77,7 +77,7 @@ Halo 默认并没有提供一套完整的日程日历能力。这个插件的目
 
 ### 📋 运行要求
 
-- Halo `>= 2.23.0`
+- Halo `>= 2.25.0`
 - JDK `21`
 
 ### 📦 安装
@@ -233,7 +233,7 @@ GET /apis/api.schedule.calendar.sunny.dev/v1alpha1/entrycards/{name}
 
 ## 🧱 技术栈
 
-- 运行平台：Halo `>= 2.23.0`
+- 运行平台：Halo `>= 2.25.0`
 - 后端：Java 21、Gradle、Halo Plugin API
 - 控制台前端：Vue 3、TypeScript、Vite、Halo UI Components
 - 编辑器集成：Halo Rich Text Editor 扩展
