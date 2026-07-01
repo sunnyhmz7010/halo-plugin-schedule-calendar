@@ -1689,6 +1689,11 @@ const resetBatchImport = () => {
   batchImportError.value = ''
 }
 
+const backToInput = () => {
+  batchImportStep.value = 'input'
+  batchImportError.value = ''
+}
+
 const previewBatchImport = () => {
   batchImportError.value = ''
   if (!batchImportText.value.trim()) {
@@ -2593,6 +2598,9 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
             @click="previewBatchImport"
           >
             解析预览
+          </VButton>
+          <VButton v-if="batchImportStep === 'preview'" @click="backToInput">
+            返回修改
           </VButton>
           <VButton
             v-if="batchImportStep === 'preview'"
