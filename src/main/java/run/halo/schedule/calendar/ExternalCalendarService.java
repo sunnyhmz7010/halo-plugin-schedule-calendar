@@ -2,7 +2,9 @@ package run.halo.schedule.calendar;
 
 import java.io.BufferedReader;
 import java.io.StringReader;
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse.BodyHandlers;
@@ -18,6 +20,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.regex.Pattern;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,6 +43,7 @@ public class ExternalCalendarService {
         DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
     private static final DateTimeFormatter LOCAL_DATE = DateTimeFormatter.BASIC_ISO_DATE;
     private static final int MAX_EXPANSION_STEPS = 10000;
+    private static final Pattern SAFE_COLOR_PATTERN = Pattern.compile("^#[0-9a-fA-F]{6}$");
     private static final Duration CACHE_TTL = Duration.ofMinutes(30);
     
     private static final Map<String, String> WINDOWS_TO_IANA_TZ_MAP = new HashMap<>();
@@ -65,8 +69,10 @@ public class ExternalCalendarService {
         // Add more as needed
     }
 
+    private static final Set<String> ALLOWED_PROTOCOLS = Set.of("https");
+
     private final HttpClient httpClient = HttpClient.newBuilder()
-        .followRedirects(HttpClient.Redirect.NORMAL)
+        .followRedirects(HttpClient.Redirect.NEVER)
         .connectTimeout(Duration.ofSeconds(10))
         .build();
     private final Map<String, CachedEvents> eventCache = new ConcurrentHashMap<>();
@@ -106,6 +112,10 @@ public class ExternalCalendarService {
     Mono<ExternalCalendarValidationResult> validateSource(String name, String icsUrl, String color) {
         if (icsUrl == null || icsUrl.isBlank()) {
             return Mono.just(new ExternalCalendarValidationResult(false, "ICS 订阅地址不能为空。", 0));
+        }
+        var urlError = validateUrl(icsUrl);
+        if (urlError != null) {
+            return Mono.just(new ExternalCalendarValidationResult(false, urlError, 0));
         }
         var source = new ScheduleCalendarSetting.ExternalCalendarSource(name, icsUrl, true, color);
         return refreshEvents(source)
@@ -183,6 +193,10 @@ public class ExternalCalendarService {
 
     private Mono<List<ExternalCalendarEvent>> fetchEvents(ScheduleCalendarSetting.ExternalCalendarSource source) {
         var url = source.icsUrl();
+        var urlError = validateUrl(url);
+        if (urlError != null) {
+            return Mono.error(new IllegalStateException(urlError));
+        }
         HttpRequest request;
         try {
             request = HttpRequest.newBuilder(URI.create(url))
@@ -406,7 +420,7 @@ public class ExternalCalendarService {
             start.allDay(),
             recurrence,
             excludedStarts,
-            valueOf(values, "COLOR", null)
+            sanitizeColor(valueOf(values, "COLOR", null))
         );
     }
 
@@ -581,6 +595,70 @@ public class ExternalCalendarService {
             .replace("\\,", ",")
             .replace("\\;", ";")
             .replace("\\\\", "\\");
+    }
+
+    private String sanitizeColor(String color) {
+        if (color != null && SAFE_COLOR_PATTERN.matcher(color).matches()) {
+            return color;
+        }
+        return null;
+    }
+
+    private String validateUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return "ICS 订阅地址不能为空。";
+        }
+        URI uri;
+        try {
+            uri = URI.create(url);
+        } catch (IllegalArgumentException e) {
+            return "ICS 订阅地址格式无效。";
+        }
+        var scheme = uri.getScheme();
+        if (scheme == null || !ALLOWED_PROTOCOLS.contains(scheme.toLowerCase())) {
+            return "仅支持 HTTPS 协议的 ICS 订阅地址。";
+        }
+        var host = uri.getHost();
+        if (host == null || host.isBlank()) {
+            return "ICS 订阅地址缺少主机名。";
+        }
+        try {
+            var addr = InetAddress.getByName(host);
+            if (isPrivateOrReserved(addr)) {
+                return "不允许访问内网地址。";
+            }
+        } catch (UnknownHostException e) {
+            return "无法解析 ICS 订阅地址的主机名。";
+        }
+        return null;
+    }
+
+    private boolean isPrivateOrReserved(InetAddress addr) {
+        if (addr.isLoopbackAddress() || addr.isLinkLocalAddress() || addr.isSiteLocalAddress()) {
+            return true;
+        }
+        var host = addr.getHostAddress();
+        if (host.startsWith("0.") || host.startsWith("0")) {
+            return true;
+        }
+        if (host.startsWith("224.") || host.startsWith("225.")
+            || host.startsWith("226.") || host.startsWith("227.")
+            || host.startsWith("228.") || host.startsWith("229.")
+            || host.startsWith("230.") || host.startsWith("231.")
+            || host.startsWith("232.") || host.startsWith("233.")
+            || host.startsWith("234.") || host.startsWith("235.")
+            || host.startsWith("236.") || host.startsWith("237.")
+            || host.startsWith("238.") || host.startsWith("239.")) {
+            return true;
+        }
+        if (host.startsWith("240.")) {
+            return true;
+        }
+        if (host.contains(":") && (host.startsWith("[fc") || host.startsWith("[fd")
+            || host.startsWith("[FF") || host.startsWith("[ff") || host.startsWith("[FC") || host.startsWith("[FD"))) {
+            return true;
+        }
+        return false;
     }
 
     private record PropertyValue(String value, Map<String, String> params) {

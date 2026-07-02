@@ -20,8 +20,11 @@ import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.time.temporal.ChronoUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.HtmlUtils;
@@ -35,6 +38,7 @@ public class ScheduleQueryService {
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final DateTimeFormatter DATE_FORMATTER =
         DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final Logger log = LoggerFactory.getLogger(ScheduleQueryService.class);
     private static final DateTimeFormatter TIME_FORMATTER =
         DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter ICAL_DATE_TIME_FORMATTER =
@@ -44,9 +48,12 @@ public class ScheduleQueryService {
     private static final int CALENDAR_HEADER_HEIGHT = 64;
     private static final int HOUR_HEIGHT = 56;
     private static final Locale ZH_CN = Locale.SIMPLIFIED_CHINESE;
+    private static final Pattern SAFE_COLOR_PATTERN = Pattern.compile("^#[0-9a-fA-F]{6}$");
     private static final String EXTERNAL_CARD_NAME_PREFIX = "external-calendar:";
     private static final int EDITOR_EXTERNAL_CARD_LOOKBACK_DAYS = 30;
     private static final int EDITOR_EXTERNAL_CARD_LOOKAHEAD_DAYS = 365;
+    private static final int MAX_EXPANSION_STEPS = 10000;
+    private static final int MAX_QUERY_RANGE_DAYS = 366;
 
     private final ReactiveExtensionClient client;
     private final ScheduleCalendarSettingService settingService;
@@ -61,6 +68,7 @@ public class ScheduleQueryService {
         this.externalCalendarService = externalCalendarService;
         this.objectMapper = JsonMapper.builder()
             .findAndAddModules()
+            .enable(com.fasterxml.jackson.core.json.JsonWriteFeature.ESCAPE_FORWARD_SLASHES)
             .build();
     }
 
@@ -102,7 +110,12 @@ public class ScheduleQueryService {
 
         var rangeStart = start;
         var rangeEnd = end;
-        return loadCalendarContext(rangeStart, rangeEnd, zoneId)
+        var actualEnd = rangeEnd;
+        var maxEnd = rangeStart.plusDays(MAX_QUERY_RANGE_DAYS);
+        if (actualEnd.isAfter(maxEnd)) {
+            actualEnd = maxEnd;
+        }
+        return loadCalendarContext(rangeStart, actualEnd, zoneId)
             .map(context -> context.occurrences().stream()
                 .map(occurrence -> toOccurrenceResponse(occurrence, zoneId))
                 .toList());
@@ -128,9 +141,11 @@ public class ScheduleQueryService {
             return getExternalEntryCard(name, zoneId);
         }
         return client.get(ScheduleEntry.class, name)
+            .filter(this::isEntryEnabled)
             .map(entry -> toScheduleCardResponse(entry, zoneId))
             .onErrorResume(throwable -> listEntries()
                 .flatMap(entries -> entries.stream()
+                    .filter(this::isEntryEnabled)
                     .filter(entry -> entry.getMetadata() != null && name.equals(entry.getMetadata().getName()))
                     .findFirst()
                     .map(entry -> Mono.just(toScheduleCardResponse(entry, zoneId)))
@@ -1821,7 +1836,8 @@ public class ScheduleQueryService {
         var duration = Duration.between(start, end);
         var cursor = alignOccurrenceStart(start, duration, rangeStart, frequency, interval);
         var occurrences = new ArrayList<ScheduleEventOccurrence>();
-        while (cursor.isBefore(rangeEnd)) {
+        var stepCount = 0;
+        while (cursor.isBefore(rangeEnd) && stepCount <= MAX_EXPANSION_STEPS) {
             if (isAfterUntil(cursor, recurrence)) {
                 break;
             }
@@ -1830,6 +1846,10 @@ public class ScheduleQueryService {
                 occurrences.add(toOccurrence(entry, cursor, occurrenceEnd, zoneId));
             }
             cursor = advanceOccurrence(cursor, frequency, interval);
+            stepCount++;
+        }
+        if (stepCount > MAX_EXPANSION_STEPS) {
+            log.warn("日程条目重复展开超出最大步数限制 {}：{}", MAX_EXPANSION_STEPS, entry.getMetadata().getName());
         }
         return occurrences;
     }
@@ -1935,8 +1955,15 @@ public class ScheduleQueryService {
         return meta;
     }
 
+    private String sanitizeColor(String color) {
+        if (color != null && SAFE_COLOR_PATTERN.matcher(color).matches()) {
+            return color;
+        }
+        return "#0f766e";
+    }
+
     private String defaultColor(String color) {
-        return color == null || color.isBlank() ? "#0f766e" : color;
+        return sanitizeColor(color);
     }
 
     private List<String> currentOccurrenceTitles(List<ScheduleEventOccurrence> occurrences, LocalDateTime now) {
