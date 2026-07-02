@@ -69,7 +69,7 @@ public class ExternalCalendarService {
         // Add more as needed
     }
 
-    private static final Set<String> ALLOWED_PROTOCOLS = Set.of("https");
+    private static final Set<String> ALLOWED_PROTOCOLS = Set.of("http", "https");
 
     private final HttpClient httpClient = HttpClient.newBuilder()
         .followRedirects(HttpClient.Redirect.NEVER)
