@@ -634,7 +634,7 @@ public class ExternalCalendarService {
     }
 
     private boolean isPrivateOrReserved(InetAddress addr) {
-        if (addr.isLoopbackAddress() || addr.isLinkLocalAddress() || addr.isSiteLocalAddress()) {
+        if (addr.isLinkLocalAddress() || addr.isSiteLocalAddress()) {
             return true;
         }
         var host = addr.getHostAddress();
