@@ -289,6 +289,7 @@ pnpm test:unit
 ```
 
 ## 🔐 安全报告
+
 如果发现安全问题，请不要公开披露细节。请优先参考仓库中的 [SECURITY.md](./SECURITY.md) 提交安全报告。
 
 ## 📄 许可证
@@ -297,7 +298,13 @@ pnpm test:unit
 
 ## ⭐ 星标历史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=sunnyhmz7010/halo-plugin-schedule-calendar&type=Date)](https://star-history.com/#sunnyhmz7010/halo-plugin-schedule-calendar&Date)
+<a href="https://www.star-history.com/?repos=sunnyhmz7010%2Fhalo-plugin-schedule-calendar&type=date&logscale=&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=sunnyhmz7010/halo-plugin-schedule-calendar&type=date&theme=dark&logscale&legend=top-left&sealed_token=XtcAg9OI8aYAwAy8GMEY68Wzgicp14OaOgvvKb-uEwkbZuTcWu5YAMDrZjqUCBjv8y0HEHSVk84tO_lYRf20dn9SsY6ST1huCXKze4U8gqgTKNydNvBj38PFc3dTnrhxWtonWRZNBVxYI3kpxUJa7dF4k_NgqAq-4cOqv7xuIg10ATVw-Z6An1lRqnwx" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=sunnyhmz7010/halo-plugin-schedule-calendar&type=date&logscale&legend=top-left&sealed_token=XtcAg9OI8aYAwAy8GMEY68Wzgicp14OaOgvvKb-uEwkbZuTcWu5YAMDrZjqUCBjv8y0HEHSVk84tO_lYRf20dn9SsY6ST1huCXKze4U8gqgTKNydNvBj38PFc3dTnrhxWtonWRZNBVxYI3kpxUJa7dF4k_NgqAq-4cOqv7xuIg10ATVw-Z6An1lRqnwx" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=sunnyhmz7010/halo-plugin-schedule-calendar&type=date&logscale&legend=top-left&sealed_token=XtcAg9OI8aYAwAy8GMEY68Wzgicp14OaOgvvKb-uEwkbZuTcWu5YAMDrZjqUCBjv8y0HEHSVk84tO_lYRf20dn9SsY6ST1huCXKze4U8gqgTKNydNvBj38PFc3dTnrhxWtonWRZNBVxYI3kpxUJa7dF4k_NgqAq-4cOqv7xuIg10ATVw-Z6An1lRqnwx" />
+ </picture>
+</a>
 
 <div align="center">
   <sub>Built with ❤️ by Sunny</sub>
