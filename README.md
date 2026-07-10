@@ -288,6 +288,9 @@ pnpm build
 pnpm test:unit
 ```
 
+## 🔐 安全报告
+如果发现安全问题，请不要公开披露细节。请优先参考仓库中的 [SECURITY.md](./SECURITY.md) 提交安全报告。
+
 ## 📄 许可证
 
 本项目基于 [GPL-3.0](./LICENSE) 开源。
