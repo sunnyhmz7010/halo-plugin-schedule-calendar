@@ -298,11 +298,11 @@ pnpm test:unit
 
 ## ⭐ 星标历史
 
-<a href="https://www.star-history.com/?repos=sunnyhmz7010%2Fhalo-plugin-schedule-calendar&type=date&logscale=&legend=top-left">
+<a href="https://www.star-history.com/?repos=sunnyhmz7010%2Fhalo-plugin-schedule-calendar&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=sunnyhmz7010/halo-plugin-schedule-calendar&type=date&theme=dark&logscale&legend=top-left&sealed_token=XtcAg9OI8aYAwAy8GMEY68Wzgicp14OaOgvvKb-uEwkbZuTcWu5YAMDrZjqUCBjv8y0HEHSVk84tO_lYRf20dn9SsY6ST1huCXKze4U8gqgTKNydNvBj38PFc3dTnrhxWtonWRZNBVxYI3kpxUJa7dF4k_NgqAq-4cOqv7xuIg10ATVw-Z6An1lRqnwx" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=sunnyhmz7010/halo-plugin-schedule-calendar&type=date&logscale&legend=top-left&sealed_token=XtcAg9OI8aYAwAy8GMEY68Wzgicp14OaOgvvKb-uEwkbZuTcWu5YAMDrZjqUCBjv8y0HEHSVk84tO_lYRf20dn9SsY6ST1huCXKze4U8gqgTKNydNvBj38PFc3dTnrhxWtonWRZNBVxYI3kpxUJa7dF4k_NgqAq-4cOqv7xuIg10ATVw-Z6An1lRqnwx" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=sunnyhmz7010/halo-plugin-schedule-calendar&type=date&logscale&legend=top-left&sealed_token=XtcAg9OI8aYAwAy8GMEY68Wzgicp14OaOgvvKb-uEwkbZuTcWu5YAMDrZjqUCBjv8y0HEHSVk84tO_lYRf20dn9SsY6ST1huCXKze4U8gqgTKNydNvBj38PFc3dTnrhxWtonWRZNBVxYI3kpxUJa7dF4k_NgqAq-4cOqv7xuIg10ATVw-Z6An1lRqnwx" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=sunnyhmz7010/halo-plugin-schedule-calendar&type=date&theme=dark&legend=top-left&sealed_token=Zyhp4IHfNoi5QeK6P6pe5FeqRTdvxnAjzuEy1lsgFXCHdgKlE9RbBzlE6_YI58N9LOKy9XaCIkHq1qkusmlXEyCPrjdzxgYTKC7GLnr3SYcUjWN_CLL_2Kk4CruK0wHch1UTnSG2TRYqUkTP7upSkbURj8W5lg_WHcfiST78Iw0nlel4TO0FAjZOvcLR" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=sunnyhmz7010/halo-plugin-schedule-calendar&type=date&legend=top-left&sealed_token=Zyhp4IHfNoi5QeK6P6pe5FeqRTdvxnAjzuEy1lsgFXCHdgKlE9RbBzlE6_YI58N9LOKy9XaCIkHq1qkusmlXEyCPrjdzxgYTKC7GLnr3SYcUjWN_CLL_2Kk4CruK0wHch1UTnSG2TRYqUkTP7upSkbURj8W5lg_WHcfiST78Iw0nlel4TO0FAjZOvcLR" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=sunnyhmz7010/halo-plugin-schedule-calendar&type=date&legend=top-left&sealed_token=Zyhp4IHfNoi5QeK6P6pe5FeqRTdvxnAjzuEy1lsgFXCHdgKlE9RbBzlE6_YI58N9LOKy9XaCIkHq1qkusmlXEyCPrjdzxgYTKC7GLnr3SYcUjWN_CLL_2Kk4CruK0wHch1UTnSG2TRYqUkTP7upSkbURj8W5lg_WHcfiST78Iw0nlel4TO0FAjZOvcLR" />
  </picture>
 </a>
 
