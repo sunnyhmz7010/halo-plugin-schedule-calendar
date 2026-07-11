@@ -96,6 +96,7 @@ Please provide the Common Weakness Enumeration (CWE) ID or keyword.
 ### Severity / 严重程度
 
 The potential degree of impact that a vulnerability or security issue has on system security. Severity is typically expressed using levels such as Unknown, Low, Moderate, High, and Critical to indicate the seriousness of the vulnerability.
+
 漏洞或安全问题对系统安全性的潜在影响程度。通常使用未知(Unknown)、低（Low）、中等（Moderate）、高（High）、严重（Critical）等不同的级别来表示漏洞的严重性。
 
 ### Reporter Information / 报告人信息
