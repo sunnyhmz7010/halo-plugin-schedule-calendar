@@ -9,7 +9,7 @@ on:
       - published
 
 jobs:
-  release:
+  cd:
     runs-on: ubuntu-latest
 
     steps:
