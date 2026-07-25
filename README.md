@@ -1,12 +1,13 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/sunnyhmz7010/halo-plugin-schedule-calendar/refs/heads/main/src/main/resources/logo.svg" alt="日程日历 Logo" width="120" />
   <h1>日程日历</h1>
-  <p>为 Halo 博客系统补上一套完整的日程日历能力，包含前台页面、控制台管理和编辑器卡片</p>
+  <p>提供前台日历页面、控制台事项管理和编辑器日程卡片的 Halo 插件</p>
 </div>
 
 <p align="center">
   <a href="https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/releases"><img src="https://img.shields.io/github/v/release/sunnyhmz7010/halo-plugin-schedule-calendar?label=Release&color=3b82f6" alt="Release" /></a>
   <a href="https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/blob/main/LICENSE"><img src="https://img.shields.io/github/license/sunnyhmz7010/halo-plugin-schedule-calendar?color=10b981" alt="License" /></a>
+  <a href="https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/sunnyhmz7010/halo-plugin-schedule-calendar/ci.yml?branch=main&label=CI" alt="CI" /></a>
 </p>
 
 <p align="center">
@@ -88,7 +89,7 @@ Halo 默认并没有提供一套完整的日程日历能力。这个插件的目
 
 ## 📖 使用说明
 
-### 公开页面
+### 🌍 公开页面
 
 插件启用后即可访问：
 
@@ -110,7 +111,7 @@ Halo 默认并没有提供一套完整的日程日历能力。这个插件的目
 /schedule-calendar/cards/{name}
 ```
 
-### 批量导入
+### 📥 批量导入
 
 在控制台"本地事项"区域，点击"批量导入"按钮，通过文本格式一次性添加多条日程。
 
@@ -139,7 +140,7 @@ Halo 默认并没有提供一套完整的日程日历能力。这个插件的目
 颜色：#FF6B6B
 ```
 
-### 主题 Finder
+### 🔎 主题 Finder
 
 主题模板可直接使用以下 Finder：
 
@@ -177,7 +178,7 @@ Finder 适合直接在 Halo 主题中读取：
 - 指定区间内展开后的事项发生记录
 - 单事项卡片或全量事项列表
 
-### REST API
+### 📡 REST API
 
 如果你更习惯在主题外部、独立前端或脚本里消费 JSON，可使用这些公开接口：
 
