@@ -2,8 +2,6 @@ package run.halo.schedule.calendar;
 
 import static java.util.Comparator.comparing;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
 import java.time.Duration;
@@ -57,7 +55,6 @@ public class ScheduleQueryService {
     private final ReactiveExtensionClient client;
     private final ScheduleCalendarSettingService settingService;
     private final ExternalCalendarService externalCalendarService;
-    private final JsonMapper objectMapper;
 
     public ScheduleQueryService(ReactiveExtensionClient client,
         ScheduleCalendarSettingService settingService,
@@ -65,10 +62,6 @@ public class ScheduleQueryService {
         this.client = client;
         this.settingService = settingService;
         this.externalCalendarService = externalCalendarService;
-        this.objectMapper = JsonMapper.builder()
-            .findAndAddModules()
-            .enable(com.fasterxml.jackson.core.json.JsonWriteFeature.ESCAPE_FORWARD_SLASHES)
-            .build();
     }
 
     Mono<WeekViewResponse> getWeekView(LocalDate requestedStart) {
@@ -188,16 +181,12 @@ public class ScheduleQueryService {
             .map(tuple -> {
                 var view = tuple.getT1();
                 var pageTitle = tuple.getT2().effectiveTitle();
-                try {
-                    var model = new java.util.HashMap<String, Object>();
-                    model.put("pageTitle", pageTitle);
-                    model.put("payload", objectMapper.writeValueAsString(view));
-                    model.put("calendarHeaderHeight", CALENDAR_HEADER_HEIGHT);
-                    model.put("hourHeight", HOUR_HEIGHT);
-                    return model;
-                } catch (JsonProcessingException ex) {
-                    throw new IllegalStateException("Failed to serialize schedule calendar data.", ex);
-                }
+                var model = new java.util.HashMap<String, Object>();
+                model.put("pageTitle", pageTitle);
+                model.put("payload", view);
+                model.put("calendarHeaderHeight", CALENDAR_HEADER_HEIGHT);
+                model.put("hourHeight", HOUR_HEIGHT);
+                return model;
             });
     }
     Mono<java.util.Map<String, Object>> buildCardModel(String name) {

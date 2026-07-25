@@ -349,7 +349,7 @@ class ScheduleQueryServiceTest {
 
         assertThat(model).isNotNull();
         assertThat(model.get("pageTitle")).isEqualTo("自定义标题");
-        assertThat(model).containsKey("payload");
+        assertThat(model.get("payload")).isInstanceOf(ScheduleQueryService.WeekViewResponse.class);
         assertThat(model.get("calendarHeaderHeight")).isEqualTo(64);
         assertThat(model.get("hourHeight")).isEqualTo(56);
     }
