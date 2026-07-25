@@ -585,7 +585,7 @@
       </section>
     </main>
     <script th:inline="javascript">
-      const payload = [[${payload}]];
+      const payload = [(${payload})];
       const hourHeight = [[${hourHeight}]];
       const totalHeight = hourHeight * 24;
       const summaryApiUrl = "/apis/api.schedule.calendar.sunny.dev/v1alpha1/summary";

@@ -10,11 +10,10 @@ import org.junit.jupiter.api.Test;
 class SchedulePublicTemplateTest {
 
     @Test
-    void calendarTemplateUsesEscapedJavascriptInliningForPayload() throws IOException {
+    void calendarTemplateUsesRawJavascriptInliningForPayload() throws IOException {
         var template = Files.readString(Path.of("src/main/resources/templates/public/calendar.html"));
 
         assertThat(template)
-            .contains("const payload = [[${payload}]];")
-            .doesNotContain("const payload = [(${payload})];");
+            .contains("const payload = [(${payload})];");
     }
 }

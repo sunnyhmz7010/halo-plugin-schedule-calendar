@@ -2,6 +2,8 @@ package run.halo.schedule.calendar;
 
 import static java.util.Comparator.comparing;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
 import java.time.Duration;
@@ -55,6 +57,7 @@ public class ScheduleQueryService {
     private final ReactiveExtensionClient client;
     private final ScheduleCalendarSettingService settingService;
     private final ExternalCalendarService externalCalendarService;
+    private final JsonMapper objectMapper;
 
     public ScheduleQueryService(ReactiveExtensionClient client,
         ScheduleCalendarSettingService settingService,
@@ -62,6 +65,10 @@ public class ScheduleQueryService {
         this.client = client;
         this.settingService = settingService;
         this.externalCalendarService = externalCalendarService;
+        this.objectMapper = JsonMapper.builder()
+            .findAndAddModules()
+            .enable(com.fasterxml.jackson.core.json.JsonWriteFeature.ESCAPE_FORWARD_SLASHES)
+            .build();
     }
 
     Mono<WeekViewResponse> getWeekView(LocalDate requestedStart) {
@@ -183,7 +190,11 @@ public class ScheduleQueryService {
                 var pageTitle = tuple.getT2().effectiveTitle();
                 var model = new java.util.HashMap<String, Object>();
                 model.put("pageTitle", pageTitle);
-                model.put("payload", view);
+                try {
+                    model.put("payload", objectMapper.writeValueAsString(view));
+                } catch (JsonProcessingException ex) {
+                    throw new IllegalStateException("序列化日程日历数据失败", ex);
+                }
                 model.put("calendarHeaderHeight", CALENDAR_HEADER_HEIGHT);
                 model.put("hourHeight", HOUR_HEIGHT);
                 return model;
