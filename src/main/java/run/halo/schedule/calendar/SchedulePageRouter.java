@@ -2,8 +2,6 @@ package run.halo.schedule.calendar;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
-import java.util.Locale;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
@@ -15,11 +13,7 @@ import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
-import org.thymeleaf.context.Context;
-import org.thymeleaf.spring6.ISpringWebFluxTemplateEngine;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
-import run.halo.app.theme.TemplateNameResolver;
 
 @Component
 @RequiredArgsConstructor
@@ -27,8 +21,6 @@ public class SchedulePageRouter {
 
     private final ScheduleQueryService scheduleQueryService;
     private final ScheduleCalendarSettingService settingService;
-    private final TemplateNameResolver templateNameResolver;
-    private final ISpringWebFluxTemplateEngine templateEngine;
 
     @Bean
     RouterFunction<ServerResponse> schedulePageRouterFunction() {
@@ -64,13 +56,17 @@ public class SchedulePageRouter {
         } catch (DateTimeParseException ex) {
             return ServerResponse.badRequest().build();
         }
-        return scheduleQueryService.buildCalendarModel(start)
-            .flatMap(model -> render(request, "public/calendar", model));
+        return scheduleQueryService.buildPublicCalendarPage(start)
+            .flatMap(html -> ServerResponse.ok()
+                .contentType(MediaType.TEXT_HTML)
+                .bodyValue(html));
     }
 
     private Mono<ServerResponse> card(ServerRequest request) {
-        return scheduleQueryService.buildCardModel(request.pathVariable("name"))
-            .flatMap(model -> render(request, "public/card", model))
+        return scheduleQueryService.buildPublicCardPage(request.pathVariable("name"))
+            .flatMap(html -> ServerResponse.ok()
+                .contentType(MediaType.TEXT_HTML)
+                .bodyValue(html))
             .switchIfEmpty(ServerResponse.notFound().build());
     }
 
@@ -80,16 +76,5 @@ public class SchedulePageRouter {
                 .contentType(MediaType.parseMediaType("text/calendar; charset=UTF-8"))
                 .header("Content-Disposition", "inline; filename=\"schedule-calendar.ics\"")
                 .bodyValue(body));
-    }
-
-    private Mono<ServerResponse> render(ServerRequest request, String template, Map<String, Object> model) {
-        return templateNameResolver.resolveTemplateNameOrDefault(request.exchange(), template)
-            .flatMap(templateName -> Mono.fromCallable(() -> {
-                var ctx = new Context(Locale.SIMPLIFIED_CHINESE, model);
-                return templateEngine.process(templateName, ctx);
-            }).subscribeOn(Schedulers.boundedElastic()))
-            .flatMap(html -> ServerResponse.ok()
-                .contentType(MediaType.TEXT_HTML)
-                .bodyValue(html));
     }
 }

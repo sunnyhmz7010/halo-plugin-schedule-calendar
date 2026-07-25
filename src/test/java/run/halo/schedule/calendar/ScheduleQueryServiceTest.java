@@ -345,13 +345,11 @@ class ScheduleQueryServiceTest {
         when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
             .thenReturn(Mono.just(new ScheduleCalendarSetting("自定义标题", null, null)));
 
-        var model = service.buildCalendarModel(LocalDate.of(2026, 4, 13)).block();
+        var html = service.buildPublicCalendarPage(LocalDate.of(2026, 4, 13)).block();
 
-        assertThat(model).isNotNull();
-        assertThat(model.get("pageTitle")).isEqualTo("自定义标题");
-        assertThat(model.get("payload")).isInstanceOf(String.class);
-        assertThat(model.get("calendarHeaderHeight")).isEqualTo(64);
-        assertThat(model.get("hourHeight")).isEqualTo(56);
+        assertThat(html).isNotNull();
+        assertThat(html).contains("<title>自定义标题</title>");
+        assertThat(html).contains("<h1>自定义标题</h1>");
     }
 
     @Test
