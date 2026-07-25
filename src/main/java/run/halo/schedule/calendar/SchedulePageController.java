@@ -32,13 +32,13 @@ public class SchedulePageController {
                 .flatMap(html -> ServerResponse.ok()
                     .contentType(MediaType.TEXT_HTML)
                     .bodyValue(html)))
-            .defaultIfEmpty(ServerResponse.notFound().build());
+            .switchIfEmpty(ServerResponse.notFound().build());
     }
 
     @GetMapping(value = ScheduleCalendarRoutes.DEFAULT_PUBLIC_ICAL_PATH, produces = "text/calendar; charset=UTF-8")
     public Mono<ServerResponse> ical() {
         return scheduleQueryService.exportPublicIcal()
-            .map(body -> ServerResponse.ok()
+            .flatMap(body -> ServerResponse.ok()
                 .contentType(MediaType.parseMediaType("text/calendar; charset=UTF-8"))
                 .header("Content-Disposition", "inline; filename=\"schedule-calendar.ics\"")
                 .bodyValue(body));
@@ -54,7 +54,7 @@ public class SchedulePageController {
                 .flatMap(html -> ServerResponse.ok()
                     .contentType(MediaType.TEXT_HTML)
                     .bodyValue(html)))
-            .defaultIfEmpty(ServerResponse.notFound().build());
+            .switchIfEmpty(ServerResponse.notFound().build());
     }
 
     private Mono<String> renderCalendar(Map<String, Object> model) {

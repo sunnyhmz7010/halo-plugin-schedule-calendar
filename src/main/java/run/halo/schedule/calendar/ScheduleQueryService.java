@@ -730,14 +730,14 @@ public class ScheduleQueryService {
         return meta;
     }
 
-    private String sanitizeColor(String color) {
+    private static String sanitizeColor(String color) {
         if (color != null && SAFE_COLOR_PATTERN.matcher(color).matches()) {
             return color;
         }
         return "#0f766e";
     }
 
-    private String defaultColor(String color) {
+    private static String defaultColor(String color) {
         return sanitizeColor(color);
     }
 
