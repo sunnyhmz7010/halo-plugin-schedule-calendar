@@ -2,6 +2,7 @@ package run.halo.schedule.calendar;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.Locale;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -14,7 +15,10 @@ import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring6.ISpringWebFluxTemplateEngine;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import run.halo.app.theme.TemplateNameResolver;
 
 @Component
@@ -24,6 +28,7 @@ public class SchedulePageRouter {
     private final ScheduleQueryService scheduleQueryService;
     private final ScheduleCalendarSettingService settingService;
     private final TemplateNameResolver templateNameResolver;
+    private final ISpringWebFluxTemplateEngine templateEngine;
 
     @Bean
     RouterFunction<ServerResponse> schedulePageRouterFunction() {
@@ -79,8 +84,12 @@ public class SchedulePageRouter {
 
     private Mono<ServerResponse> render(ServerRequest request, String template, Map<String, Object> model) {
         return templateNameResolver.resolveTemplateNameOrDefault(request.exchange(), template)
-            .flatMap(templateName -> ServerResponse.ok()
+            .flatMap(templateName -> Mono.fromCallable(() -> {
+                var ctx = new Context(Locale.SIMPLIFIED_CHINESE, model);
+                return templateEngine.process(templateName, ctx);
+            }).subscribeOn(Schedulers.boundedElastic()))
+            .flatMap(html -> ServerResponse.ok()
                 .contentType(MediaType.TEXT_HTML)
-                .render(templateName, model));
+                .bodyValue(html));
     }
 }

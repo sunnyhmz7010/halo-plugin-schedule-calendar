@@ -15,6 +15,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.reactive.function.server.MockServerRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
+import org.thymeleaf.spring6.ISpringWebFluxTemplateEngine;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.ReactiveExtensionClient;
@@ -36,6 +37,9 @@ class SchedulePageRouterTest {
     @Mock
     TemplateNameResolver templateNameResolver;
 
+    @Mock
+    ISpringWebFluxTemplateEngine templateEngine;
+
     private ScheduleCalendarSettingService settingService;
 
     @BeforeEach
@@ -52,7 +56,7 @@ class SchedulePageRouterTest {
         when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
             .thenReturn(Mono.just(new ScheduleCalendarSetting(null, false, null)));
 
-        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver)
+        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver, templateEngine)
             .schedulePageRouterFunction();
 
         var handler = routes.route(get(ScheduleCalendarRoutes.DEFAULT_PUBLIC_PAGE_PATH)).blockOptional();
@@ -65,7 +69,7 @@ class SchedulePageRouterTest {
         when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
             .thenReturn(Mono.just(new ScheduleCalendarSetting(null, false, null)));
 
-        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver)
+        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver, templateEngine)
             .schedulePageRouterFunction();
 
         var handler = routes.route(get(ScheduleCalendarRoutes.PUBLIC_CARD_PATH_PREFIX + "/lesson-1")).blockOptional();
@@ -78,7 +82,7 @@ class SchedulePageRouterTest {
         when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
             .thenReturn(Mono.just(new ScheduleCalendarSetting(null, true, null)));
 
-        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver)
+        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver, templateEngine)
             .schedulePageRouterFunction();
 
         var handler = routes.route(get(ScheduleCalendarRoutes.DEFAULT_PUBLIC_PAGE_PATH)).blockOptional();
@@ -88,7 +92,7 @@ class SchedulePageRouterTest {
 
     @Test
     void publicIcalRouteStillMatchesWhenPublicPageDisabled() {
-        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver)
+        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver, templateEngine)
             .schedulePageRouterFunction();
 
         var handler = routes.route(get(ScheduleCalendarRoutes.DEFAULT_PUBLIC_ICAL_PATH)).blockOptional();
