@@ -26,7 +26,7 @@ public class ScheduleCalendarSettingService {
 
     Mono<ScheduleCalendarSetting> getSetting() {
         return settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
-            .defaultIfEmpty(new ScheduleCalendarSetting(null, null))
+            .defaultIfEmpty(new ScheduleCalendarSetting(null, null, null))
             .flatMap(this::mergeLegacyExternalCalendarsIfNeeded);
     }
 
@@ -41,7 +41,7 @@ public class ScheduleCalendarSettingService {
                 rawConfig.get(ScheduleCalendarSetting.GROUP),
                 rawConfig
             ))
-            .onErrorReturn(setting == null ? new ScheduleCalendarSetting(null, null) : setting);
+            .onErrorReturn(setting == null ? new ScheduleCalendarSetting(null, null, null) : setting);
     }
 
     private Mono<JsonNode> loadRawConfig() {
@@ -81,13 +81,13 @@ public class ScheduleCalendarSettingService {
 
     private ScheduleCalendarSetting mergeFromRawConfig(ScheduleCalendarSetting base, JsonNode rawGroup,
         JsonNode rawRoot) {
-        var fallback = base == null ? new ScheduleCalendarSetting(null, null) : base;
+        var fallback = base == null ? new ScheduleCalendarSetting(null, null, null) : base;
         var merged = mergeFromNode(fallback, rawGroup);
         return hasExternalCalendars(merged) ? merged : mergeFromNode(merged, rawRoot);
     }
 
     private ScheduleCalendarSetting mergeFromNode(ScheduleCalendarSetting base, JsonNode rawNode) {
-        var fallback = base == null ? new ScheduleCalendarSetting(null, null) : base;
+        var fallback = base == null ? new ScheduleCalendarSetting(null, null, null) : base;
         if (rawNode == null || rawNode.isNull() || !rawNode.isObject()) {
             return fallback;
         }
@@ -100,10 +100,13 @@ public class ScheduleCalendarSettingService {
             var title = rawSetting.title() == null || rawSetting.title().isBlank()
                 ? fallback.title()
                 : rawSetting.title();
+            var enablePublicPage = rawSetting.enablePublicPage() == null
+                ? fallback.enablePublicPage()
+                : rawSetting.enablePublicPage();
             var externalCalendars = rawSetting.externalCalendars() == null || rawSetting.externalCalendars().isEmpty()
                 ? fallback.externalCalendars()
                 : rawSetting.externalCalendars();
-            return new ScheduleCalendarSetting(title, externalCalendars);
+            return new ScheduleCalendarSetting(title, enablePublicPage, externalCalendars);
         } catch (Exception ignored) {
             return fallback;
         }

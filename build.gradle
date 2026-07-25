@@ -22,6 +22,7 @@ repositories {
 dependencies {
     implementation platform('run.halo.tools.platform:plugin:2.25.0')
     compileOnly 'run.halo.app:api'
+    compileOnly 'org.springframework.boot:spring-boot-starter-thymeleaf'
 
     testImplementation 'run.halo.app:api'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

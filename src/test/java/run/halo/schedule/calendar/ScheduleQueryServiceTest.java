@@ -343,13 +343,15 @@ class ScheduleQueryServiceTest {
         when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
             .thenReturn(Flux.empty());
         when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
-            .thenReturn(Mono.just(new ScheduleCalendarSetting("自定义标题", null)));
+            .thenReturn(Mono.just(new ScheduleCalendarSetting("自定义标题", null, null)));
 
-        var html = service.buildPublicCalendarPage(LocalDate.of(2026, 4, 13)).block();
+        var model = service.buildCalendarModel(LocalDate.of(2026, 4, 13)).block();
 
-        assertThat(html).isNotNull();
-        assertThat(html).contains("<title>自定义标题</title>");
-        assertThat(html).contains("<h1>自定义标题</h1>");
+        assertThat(model).isNotNull();
+        assertThat(model.get("pageTitle")).isEqualTo("自定义标题");
+        assertThat(model).containsKey("payload");
+        assertThat(model.get("calendarHeaderHeight")).isEqualTo(64);
+        assertThat(model.get("hourHeight")).isEqualTo(56);
     }
 
     @Test
@@ -364,7 +366,7 @@ class ScheduleQueryServiceTest {
         when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
             .thenReturn(Flux.just(entry));
         when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
-            .thenReturn(Mono.just(new ScheduleCalendarSetting("课程订阅", null)));
+            .thenReturn(Mono.just(new ScheduleCalendarSetting("课程订阅", null, null)));
 
         var ical = service.exportPublicIcal().block();
 
@@ -423,7 +425,7 @@ class ScheduleQueryServiceTest {
         when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
             .thenReturn(Flux.empty());
         when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
-            .thenReturn(Mono.just(new ScheduleCalendarSetting("日程日历", null)));
+            .thenReturn(Mono.just(new ScheduleCalendarSetting("日程日历", null, null)));
 
         var publicPage = objectMapper.createObjectNode();
         publicPage.put("title", "日程日历");
@@ -469,7 +471,7 @@ class ScheduleQueryServiceTest {
         when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
             .thenReturn(Flux.empty());
         when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
-            .thenReturn(Mono.just(new ScheduleCalendarSetting("日程日历", null)));
+            .thenReturn(Mono.just(new ScheduleCalendarSetting("日程日历", null, null)));
 
         var publicPage = objectMapper.createObjectNode();
         publicPage.put("title", "日程日历");

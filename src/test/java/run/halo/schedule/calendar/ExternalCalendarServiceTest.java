@@ -60,7 +60,7 @@ class ExternalCalendarServiceTest {
             true,
             "#4285f4"
         );
-        var setting = new ScheduleCalendarSetting("日程日历", List.of(source));
+        var setting = new ScheduleCalendarSetting("日程日历", null, List.of(source));
 
         var occurrences = service.listOccurrences(
             setting,

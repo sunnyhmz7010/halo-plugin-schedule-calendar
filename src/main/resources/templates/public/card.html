@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout :: html(head = ~{::head}, content = ~{::body})">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title th:text="${pageTitle}">日程卡片</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      font-family: "Segoe UI", "PingFang SC", sans-serif;
+    }
+    .schedule-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #ffffff;
+      overflow: hidden;
+    }
+    .schedule-card__inner {
+      display: grid;
+      gap: 10px;
+      padding: 14px 16px;
+    }
+    .entry-start {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      min-width: 0;
+    }
+    .entry-dot {
+      width: 10px;
+      height: 10px;
+      margin-top: 6px;
+      border-radius: 999px;
+      flex: none;
+    }
+    .entry-main {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .entry-title {
+      min-width: 0;
+      color: #111827;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .entry-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-width: 0;
+    }
+    .entry-meta__item {
+      display: inline-flex;
+      align-items: center;
+      flex: 0 1 auto;
+      max-width: 100%;
+      min-width: 0;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #f8fafc;
+      color: #6b7280;
+      font-size: 12px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .entry-meta__item--wide {
+      flex: 1 1 320px;
+      max-width: 100%;
+      border-radius: 12px;
+      white-space: normal;
+    }
+    .entry-meta__item--block {
+      flex-basis: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="schedule-card">
+    <div class="schedule-card__inner">
+      <div class="entry-start">
+        <span class="entry-dot" th:style="'background:' + ${cardColor}"></span>
+        <div class="entry-main">
+          <div class="entry-title" th:text="${cardTitle}">日程标题</div>
+          <div class="entry-meta">
+            <span th:class="${summaryClass}" th:text="${summary}">时间范围</span>
+            <th:block th:if="${nextOccurrenceLabel != null and !nextOccurrenceLabel.isEmpty()}">
+              <span class="entry-meta__item entry-meta__item--wide entry-meta__item--block"
+                    th:text="'下一次出现：' + ${nextOccurrenceLabel}">下一次出现：</span>
+            </th:block>
+            <th:block th:if="${sourceLabel != null and !sourceLabel.isEmpty()}">
+              <span class="entry-meta__item entry-meta__item--wide entry-meta__item--block"
+                    th:text="'来源：' + ${sourceLabel}">来源：</span>
+            </th:block>
+            <th:block th:if="${cardLocation != null and !cardLocation.isEmpty()}">
+              <span class="entry-meta__item entry-meta__item--wide entry-meta__item--block"
+                    th:text="'地点：' + ${cardLocation}">地点：</span>
+            </th:block>
+            <th:block th:if="${cardDescription != null and !cardDescription.isEmpty()}">
+              <span class="entry-meta__item entry-meta__item--wide entry-meta__item--block"
+                    th:text="'备注：' + ${cardDescription}">备注：</span>
+            </th:block>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

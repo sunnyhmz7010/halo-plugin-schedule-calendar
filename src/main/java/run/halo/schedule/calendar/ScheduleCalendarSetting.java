@@ -2,9 +2,14 @@ package run.halo.schedule.calendar;
 
 import java.util.List;
 
-public record ScheduleCalendarSetting(String title, List<ExternalCalendarSource> externalCalendars) {
+public record ScheduleCalendarSetting(String title, Boolean enablePublicPage,
+                                       List<ExternalCalendarSource> externalCalendars) {
     public static final String GROUP = "public_page";
     public static final String DEFAULT_TITLE = "日程日历";
+
+    public boolean isPublicPageEnabled() {
+        return enablePublicPage == null || enablePublicPage;
+    }
 
     public String effectiveTitle() {
         return title == null || title.isBlank() ? DEFAULT_TITLE : title;
