@@ -2,6 +2,7 @@ package run.halo.schedule.calendar;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
@@ -40,9 +41,9 @@ class SchedulePageRouterTest {
 
     @Test
     void publicPageRouteAlwaysMatches() {
-        when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
+        lenient().when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
             .thenReturn(Mono.just(new ScheduleCalendarSetting("日程日历", null)));
-        when(scheduleQueryService.getWeekView(null))
+        lenient().when(scheduleQueryService.getWeekView(null))
             .thenReturn(Mono.just(new ScheduleQueryService
                 .WeekViewResponse(null, null, null, null, null, List.of(), null, null, null, null, null)));
 
@@ -56,7 +57,7 @@ class SchedulePageRouterTest {
 
     @Test
     void publicCardRouteAlwaysMatches() {
-        when(scheduleQueryService.getEntryCard("lesson-1"))
+        lenient().when(scheduleQueryService.getEntryCard("lesson-1"))
             .thenReturn(Mono.just(new ScheduleQueryService
                 .ScheduleCardResponse("lesson-1", "课程", null, null,
                     "09:00", "10:30", null, null, "#4285f4", null)));
@@ -72,7 +73,7 @@ class SchedulePageRouterTest {
 
     @Test
     void publicIcalRouteAlwaysMatches() {
-        when(scheduleQueryService.exportPublicIcal())
+        lenient().when(scheduleQueryService.exportPublicIcal())
             .thenReturn(Mono.just("BEGIN:VCALENDAR"));
 
         var routes = new SchedulePageRouter(scheduleQueryService, settingService)
