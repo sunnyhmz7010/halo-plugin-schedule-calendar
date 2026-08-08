@@ -21,6 +21,8 @@ import org.springframework.web.reactive.function.server.RenderingResponse;
 import reactor.core.publisher.Mono;
 import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.ReactiveExtensionClient;
+import run.halo.app.infra.SystemInfo;
+import run.halo.app.infra.SystemInfoGetter;
 import run.halo.app.plugin.ReactiveSettingFetcher;
 import run.halo.app.theme.TemplateNameResolver;
 
@@ -39,6 +41,9 @@ class SchedulePageRouterTest {
     @Mock
     TemplateNameResolver templateNameResolver;
 
+    @Mock
+    SystemInfoGetter systemInfoGetter;
+
     private ScheduleCalendarSettingService settingService;
 
     @BeforeEach
@@ -46,6 +51,8 @@ class SchedulePageRouterTest {
         settingService = new ScheduleCalendarSettingService(settingFetcher, client);
         lenient().when(client.fetch(eq(ConfigMap.class), eq("schedule-calendar-settings")))
             .thenReturn(Mono.empty());
+        lenient().when(systemInfoGetter.get())
+            .thenReturn(Mono.just(new SystemInfo().setFavicon("/upload/site-favicon.png")));
     }
 
     @Test
@@ -56,7 +63,8 @@ class SchedulePageRouterTest {
             .thenReturn(Mono.just(new ScheduleQueryService
                 .WeekViewResponse(null, null, null, null, null, List.of(), null, null, null, null, null)));
 
-        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver)
+        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver,
+            systemInfoGetter)
             .schedulePageRouterFunction();
 
         var handler = routes.route(get(ScheduleCalendarRoutes.DEFAULT_PUBLIC_PAGE_PATH)).blockOptional();
@@ -71,7 +79,8 @@ class SchedulePageRouterTest {
                 .ScheduleCardResponse("lesson-1", "课程", null, null,
                     "09:00", "10:30", null, null, "#4285f4", null)));
 
-        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver)
+        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver,
+            systemInfoGetter)
             .schedulePageRouterFunction();
 
         var handler = routes.route(get(ScheduleCalendarRoutes.PUBLIC_CARD_PATH_PREFIX + "/lesson-1"))
@@ -85,7 +94,8 @@ class SchedulePageRouterTest {
         lenient().when(scheduleQueryService.exportPublicIcal())
             .thenReturn(Mono.just("BEGIN:VCALENDAR"));
 
-        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver)
+        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver,
+            systemInfoGetter)
             .schedulePageRouterFunction();
 
         var handler = routes.route(get(ScheduleCalendarRoutes.DEFAULT_PUBLIC_ICAL_PATH)).blockOptional();
@@ -104,7 +114,8 @@ class SchedulePageRouterTest {
         when(templateNameResolver.resolveTemplateNameOrDefault(request.exchange(), "schedule-calendar"))
             .thenReturn(Mono.just("plugin:schedule-calendar:schedule-calendar"));
 
-        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver)
+        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver,
+            systemInfoGetter)
             .schedulePageRouterFunction();
         var response = routes.route(request)
             .flatMap(handler -> handler.handle(request))
@@ -113,6 +124,31 @@ class SchedulePageRouterTest {
         assertThat(response).isInstanceOf(RenderingResponse.class);
         assertThat(((RenderingResponse) response).name())
             .isEqualTo("plugin:schedule-calendar:schedule-calendar");
+    }
+
+    @Test
+    void publicPageModelUsesSiteFavicon() throws Exception {
+        var request = get(ScheduleCalendarRoutes.DEFAULT_PUBLIC_PAGE_PATH);
+        lenient().when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
+            .thenReturn(Mono.just(new ScheduleCalendarSetting("日程日历", null)));
+        lenient().when(scheduleQueryService.getWeekView(null))
+            .thenReturn(Mono.just(new ScheduleQueryService
+                .WeekViewResponse(null, null, null, null, null, List.of(), null, null, null, null, null)));
+        when(templateNameResolver.resolveTemplateNameOrDefault(request.exchange(), "schedule-calendar"))
+            .thenReturn(Mono.just("plugin:schedule-calendar:schedule-calendar"));
+        when(systemInfoGetter.get())
+            .thenReturn(Mono.just(new SystemInfo().setFavicon("/upload/custom-favicon.ico")));
+
+        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver,
+            systemInfoGetter)
+            .schedulePageRouterFunction();
+        var response = routes.route(request)
+            .flatMap(handler -> handler.handle(request))
+            .block();
+
+        assertThat(response).isInstanceOf(RenderingResponse.class);
+        assertThat(((RenderingResponse) response).model())
+            .containsEntry("favicon", "/upload/custom-favicon.ico");
     }
 
     @Test
@@ -126,7 +162,8 @@ class SchedulePageRouterTest {
         when(templateNameResolver.resolveTemplateNameOrDefault(request.exchange(), "schedule-calendar-card"))
             .thenReturn(Mono.just("plugin:schedule-calendar:schedule-calendar-card"));
 
-        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver)
+        var routes = new SchedulePageRouter(scheduleQueryService, settingService, templateNameResolver,
+            systemInfoGetter)
             .schedulePageRouterFunction();
         var response = routes.route(request)
             .flatMap(handler -> handler.handle(request))

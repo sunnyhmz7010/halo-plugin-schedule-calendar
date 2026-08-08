@@ -353,6 +353,19 @@ class ScheduleQueryServiceTest {
     }
 
     @Test
+    void publicCalendarPageDoesNotHardCodeRootFavicon() {
+        when(client.listAll(eq(ScheduleEntry.class), any(ListOptions.class), any()))
+            .thenReturn(Flux.empty());
+        when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
+            .thenReturn(Mono.just(new ScheduleCalendarSetting("日程日历", null)));
+
+        var html = service.buildPublicCalendarPage(LocalDate.of(2026, 4, 13)).block();
+
+        assertThat(html).isNotNull();
+        assertThat(html).doesNotContain("/favicon.ico");
+    }
+
+    @Test
     void exportsIcalWithCalendarTimezone() {
         var entry = scheduleEntry(
             "morning-class",

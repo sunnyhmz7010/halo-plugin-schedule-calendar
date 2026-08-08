@@ -14,6 +14,8 @@ import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
+import run.halo.app.infra.SystemInfo;
+import run.halo.app.infra.SystemInfoGetter;
 import run.halo.app.theme.TemplateNameResolver;
 
 @Component
@@ -25,6 +27,7 @@ public class SchedulePageRouter {
     private final ScheduleQueryService scheduleQueryService;
     private final ScheduleCalendarSettingService settingService;
     private final TemplateNameResolver templateNameResolver;
+    private final SystemInfoGetter systemInfoGetter;
 
     @Bean
     RouterFunction<ServerResponse> schedulePageRouterFunction() {
@@ -50,14 +53,19 @@ public class SchedulePageRouter {
         }
         return Mono.zip(
                 scheduleQueryService.getWeekView(start),
-                settingService.getSetting()
+                settingService.getSetting(),
+                getSiteFavicon()
             )
             .flatMap(tuple -> {
                 var view = tuple.getT1();
                 var pageTitle = tuple.getT2().effectiveTitle();
+                var favicon = blankToNull(tuple.getT3());
                 Map<String, Object> model = new HashMap<>();
                 model.put("title", pageTitle);
                 model.put("view", view);
+                if (favicon != null) {
+                    model.put("favicon", favicon);
+                }
                 model.put(TEMPLATE_ID, "schedule-calendar");
                 return render(request, "schedule-calendar", model);
             });
@@ -93,6 +101,14 @@ public class SchedulePageRouter {
     private Mono<ServerResponse> render(ServerRequest request, String template, Map<String, Object> model) {
         return templateNameResolver.resolveTemplateNameOrDefault(request.exchange(), template)
             .flatMap(templateName -> ServerResponse.ok().render(templateName, model));
+    }
+
+    private Mono<String> getSiteFavicon() {
+        return systemInfoGetter.get()
+            .map(SystemInfo::getFavicon)
+            .flatMap(favicon -> Mono.justOrEmpty(blankToNull(favicon)))
+            .onErrorResume(error -> Mono.empty())
+            .defaultIfEmpty("");
     }
 
     private static String buildCardSummary(ScheduleQueryService.ScheduleCardResponse card) {
