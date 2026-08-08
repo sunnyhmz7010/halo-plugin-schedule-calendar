@@ -4,6 +4,7 @@ import { Dialog, Toast, VAlert, VButton, VCard, VEntity, VEntityContainer, VEnti
 import { computed, onMounted, ref } from 'vue'
 import { ENTRY_API, ENTRY_ENABLED_ANNOTATION, fetchAllScheduleEntries } from '../editor/schedule-card-data'
 import type { ScheduleEntry, ScheduleEntrySpec } from '../types/schedule'
+import { resolveConsolePermissionLevel } from '../utils/permission'
 
 interface ScheduleBackupPayload {
   apiVersion?: string
@@ -333,24 +334,7 @@ const restoreBackup = (event: Event) => {
 
 const loadPermissionLevel = async () => {
   permissionLevel.value = 'unknown'
-
-  try {
-    const response = await axiosInstance.delete(
-      `${ENTRY_API}/${encodeURIComponent('__permission_probe__')}`,
-      {
-        validateStatus: (status) => status >= 200 && status < 500,
-      },
-    )
-
-    if (response.status !== 401 && response.status !== 403) {
-      permissionLevel.value = 'manage'
-      return
-    }
-  } catch (error) {
-    console.error(error)
-  }
-
-  permissionLevel.value = 'view'
+  permissionLevel.value = await resolveConsolePermissionLevel(axiosInstance)
 }
 
 onMounted(() => {

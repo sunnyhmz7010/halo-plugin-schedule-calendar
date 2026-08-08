@@ -42,6 +42,7 @@ import {
   isRecurringEntry,
   spansMultipleLocalDates,
 } from '../utils/recurrence'
+import { resolveConsolePermissionLevel } from '../utils/permission'
 import { ENTRY_ENABLED_ANNOTATION, fetchAllScheduleEntries } from '../editor/schedule-card-data'
 
 const apiBase = '/apis/schedule.calendar.sunny.dev/v1alpha1/scheduleentries'
@@ -1294,22 +1295,7 @@ const openRemoveExternalCalendarDialog = (calendar: ExternalCalendarFormItem) =>
 
 const loadPermissionLevel = async () => {
   permissionLevel.value = 'unknown'
-
-  try {
-    const response = await axiosInstance.delete(
-      `${apiBase}/${encodeURIComponent('__permission_probe__')}`,
-      {
-        validateStatus: (status) => status >= 200 && status < 500,
-      },
-    )
-
-    if (response.status !== 401 && response.status !== 403) {
-      permissionLevel.value = 'manage'
-      return
-    }
-  } catch (error) {
-    console.error(error)
-  }
+  permissionLevel.value = await resolveConsolePermissionLevel(axiosInstance)
 }
 
 const restoreScrollPosition = async (top: number) => {
