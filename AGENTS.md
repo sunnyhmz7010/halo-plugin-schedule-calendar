@@ -6,7 +6,7 @@
 |------|------|
 | 产品定位 | Halo 日程日历插件，非通用日历库 |
 | 核心功能 | 公开日历查看、控制台日程管理、编辑器日程卡片、主题/API 集成 |
-| 当前稳定版本 | `v3.2.0` |
+| 当前稳定版本 | `v3.4.0` |
 
 ### 技术栈
 
@@ -25,6 +25,8 @@
 | 插件元数据 | `src/main/resources/plugin.yaml` |
 | 角色模板 | `src/main/resources/extensions/roleTemplate.yaml` |
 | 设置 Schema | `src/main/resources/extensions/settings.yaml` |
+| 公开页面模板 | `src/main/resources/templates/schedule-calendar.html` |
+| 卡片页模板 | `src/main/resources/templates/schedule-calendar-card.html` |
 | 主管理页 | `ui/src/views/HomeView.vue` |
 | 日程模型 | `src/main/java/run/halo/schedule/calendar/ScheduleEntry.java` |
 | 周查询逻辑 | `src/main/java/run/halo/schedule/calendar/ScheduleQueryService.java` |
@@ -41,6 +43,17 @@
 
 ## 架构约束
 
+### 公开页面渲染机制（主题模板委托）
+
+- 公开页面路由 `/schedule-calendar` 和 `/schedule-calendar/cards/{name}` 由 `SchedulePageRouter` 始终注册
+- 渲染使用 `ServerResponse.ok().render("schedule-calendar", model)` 委托 Thymeleaf
+- Halo 的主题模板解析器优先级高于插件 classpath 模板：
+  - 若当前主题提供 `templates/schedule-calendar.html`，使用主题模板渲染
+  - 若主题未提供，回退到插件内置 `src/main/resources/templates/schedule-calendar.html`
+- model 中必须包含 `_templateId` 属性，值为模板名（如 `"schedule-calendar"`）
+- 公开 iCal 路由 `GET /schedule-calendar.ics` 不走模板，直接输出纯文本
+- 不要回到 `enablePublicPage` 开关或路由条件注册的模式
+
 ### 日程条目规则
 
 - 基础数据模型存储单条源条目，重复条目不在存储中复制
@@ -51,11 +64,13 @@
 
 ### 产品约束
 
-- 公开页面标题可在插件设置中配置，但公开页面和 iCal 订阅路由固定
+- 公开页面标题可在插件设置中配置，公开页面和 iCal 订阅路由固定
+- 主题可通过 `templates/schedule-calendar.html` 自定义公开页面外观
 - Halo 原生插件设置优先于自定义设置页
 - 外部日历 MVP 使用 Halo 原生插件设置配置 ICS 订阅源
 - 外部日历事件为只读，合并到公开页面、Finder 和 REST 查询结果
 - 不要将外部 ICS 事件混入本地日程 CRUD 或编辑器卡片选择
+- 已移除"启用前台公开页面"开关，改为主题模板委托模式
 
 ### 权限规则
 

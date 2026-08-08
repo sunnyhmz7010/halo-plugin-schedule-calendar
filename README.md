@@ -43,6 +43,7 @@ Halo 默认并没有提供一套完整的日程日历能力。这个插件的目
 - 支持本地事项与外部日历订阅在周视图和事项视图中统一展示
 - 支持当前状态、下一个事项倒计时和当前时间线提示
 - 公开 iCal 订阅仅导出本地事项，不包含外部日历订阅数据
+- 支持主题模板覆盖：主题提供 `templates/schedule-calendar.html` 即可接管公开页面
 
 ### 🛠️ 控制台事项管理
 
@@ -110,6 +111,40 @@ Halo 默认并没有提供一套完整的日程日历能力。这个插件的目
 ```text
 /schedule-calendar/cards/{name}
 ```
+
+### 🎨 主题适配
+
+主题开发者可以在主题的 `templates/` 目录下放置同名模板文件来自定义公开页面外观：
+
+| 路由 | 主题模板文件 |
+|------|-------------|
+| `/schedule-calendar` | `templates/schedule-calendar.html` |
+| `/schedule-calendar/cards/{name}` | `templates/schedule-calendar-card.html` |
+
+若主题提供了对应模板，Halo 会优先使用主题模板渲染；若未提供，则回退到插件内置模板。模板中可使用的 model 变量：
+
+**`schedule-calendar.html`：**
+
+| 变量 | 类型 | 说明 |
+|------|------|------|
+| `title` | String | 公开页面标题（来自插件设置） |
+| `view` | WeekViewResponse | 周视图数据对象，包含 `days`、`summary`、`weekStart` 等字段 |
+| `_templateId` | String | 固定为 `"schedule-calendar"` |
+
+**`schedule-calendar-card.html`：**
+
+| 变量 | 类型 | 说明 |
+|------|------|------|
+| `title` | String | 事项标题 |
+| `color` | String | 事项颜色（如 `#3b82f6`） |
+| `summary` | String | 时间或循环摘要 |
+| `summaryClass` | String | 摘要 CSS 类名 |
+| `nextOccurrenceLabel` | String | 下一次出现标签（可为 null） |
+| `sourceLabel` | String | 来源标签（可为 null） |
+| `location` | String | 地点（可为 null） |
+| `description` | String | 备注（可为 null） |
+
+参考 `plugin-links`、`plugin-moments` 的主题模板覆盖模式。内置模板源码见 `src/main/resources/templates/`。
 
 ### 📥 批量导入
 
