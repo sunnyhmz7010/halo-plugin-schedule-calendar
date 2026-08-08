@@ -44,7 +44,7 @@ class SchedulePageRouterTest {
             .thenReturn(Mono.just(new ScheduleCalendarSetting("日程日历", null)));
         when(scheduleQueryService.getWeekView(null))
             .thenReturn(Mono.just(new ScheduleQueryService
-                .WeekViewResponse(null, null, null, null, List.of(), null, null)));
+                .WeekViewResponse(null, null, null, null, null, List.of(), null, null, null, null, null)));
 
         var routes = new SchedulePageRouter(scheduleQueryService, settingService)
             .schedulePageRouterFunction();
