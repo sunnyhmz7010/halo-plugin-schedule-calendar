@@ -14,6 +14,7 @@ import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
+import run.halo.app.theme.TemplateNameResolver;
 
 @Component
 @RequiredArgsConstructor
@@ -23,6 +24,7 @@ public class SchedulePageRouter {
 
     private final ScheduleQueryService scheduleQueryService;
     private final ScheduleCalendarSettingService settingService;
+    private final TemplateNameResolver templateNameResolver;
 
     @Bean
     RouterFunction<ServerResponse> schedulePageRouterFunction() {
@@ -57,7 +59,7 @@ public class SchedulePageRouter {
                 model.put("title", pageTitle);
                 model.put("view", view);
                 model.put(TEMPLATE_ID, "schedule-calendar");
-                return ServerResponse.ok().render("schedule-calendar", model);
+                return render(request, "schedule-calendar", model);
             });
     }
 
@@ -75,7 +77,7 @@ public class SchedulePageRouter {
                 model.put("location", blankToNull(card.location()));
                 model.put("description", blankToNull(card.description()));
                 model.put(TEMPLATE_ID, "schedule-calendar-card");
-                return ServerResponse.ok().render("schedule-calendar-card", model);
+                return render(request, "schedule-calendar-card", model);
             })
             .switchIfEmpty(ServerResponse.notFound().build());
     }
@@ -86,6 +88,11 @@ public class SchedulePageRouter {
                 .contentType(MediaType.parseMediaType("text/calendar; charset=UTF-8"))
                 .header("Content-Disposition", "inline; filename=\"schedule-calendar.ics\"")
                 .bodyValue(body));
+    }
+
+    private Mono<ServerResponse> render(ServerRequest request, String template, Map<String, Object> model) {
+        return templateNameResolver.resolveTemplateNameOrDefault(request.exchange(), template)
+            .flatMap(templateName -> ServerResponse.ok().render(templateName, model));
     }
 
     private static String buildCardSummary(ScheduleQueryService.ScheduleCardResponse card) {

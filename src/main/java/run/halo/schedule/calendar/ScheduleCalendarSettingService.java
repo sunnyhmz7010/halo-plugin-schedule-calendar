@@ -2,6 +2,7 @@ package run.halo.schedule.calendar;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -26,6 +27,7 @@ public class ScheduleCalendarSettingService {
 
     Mono<ScheduleCalendarSetting> getSetting() {
         return settingFetcher.fetch(ScheduleCalendarSetting.GROUP, ScheduleCalendarSetting.class)
+            .onErrorResume(ignored -> Mono.empty())
             .defaultIfEmpty(new ScheduleCalendarSetting(null, null))
             .flatMap(this::mergeLegacyExternalCalendarsIfNeeded);
     }
@@ -91,21 +93,26 @@ public class ScheduleCalendarSettingService {
         if (rawNode == null || rawNode.isNull() || !rawNode.isObject()) {
             return fallback;
         }
-        try {
-            var rawSetting = objectMapper.treeToValue(rawNode, ScheduleCalendarSetting.class);
-            if (rawSetting == null) {
-                return fallback;
-            }
-
-            var title = rawSetting.title() == null || rawSetting.title().isBlank()
+        var titleValue = rawNode.path("title").asText(null);
+        var title = titleValue == null || titleValue.isBlank()
                 ? fallback.title()
-                : rawSetting.title();
-            var externalCalendars = rawSetting.externalCalendars() == null || rawSetting.externalCalendars().isEmpty()
-                ? fallback.externalCalendars()
-                : rawSetting.externalCalendars();
-            return new ScheduleCalendarSetting(title, externalCalendars);
+                : titleValue;
+        var parsedExternalCalendars = parseExternalCalendars(rawNode.get("externalCalendars"));
+        var externalCalendars = parsedExternalCalendars == null || parsedExternalCalendars.isEmpty()
+            ? fallback.externalCalendars()
+            : parsedExternalCalendars;
+        return new ScheduleCalendarSetting(title, externalCalendars);
+    }
+
+    private List<ScheduleCalendarSetting.ExternalCalendarSource> parseExternalCalendars(JsonNode rawNode) {
+        if (rawNode == null || rawNode.isNull() || !rawNode.isArray()) {
+            return null;
+        }
+        try {
+            return objectMapper.readerForListOf(ScheduleCalendarSetting.ExternalCalendarSource.class)
+                .readValue(rawNode);
         } catch (Exception ignored) {
-            return fallback;
+            return null;
         }
     }
 
