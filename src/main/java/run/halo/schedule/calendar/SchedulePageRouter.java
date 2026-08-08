@@ -2,12 +2,12 @@ package run.halo.schedule.calendar;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.server.HandlerFunction;
-import org.springframework.web.reactive.function.server.RequestPredicate;
 import org.springframework.web.reactive.function.server.RequestPredicates;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
@@ -19,32 +19,22 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class SchedulePageRouter {
 
+    private static final String TEMPLATE_ID = "_templateId";
+
     private final ScheduleQueryService scheduleQueryService;
     private final ScheduleCalendarSettingService settingService;
 
     @Bean
     RouterFunction<ServerResponse> schedulePageRouterFunction() {
-        return publicPageRoute(
+        return RouterFunctions.route(
                 RequestPredicates.GET(ScheduleCalendarRoutes.DEFAULT_PUBLIC_PAGE_PATH),
                 this::page
             )
-            .and(publicPageRoute(
+            .andRoute(
                 RequestPredicates.GET(ScheduleCalendarRoutes.PUBLIC_CARD_PATH_PREFIX + "/{name}"),
                 this::card
-            ))
+            )
             .andRoute(RequestPredicates.GET(ScheduleCalendarRoutes.DEFAULT_PUBLIC_ICAL_PATH), this::ical);
-    }
-
-    private RouterFunction<ServerResponse> publicPageRoute(RequestPredicate predicate,
-        HandlerFunction<ServerResponse> handler) {
-        return request -> {
-            if (!predicate.test(request)) {
-                return Mono.empty();
-            }
-            return settingService.getSetting()
-                .filter(ScheduleCalendarSetting::isPublicPageEnabled)
-                .map(setting -> handler);
-        };
     }
 
     private Mono<ServerResponse> page(ServerRequest request) {
@@ -56,17 +46,37 @@ public class SchedulePageRouter {
         } catch (DateTimeParseException ex) {
             return ServerResponse.badRequest().build();
         }
-        return scheduleQueryService.buildPublicCalendarPage(start)
-            .flatMap(html -> ServerResponse.ok()
-                .contentType(MediaType.TEXT_HTML)
-                .bodyValue(html));
+        return Mono.zip(
+                scheduleQueryService.getWeekView(start),
+                settingService.getSetting()
+            )
+            .flatMap(tuple -> {
+                var view = tuple.getT1();
+                var pageTitle = tuple.getT2().effectiveTitle();
+                Map<String, Object> model = new HashMap<>();
+                model.put("title", pageTitle);
+                model.put("view", view);
+                model.put(TEMPLATE_ID, "schedule-calendar");
+                return ServerResponse.ok().render("schedule-calendar", model);
+            });
     }
 
     private Mono<ServerResponse> card(ServerRequest request) {
-        return scheduleQueryService.buildPublicCardPage(request.pathVariable("name"))
-            .flatMap(html -> ServerResponse.ok()
-                .contentType(MediaType.TEXT_HTML)
-                .bodyValue(html))
+        return scheduleQueryService.getEntryCard(request.pathVariable("name"))
+            .flatMap(card -> {
+                Map<String, Object> model = new HashMap<>();
+                model.put("title", card.title());
+                model.put("color", card.color() == null || card.color().isBlank()
+                    ? "#3b82f6" : card.color());
+                model.put("summary", buildCardSummary(card));
+                model.put("summaryClass", buildCardSummaryClass(card));
+                model.put("nextOccurrenceLabel", blankToNull(card.nextOccurrenceLabel()));
+                model.put("sourceLabel", blankToNull(card.sourceLabel()));
+                model.put("location", blankToNull(card.location()));
+                model.put("description", blankToNull(card.description()));
+                model.put(TEMPLATE_ID, "schedule-calendar-card");
+                return ServerResponse.ok().render("schedule-calendar-card", model);
+            })
             .switchIfEmpty(ServerResponse.notFound().build());
     }
 
@@ -76,5 +86,22 @@ public class SchedulePageRouter {
                 .contentType(MediaType.parseMediaType("text/calendar; charset=UTF-8"))
                 .header("Content-Disposition", "inline; filename=\"schedule-calendar.ics\"")
                 .bodyValue(body));
+    }
+
+    private static String buildCardSummary(ScheduleQueryService.ScheduleCardResponse card) {
+        if (card.recurrenceDescription() == null || card.recurrenceDescription().isBlank()) {
+            return card.startTime() + " - " + card.endTime();
+        }
+        return card.recurrenceDescription() + " · 首次 " + card.startTime() + " - " + card.endTime();
+    }
+
+    private static String buildCardSummaryClass(ScheduleQueryService.ScheduleCardResponse card) {
+        return card.recurrenceDescription() == null || card.recurrenceDescription().isBlank()
+            ? "entry-meta__item"
+            : "entry-meta__item entry-meta__item--wide entry-meta__item--block";
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 }

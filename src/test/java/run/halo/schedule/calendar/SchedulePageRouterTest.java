@@ -2,10 +2,10 @@ package run.halo.schedule.calendar;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,7 +16,6 @@ import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.reactive.function.server.MockServerRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
-import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.ReactiveExtensionClient;
 import run.halo.app.plugin.ReactiveSettingFetcher;
 
@@ -37,42 +36,15 @@ class SchedulePageRouterTest {
     @BeforeEach
     void setUp() {
         settingService = new ScheduleCalendarSettingService(settingFetcher, client);
-        lenient().when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
-            .thenReturn(Mono.empty());
-        lenient().when(client.fetch(eq(ConfigMap.class), eq("schedule-calendar-settings")))
-            .thenReturn(Mono.empty());
     }
 
     @Test
-    void publicPageRouteDoesNotMatchWhenPublicPageDisabled() {
+    void publicPageRouteAlwaysMatches() {
         when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
-            .thenReturn(Mono.just(new ScheduleCalendarSetting(null, false, null)));
-
-        var routes = new SchedulePageRouter(scheduleQueryService, settingService)
-            .schedulePageRouterFunction();
-
-        var handler = routes.route(get(ScheduleCalendarRoutes.DEFAULT_PUBLIC_PAGE_PATH)).blockOptional();
-
-        assertThat(handler).isEmpty();
-    }
-
-    @Test
-    void publicCardRouteDoesNotMatchWhenPublicPageDisabled() {
-        when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
-            .thenReturn(Mono.just(new ScheduleCalendarSetting(null, false, null)));
-
-        var routes = new SchedulePageRouter(scheduleQueryService, settingService)
-            .schedulePageRouterFunction();
-
-        var handler = routes.route(get(ScheduleCalendarRoutes.PUBLIC_CARD_PATH_PREFIX + "/lesson-1")).blockOptional();
-
-        assertThat(handler).isEmpty();
-    }
-
-    @Test
-    void publicPageRouteMatchesWhenPublicPageEnabled() {
-        when(settingFetcher.fetch(eq(ScheduleCalendarSetting.GROUP), eq(ScheduleCalendarSetting.class)))
-            .thenReturn(Mono.just(new ScheduleCalendarSetting(null, true, null)));
+            .thenReturn(Mono.just(new ScheduleCalendarSetting("日程日历", null)));
+        when(scheduleQueryService.getWeekView(null))
+            .thenReturn(Mono.just(new ScheduleQueryService
+                .WeekViewResponse(null, null, null, null, List.of(), null, null)));
 
         var routes = new SchedulePageRouter(scheduleQueryService, settingService)
             .schedulePageRouterFunction();
@@ -83,7 +55,26 @@ class SchedulePageRouterTest {
     }
 
     @Test
-    void publicIcalRouteStillMatchesWhenPublicPageDisabled() {
+    void publicCardRouteAlwaysMatches() {
+        when(scheduleQueryService.getEntryCard("lesson-1"))
+            .thenReturn(Mono.just(new ScheduleQueryService
+                .ScheduleCardResponse("lesson-1", "课程", null, null,
+                    "09:00", "10:30", null, null, "#4285f4", null)));
+
+        var routes = new SchedulePageRouter(scheduleQueryService, settingService)
+            .schedulePageRouterFunction();
+
+        var handler = routes.route(get(ScheduleCalendarRoutes.PUBLIC_CARD_PATH_PREFIX + "/lesson-1"))
+            .blockOptional();
+
+        assertThat(handler).isPresent();
+    }
+
+    @Test
+    void publicIcalRouteAlwaysMatches() {
+        when(scheduleQueryService.exportPublicIcal())
+            .thenReturn(Mono.just("BEGIN:VCALENDAR"));
+
         var routes = new SchedulePageRouter(scheduleQueryService, settingService)
             .schedulePageRouterFunction();
 

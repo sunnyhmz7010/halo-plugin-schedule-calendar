@@ -11,9 +11,4 @@ spec:
           name: title
           label: 前台页面标题
           value: 日程日历
-          help: 用于前台 /schedule-calendar 路由页面的标题和页头文案
-        - $formkit: checkbox
-          name: enablePublicPage
-          label: 启用前台公开页面
-          value: true
-          help: 关闭后将释放 /schedule-calendar 路由，交由当前激活的主题处理
+          help: 用于前台 /schedule-calendar 路由页面的标题和页头文案；若主题已适配 schedule-calendar.html 模板，主题模板将优先于插件自带页面
