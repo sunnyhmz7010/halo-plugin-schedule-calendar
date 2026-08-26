@@ -1,12 +1,12 @@
 name: CD
 
-permissions:
-  contents: write
-
 on:
   release:
     types:
       - published
+
+permissions:
+  contents: write
 
 jobs:
   cd:
