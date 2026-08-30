@@ -1,4 +1,4 @@
-# AGENTS.md
+# halo-plugin-schedule-calendar 项目 AGENTS.md
 
 ## 项目概况
 
