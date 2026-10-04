@@ -10,12 +10,6 @@
   <a href="https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/sunnyhmz7010/halo-plugin-schedule-calendar/ci.yml?branch=main&label=CI" alt="CI" /></a>
 </p>
 
-<p align="center">
-  <a href="https://sunnyhmz.top/schedule-calendar">在线预览</a> ·
-  <a href="https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/releases">下载发布包</a> ·
-  <a href="https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/issues">反馈问题</a>
-</p>
-
 ---
 
 ## ✨ 为什么做这个插件
