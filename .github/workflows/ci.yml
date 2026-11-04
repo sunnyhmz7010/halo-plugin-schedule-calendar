@@ -34,19 +34,7 @@ jobs:
       - name: Enable pnpm via Corepack
         run: |
           corepack enable
-          corepack prepare pnpm@9 --activate
+          corepack prepare pnpm@9.15.9 --activate
 
-      - name: Install UI dependencies
-        working-directory: ui
-        run: pnpm install --frozen-lockfile
-
-      - name: Type check UI
-        working-directory: ui
-        run: pnpm type-check
-
-      - name: Run UI unit tests
-        working-directory: ui
-        run: pnpm test:unit
-
-      - name: Build plugin
+      - name: Build and test
         run: ./gradlew build
