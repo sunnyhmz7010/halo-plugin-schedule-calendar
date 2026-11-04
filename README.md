@@ -5,6 +5,13 @@
 </div>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Halo-2.25.0%2B-0ea5e9?style=flat-square&amp;logo=halo&amp;logoColor=white" alt="Halo 2.25.0+" />
+  <img src="https://img.shields.io/badge/Java-21-ed8b00?style=flat-square&amp;logo=openjdk&amp;logoColor=white" alt="Java 21" />
+  <img src="https://img.shields.io/badge/Vue-3.5-42b883?style=flat-square&amp;logo=vuedotjs&amp;logoColor=white" alt="Vue 3.5" />
+  <img src="https://img.shields.io/badge/TypeScript-5.8-3178c6?style=flat-square&amp;logo=typescript&amp;logoColor=white" alt="TypeScript 5.8" />
+</p>
+
+<p align="center">
   <a href="https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/releases"><img src="https://img.shields.io/github/v/release/sunnyhmz7010/halo-plugin-schedule-calendar?label=Release&color=3b82f6" alt="Release" /></a>
   <a href="https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/blob/main/LICENSE"><img src="https://img.shields.io/github/license/sunnyhmz7010/halo-plugin-schedule-calendar?color=10b981" alt="License" /></a>
   <a href="https://github.com/sunnyhmz7010/halo-plugin-schedule-calendar/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/sunnyhmz7010/halo-plugin-schedule-calendar/ci.yml?branch=main&label=CI" alt="CI" /></a>
@@ -29,45 +36,13 @@ Halo 默认并没有提供一套完整的日程日历能力。这个插件的目
 
 ## 🚀 核心能力
 
-### 🌐 前台公开页面
-
-- 提供公开页面路由 `GET /schedule-calendar`
-- 提供公开 iCal 订阅路由 `GET /schedule-calendar.ics`
-- 提供单事项卡片页 `GET /schedule-calendar/cards/{name}`
-- 支持本地事项与外部日历订阅在周视图和事项视图中统一展示
-- 支持当前状态、下一个事项倒计时和当前时间线提示
-- 公开 iCal 订阅仅导出本地事项，不包含外部日历订阅数据
-- 支持主题模板覆盖：主题提供 `templates/schedule-calendar.html` 即可接管公开页面
-
-### 🛠️ 控制台事项管理
-
-- 提供本地事项新增、编辑、删除
-- 支持本地事项启用/停用
-- 支持每日、每周、每月等循环规则
-- 支持只读/管理权限区分
-- 支持插件设置、本地事项与外部日历订阅的备份导出、导入恢复
-- 支持批量导入本地事项，通过文本格式一次性添加多条日程
-
-### 📥 外部日历订阅
-
-- 支持添加 Google Calendar 等工具导出的公开 iCal 地址
-- 支持外部日历订阅新增、编辑、删除、启用/停用
-- 支持手动刷新外部日历订阅缓存
-- 外部日历订阅会显示在后台周历和前台公开页面中
-- 外部日历订阅不写入公开 iCal 订阅
-
-### 🧩 编辑器日程卡片
-
-- 在文章内容中插入已有本地事项或外部日历事项
-- 自动展示事项时间、地点、说明和循环摘要
-- 适合做课程表、活动安排、预约说明、固定栏目时间卡片
-
-### 🔌 主题与自定义前端集成
-
-- 内置 `scheduleCalendarFinder`
-- 提供公开 REST API
-- Finder 和 REST 返回的数据围绕同一套周视图、摘要和事项模型组织
-
+- 公开日历：访问 `/schedule-calendar`，切换周历和事项布局，查看当前状态、下一事项倒计时与当前时间线。
+- 本地事项管理：在控制台新增、编辑、删除或停用事项，设置循环规则，也可通过文本批量导入。
+- 外部日历订阅：添加可公开读取的 HTTPS iCal/ICS 地址，把外部安排与本地事项合并展示，并可手动刷新。
+- 文章日程卡片：在 Halo 默认编辑器中选择本地事项或外部日历事项，插入包含时间、地点、备注和循环摘要的卡片。
+- 公开 iCal 订阅：通过 `/schedule-calendar.ics` 在其他日历应用中订阅已启用的本地事项。
+- 备份恢复与权限：导出和恢复插件设置、本地事项及外部订阅配置，区分查看权限和管理权限。
+- 主题与 API 集成：通过同名主题模板自定义页面，或使用 `scheduleCalendarFinder`、REST API 读取日程数据。
 ## ⚡ 快速开始
 
 ### 📋 前置要求
