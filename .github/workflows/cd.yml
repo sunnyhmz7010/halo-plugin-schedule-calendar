@@ -16,5 +16,4 @@ jobs:
     with:
       app-id: ${{ vars.HALO_APP_ID }}
       ui-path: ui
-      pnpm-version: "9.15.9"
       skip-appstore-release: false
