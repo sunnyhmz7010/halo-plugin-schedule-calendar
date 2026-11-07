@@ -10,37 +10,11 @@ permissions:
 
 jobs:
   cd:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 21
-          cache: gradle
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
-      - name: Enable pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@9 --activate
-
-      - name: Resolve release version
-        id: version
-        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
-      - name: Build plugin
-        run: ./gradlew -Pversion="${{ steps.version.outputs.value }}" assemble
-
-      - name: Upload plugin artifact to release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.event.release.tag_name }}" build/libs/*.jar --clobber
+    uses: halo-sigs/reusable-workflows/.github/workflows/plugin-cd.yaml@v5
+    secrets:
+      halo-pat: ${{ secrets.HALO_PAT }}
+    with:
+      app-id: ${{ vars.HALO_APP_ID }}
+      ui-path: ui
+      pnpm-version: "9.15.9"
+      skip-appstore-release: false

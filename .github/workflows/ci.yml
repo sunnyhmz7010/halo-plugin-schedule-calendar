@@ -13,28 +13,7 @@ permissions:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 21
-          cache: gradle
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
-      - name: Enable pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@9.15.9 --activate
-
-      - name: Build and test
-        run: ./gradlew build
+    uses: halo-sigs/reusable-workflows/.github/workflows/plugin-ci.yaml@v5
+    with:
+      ui-path: ui
+      pnpm-version: "9.15.9"
