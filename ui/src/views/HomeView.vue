@@ -2605,9 +2605,6 @@ watch([weekViewMode, currentWeekStart, entries, loading, viewportWidth], () => {
 
 <style scoped lang="scss">
 .schedule-view {
-  position: relative;
-  z-index: 0;
-  isolation: isolate;
   padding: 0;
 }
 
